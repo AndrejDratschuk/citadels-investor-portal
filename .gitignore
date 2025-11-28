@@ -16,6 +16,8 @@ build/
 .env
 .env.local
 .env.*.local
+# Allow .env.example files (they're templates, safe to commit)
+!.env.example
 
 # IDE
 .vscode/

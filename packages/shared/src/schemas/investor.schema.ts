@@ -50,5 +50,4 @@ export type CreateInvestorInput = z.infer<typeof createInvestorSchema>;
 export type UpdateInvestorInput = z.infer<typeof updateInvestorSchema>;
 export type KYCSubmissionInput = z.infer<typeof kycSubmissionSchema>;
 export type AccreditationUpdateInput = z.infer<typeof accreditationUpdateSchema>;
-export type Address = z.infer<typeof addressSchema>;
 

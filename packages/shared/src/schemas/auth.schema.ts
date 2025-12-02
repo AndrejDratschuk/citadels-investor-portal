@@ -8,6 +8,8 @@ export const signupSchema = z.object({
     errorMap: () => ({ message: 'Invalid role' }),
   }),
   fundId: z.string().uuid().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
 });
 
 export const loginSchema = z.object({

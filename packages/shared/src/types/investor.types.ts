@@ -3,7 +3,7 @@ import {
   AccreditationStatus,
   EntityType,
 } from '../constants/status';
-import { Address } from '../schemas/investor.schema';
+import type { Address } from './fund.types';
 
 export interface Investor {
   id: string;

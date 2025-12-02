@@ -1,0 +1,950 @@
+# FlowVeda Investor Portal
+## Software Development Plan
+
+---
+
+## 1. Tech Stack Summary
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | React + TypeScript | Single app, role-based routing |
+| **Styling** | Tailwind CSS + shadcn/ui | Utility-first + pre-built components |
+| **State Management** | React Query + Zustand | Server state + client state |
+| **Forms** | React Hook Form + Zod | Validation shared with backend |
+| **Backend** | Node.js + Fastify | API server |
+| **Database** | Supabase (PostgreSQL) | Data storage + auth + realtime |
+| **File Storage** | Supabase Storage | Documents, uploads |
+| **Automation** | n8n (self-hosted) | Workflow automation |
+| **Email** | Klaviyo | Transactional + marketing emails |
+| **Signatures** | DocuSign API | Document signing |
+| **Hosting** | AWS (EC2/ECS) | US region deployment |
+| **API Docs** | OpenAPI/Swagger | REST API documentation |
+
+---
+
+## 2. Repository Structure
+
+```
+/investor-portal
+│
+├── /apps
+│   ├── /web                          # React frontend
+│   │   ├── /src
+│   │   │   ├── /components
+│   │   │   │   ├── /ui               # shadcn/ui components
+│   │   │   │   ├── /layout           # Shell, sidebar, header, nav
+│   │   │   │   └── /common           # LoadingSpinner, ErrorBoundary, etc.
+│   │   │   │
+│   │   │   ├── /features
+│   │   │   │   ├── /auth
+│   │   │   │   │   ├── /components   # LoginForm, SignupForm
+│   │   │   │   │   ├── /hooks        # useAuth
+│   │   │   │   │   └── /pages        # LoginPage, SignupPage
+│   │   │   │   │
+│   │   │   │   ├── /investor-dashboard
+│   │   │   │   │   ├── /components   # InvestmentCard, DocumentList
+│   │   │   │   │   ├── /hooks        # useInvestorData, useInvestments
+│   │   │   │   │   └── /pages        # Dashboard, Investments, Documents, Profile
+│   │   │   │   │
+│   │   │   │   ├── /manager-dashboard
+│   │   │   │   │   ├── /components   # InvestorTable, DealCard, CapitalCallTracker
+│   │   │   │   │   ├── /hooks        # useInvestors, useDeals, useCapitalCalls
+│   │   │   │   │   └── /pages        # Dashboard, Investors, Deals, CapitalCalls, etc.
+│   │   │   │   │
+│   │   │   │   ├── /accountant-dashboard
+│   │   │   │   │   ├── /components
+│   │   │   │   │   ├── /hooks
+│   │   │   │   │   └── /pages        # Dashboard, K1Management
+│   │   │   │   │
+│   │   │   │   ├── /attorney-dashboard
+│   │   │   │   │   ├── /components
+│   │   │   │   │   ├── /hooks
+│   │   │   │   │   └── /pages        # Dashboard, Documents, SigningStatus
+│   │   │   │   │
+│   │   │   │   └── /onboarding
+│   │   │   │       ├── /components   # KYC form steps
+│   │   │   │       ├── /hooks
+│   │   │   │       └── /pages        # OnboardingFlow
+│   │   │   │
+│   │   │   ├── /lib
+│   │   │   │   ├── /api              # API client, endpoint functions
+│   │   │   │   ├── /hooks            # useCurrentUser, useSupabaseRealtime
+│   │   │   │   └── /utils            # Helpers
+│   │   │   │
+│   │   │   ├── /stores               # Zustand stores
+│   │   │   │
+│   │   │   ├── App.tsx
+│   │   │   └── routes.tsx            # Route definitions + auth guards
+│   │   │
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   └── /api                          # Fastify backend
+│       ├── /src
+│       │   ├── /modules
+│       │   │   ├── /auth
+│       │   │   │   ├── auth.routes.ts
+│       │   │   │   ├── auth.controller.ts
+│       │   │   │   ├── auth.service.ts
+│       │   │   │   └── auth.middleware.ts
+│       │   │   │
+│       │   │   ├── /investors
+│       │   │   │   ├── investors.routes.ts
+│       │   │   │   ├── investors.controller.ts
+│       │   │   │   ├── investors.service.ts
+│       │   │   │   └── investors.types.ts
+│       │   │   │
+│       │   │   ├── /funds
+│       │   │   │   ├── funds.routes.ts
+│       │   │   │   ├── funds.controller.ts
+│       │   │   │   └── funds.service.ts
+│       │   │   │
+│       │   │   ├── /deals
+│       │   │   │   ├── deals.routes.ts
+│       │   │   │   ├── deals.controller.ts
+│       │   │   │   └── deals.service.ts
+│       │   │   │
+│       │   │   ├── /documents
+│       │   │   │   ├── documents.routes.ts
+│       │   │   │   ├── documents.controller.ts
+│       │   │   │   ├── documents.service.ts
+│       │   │   │   └── docusign.service.ts
+│       │   │   │
+│       │   │   ├── /capital-calls
+│       │   │   │   ├── capital-calls.routes.ts
+│       │   │   │   ├── capital-calls.controller.ts
+│       │   │   │   ├── capital-calls.service.ts
+│       │   │   │   └── capital-calls.calculator.ts
+│       │   │   │
+│       │   │   ├── /communications
+│       │   │   │   ├── communications.routes.ts
+│       │   │   │   ├── communications.controller.ts
+│       │   │   │   ├── communications.service.ts
+│       │   │   │   └── klaviyo.service.ts
+│       │   │   │
+│       │   │   ├── /reports
+│       │   │   │   ├── reports.routes.ts
+│       │   │   │   ├── reports.controller.ts
+│       │   │   │   ├── reports.service.ts
+│       │   │   │   └── k1-generator.ts
+│       │   │   │
+│       │   │   └── /webhooks
+│       │   │       ├── webhooks.routes.ts
+│       │   │       ├── webhooks.controller.ts
+│       │   │       └── webhooks.handlers.ts
+│       │   │
+│       │   ├── /common
+│       │   │   ├── /middleware       # Error handling, logging, rate limiting
+│       │   │   ├── /utils            # Shared helpers
+│       │   │   └── /database         # Supabase client setup
+│       │   │
+│       │   ├── /config               # Environment config
+│       │   │
+│       │   ├── server.ts             # Fastify setup
+│       │   └── routes.ts             # Mount all module routes
+│       │
+│       ├── package.json
+│       └── tsconfig.json
+│
+├── /packages
+│   └── /shared                       # Shared between frontend + backend
+│       ├── /src
+│       │   ├── /schemas
+│       │   │   ├── investor.schema.ts
+│       │   │   ├── fund.schema.ts
+│       │   │   ├── deal.schema.ts
+│       │   │   ├── document.schema.ts
+│       │   │   ├── capital-call.schema.ts
+│       │   │   └── auth.schema.ts
+│       │   │
+│       │   ├── /types
+│       │   │   ├── investor.types.ts
+│       │   │   ├── fund.types.ts
+│       │   │   ├── deal.types.ts
+│       │   │   ├── document.types.ts
+│       │   │   ├── capital-call.types.ts
+│       │   │   ├── api.types.ts
+│       │   │   └── database.types.ts  # Supabase generated
+│       │   │
+│       │   ├── /constants
+│       │   │   ├── roles.ts
+│       │   │   ├── status.ts
+│       │   │   └── config.ts
+│       │   │
+│       │   ├── /utils
+│       │   │   ├── formatters.ts
+│       │   │   ├── validators.ts
+│       │   │   └── calculations.ts
+│       │   │
+│       │   └── index.ts
+│       │
+│       ├── package.json
+│       └── tsconfig.json
+│
+├── /infrastructure                   # AWS/deployment config
+│   ├── /terraform                    # or CloudFormation
+│   └── /docker
+│
+├── package.json                      # Workspace root
+├── pnpm-workspace.yaml               # Monorepo config
+└── README.md
+```
+
+---
+
+## 3. Database Schema
+
+### Tables
+
+```sql
+-- Users (extends Supabase Auth)
+CREATE TABLE users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  email TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('investor', 'manager', 'accountant', 'attorney')),
+  fund_id UUID REFERENCES funds(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Funds
+CREATE TABLE funds (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  legal_name TEXT NOT NULL,
+  ein_encrypted TEXT,
+  address JSONB,
+  bank_info_encrypted JSONB,
+  wire_instructions TEXT,
+  target_raise DECIMAL(15,2),
+  total_committed DECIMAL(15,2) DEFAULT 0,
+  branding JSONB,  -- { logo_url, primary_color, secondary_color }
+  status TEXT DEFAULT 'raising' CHECK (status IN ('raising', 'closed', 'active', 'liquidating')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Investors
+CREATE TABLE investors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  fund_id UUID REFERENCES funds(id) NOT NULL,
+  
+  -- Personal info
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  address JSONB,  -- { street, city, state, zip, country }
+  
+  -- Sensitive (encrypted)
+  ssn_encrypted TEXT,
+  date_of_birth DATE,
+  
+  -- Entity info
+  entity_type TEXT CHECK (entity_type IN ('individual', 'joint', 'trust', 'llc', 'corporation')),
+  entity_name TEXT,
+  tax_id_type TEXT CHECK (tax_id_type IN ('ssn', 'ein')),
+  
+  -- Accreditation
+  accreditation_status TEXT DEFAULT 'pending' CHECK (accreditation_status IN ('pending', 'approved', 'rejected', 'expired')),
+  accreditation_type TEXT CHECK (accreditation_type IN ('income', 'net_worth', 'professional')),
+  accreditation_date DATE,
+  verification_request_id TEXT,
+  
+  -- Investment
+  commitment_amount DECIMAL(15,2) DEFAULT 0,
+  total_called DECIMAL(15,2) DEFAULT 0,
+  total_invested DECIMAL(15,2) DEFAULT 0,
+  
+  -- Metadata
+  onboarding_step INT DEFAULT 1,
+  onboarded_at TIMESTAMPTZ,
+  status TEXT DEFAULT 'prospect' CHECK (status IN ('prospect', 'onboarding', 'active', 'inactive')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Deals
+CREATE TABLE deals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fund_id UUID REFERENCES funds(id) NOT NULL,
+  
+  -- Basic info
+  name TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'prospective' CHECK (status IN ('prospective', 'under_contract', 'acquired', 'renovating', 'stabilized', 'for_sale', 'sold')),
+  
+  -- Property details
+  address JSONB,
+  property_type TEXT CHECK (property_type IN ('multifamily', 'office', 'retail', 'industrial', 'other')),
+  unit_count INT,
+  square_footage INT,
+  
+  -- Financials
+  acquisition_price DECIMAL(15,2),
+  acquisition_date DATE,
+  current_value DECIMAL(15,2),
+  total_investment DECIMAL(15,2),
+  
+  -- KPIs (stored as JSONB for flexibility)
+  kpis JSONB,  -- { noi, cap_rate, cash_on_cash, occupancy_rate, renovation_budget, renovation_spent }
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Investor-Deal junction
+CREATE TABLE investor_deals (
+  investor_id UUID REFERENCES investors(id) NOT NULL,
+  deal_id UUID REFERENCES deals(id) NOT NULL,
+  ownership_percentage DECIMAL(5,4),
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (investor_id, deal_id)
+);
+
+-- Documents
+CREATE TABLE documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fund_id UUID REFERENCES funds(id) NOT NULL,
+  deal_id UUID REFERENCES deals(id),
+  investor_id UUID REFERENCES investors(id),
+  
+  type TEXT NOT NULL CHECK (type IN ('ppm', 'subscription', 'k1', 'report', 'capital_call', 'kyc', 'other')),
+  name TEXT NOT NULL,
+  file_path TEXT,  -- Supabase Storage path
+  
+  -- Signing
+  requires_signature BOOLEAN DEFAULT FALSE,
+  docusign_envelope_id TEXT,
+  signing_status TEXT CHECK (signing_status IN ('not_sent', 'sent', 'viewed', 'signed', 'declined')),
+  signed_at TIMESTAMPTZ,
+  
+  -- Access control
+  visible_to TEXT[],  -- Array of roles or user IDs
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES users(id)
+);
+
+-- Capital Calls
+CREATE TABLE capital_calls (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fund_id UUID REFERENCES funds(id) NOT NULL,
+  deal_id UUID REFERENCES deals(id) NOT NULL,
+  
+  total_amount DECIMAL(15,2) NOT NULL,
+  percentage_of_fund DECIMAL(5,4) NOT NULL,
+  deadline DATE NOT NULL,
+  
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'partial', 'funded', 'closed')),
+  
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Capital Call Items (per-investor breakdown)
+CREATE TABLE capital_call_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  capital_call_id UUID REFERENCES capital_calls(id) NOT NULL,
+  investor_id UUID REFERENCES investors(id) NOT NULL,
+  
+  amount_due DECIMAL(15,2) NOT NULL,
+  amount_received DECIMAL(15,2) DEFAULT 0,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'partial', 'complete')),
+  
+  wire_received_at TIMESTAMPTZ,
+  reminder_count INT DEFAULT 0,
+  last_reminder_at TIMESTAMPTZ,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(capital_call_id, investor_id)
+);
+
+-- Email Logs
+CREATE TABLE email_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fund_id UUID REFERENCES funds(id),
+  investor_id UUID REFERENCES investors(id),
+  
+  email_type TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  recipient_email TEXT NOT NULL,
+  
+  status TEXT DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'opened', 'failed')),
+  klaviyo_message_id TEXT,
+  
+  sent_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Audit Logs (for compliance)
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id UUID,
+  details JSONB,
+  ip_address TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### Row Level Security Policies
+
+```sql
+-- Investors can only see their own data
+ALTER TABLE investors ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Investors see own data" ON investors
+  FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "Managers see fund investors" ON investors
+  FOR SELECT USING (
+    fund_id IN (
+      SELECT fund_id FROM users WHERE id = auth.uid() AND role = 'manager'
+    )
+  );
+
+-- Similar policies for other tables...
+```
+
+---
+
+## 4. Frontend Routes
+
+```typescript
+// routes.tsx
+
+const routes = [
+  // Public routes
+  { path: '/', element: <LandingPage /> },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/signup/:fundId', element: <SignupPage /> },
+  
+  // Onboarding (authenticated, incomplete profile)
+  { path: '/onboarding', element: <OnboardingFlow />, auth: true },
+  
+  // Investor routes
+  {
+    path: '/investor',
+    element: <InvestorLayout />,
+    auth: true,
+    role: 'investor',
+    children: [
+      { path: 'dashboard', element: <InvestorDashboard /> },
+      { path: 'investments', element: <InvestmentsList /> },
+      { path: 'investments/:id', element: <InvestmentDetail /> },
+      { path: 'documents', element: <InvestorDocuments /> },
+      { path: 'profile', element: <InvestorProfile /> },
+    ],
+  },
+  
+  // Manager routes
+  {
+    path: '/manager',
+    element: <ManagerLayout />,
+    auth: true,
+    role: 'manager',
+    children: [
+      { path: 'dashboard', element: <ManagerDashboard /> },
+      { path: 'investors', element: <InvestorsList /> },
+      { path: 'investors/:id', element: <InvestorDetail /> },
+      { path: 'deals', element: <DealsList /> },
+      { path: 'deals/new', element: <CreateDeal /> },
+      { path: 'deals/:id', element: <DealDetail /> },
+      { path: 'capital-calls', element: <CapitalCallsList /> },
+      { path: 'capital-calls/new', element: <CreateCapitalCall /> },
+      { path: 'capital-calls/:id', element: <CapitalCallDetail /> },
+      { path: 'documents', element: <DocumentsManager /> },
+      { path: 'reports', element: <ReportsManager /> },
+      { path: 'settings', element: <FundSettings /> },
+    ],
+  },
+  
+  // Accountant routes
+  {
+    path: '/accountant',
+    element: <AccountantLayout />,
+    auth: true,
+    role: 'accountant',
+    children: [
+      { path: 'dashboard', element: <AccountantDashboard /> },
+      { path: 'k1', element: <K1Management /> },
+      { path: 'investors', element: <InvestorTaxData /> },
+    ],
+  },
+  
+  // Attorney routes
+  {
+    path: '/attorney',
+    element: <AttorneyLayout />,
+    auth: true,
+    role: 'attorney',
+    children: [
+      { path: 'dashboard', element: <AttorneyDashboard /> },
+      { path: 'documents', element: <LegalDocuments /> },
+      { path: 'signing-status', element: <SigningStatus /> },
+    ],
+  },
+];
+```
+
+---
+
+## 5. API Endpoints
+
+### Auth Module
+```
+POST   /api/auth/signup              → Create new user
+POST   /api/auth/login               → Login, return JWT
+POST   /api/auth/logout              → Invalidate session
+POST   /api/auth/refresh             → Refresh token
+GET    /api/auth/me                  → Get current user + role
+POST   /api/auth/forgot-password     → Send reset email
+POST   /api/auth/reset-password      → Reset with token
+```
+
+### Investors Module
+```
+GET    /api/investors                → List all (manager only)
+GET    /api/investors/:id            → Get single investor
+POST   /api/investors                → Create investor profile
+PATCH  /api/investors/:id            → Update investor
+DELETE /api/investors/:id            → Soft delete
+POST   /api/investors/:id/kyc        → Submit KYC data
+PATCH  /api/investors/:id/accreditation → Update accreditation status
+GET    /api/investors/:id/documents  → Get investor's documents
+GET    /api/investors/:id/investments → Get investor's deals
+```
+
+### Funds Module
+```
+GET    /api/funds/:id                → Get fund details
+PATCH  /api/funds/:id                → Update fund
+GET    /api/funds/:id/stats          → Fund overview stats
+GET    /api/funds/:id/branding       → Get branding (public)
+```
+
+### Deals Module
+```
+GET    /api/deals                    → List all deals
+GET    /api/deals/:id                → Get single deal
+POST   /api/deals                    → Create deal
+PATCH  /api/deals/:id                → Update deal
+DELETE /api/deals/:id                → Soft delete
+PATCH  /api/deals/:id/kpis           → Update KPIs
+GET    /api/deals/:id/investors      → Get investors in deal
+```
+
+### Documents Module
+```
+GET    /api/documents                → List documents (filtered)
+GET    /api/documents/:id            → Get single document
+POST   /api/documents                → Upload document
+DELETE /api/documents/:id            → Delete document
+POST   /api/documents/:id/send-signature → Send to DocuSign
+GET    /api/documents/:id/download   → Get signed document
+```
+
+### Capital Calls Module
+```
+GET    /api/capital-calls            → List capital calls
+GET    /api/capital-calls/:id        → Get single with breakdown
+POST   /api/capital-calls            → Create capital call
+PATCH  /api/capital-calls/:id        → Update capital call
+POST   /api/capital-calls/:id/send   → Send emails to investors
+PATCH  /api/capital-calls/:id/items/:investorId → Update wire status
+POST   /api/capital-calls/:id/remind → Send reminder emails
+```
+
+### Reports Module
+```
+GET    /api/reports/quarterly        → List quarterly reports
+POST   /api/reports/quarterly        → Upload quarterly report
+POST   /api/reports/k1/generate      → Generate K-1s for year
+GET    /api/reports/k1/:investorId   → Get investor's K-1
+```
+
+### Webhooks Module
+```
+POST   /api/webhooks/docusign        → DocuSign events
+POST   /api/webhooks/verification    → KYC verification results
+POST   /api/webhooks/n8n             → Callbacks from n8n
+```
+
+---
+
+## 6. Component Communication
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                FRONTEND (React)                                  │
+│                                                                                  │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│   │   Investor   │  │   Manager    │  │  Accountant  │  │   Attorney   │       │
+│   │   Dashboard  │  │   Dashboard  │  │   Dashboard  │  │   Dashboard  │       │
+│   └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘       │
+│          │                 │                 │                 │                │
+│          └─────────────────┴─────────────────┴─────────────────┘                │
+│                                     │                                           │
+│                          React Query + Zustand                                  │
+│                                     │                                           │
+└─────────────────────────────────────┼───────────────────────────────────────────┘
+                                      │
+                            REST API calls + 
+                         Supabase Realtime subscriptions
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              BACKEND (Fastify)                                   │
+│                                                                                  │
+│   ┌─────────┐ ┌──────────┐ ┌───────┐ ┌───────────┐ ┌──────────────┐ ┌────────┐ │
+│   │  Auth   │ │ Investors│ │ Deals │ │Cap. Calls │ │  Documents   │ │Reports │ │
+│   │ Module  │ │  Module  │ │Module │ │  Module   │ │   Module     │ │ Module │ │
+│   └────┬────┘ └────┬─────┘ └───┬───┘ └─────┬─────┘ └──────┬───────┘ └───┬────┘ │
+│        │           │           │           │              │             │       │
+│        └───────────┴───────────┴───────────┴──────────────┴─────────────┘       │
+│                                     │                                           │
+└─────────────────────────────────────┼───────────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    │                 │                 │
+                    ▼                 ▼                 ▼
+          ┌─────────────────┐ ┌─────────────┐ ┌─────────────────┐
+          │    SUPABASE     │ │     N8N     │ │  EXTERNAL APIs  │
+          │                 │ │             │ │                 │
+          │  • PostgreSQL   │ │  • Webhooks │ │  • DocuSign     │
+          │  • Auth         │ │  • Workflows│ │  • Klaviyo      │
+          │  • Storage      │ │  • Triggers │ │  • Verification │
+          │  • Realtime     │ │             │ │                 │
+          └────────┬────────┘ └──────┬──────┘ └────────┬────────┘
+                   │                 │                 │
+                   │                 ▼                 │
+                   │    ┌───────────────────────┐      │
+                   │    │   Supabase Triggers   │      │
+                   │    │   (DB → n8n webhook)  │      │
+                   │    └───────────────────────┘      │
+                   │                                   │
+                   └───────────────────────────────────┘
+```
+
+### Communication Patterns
+
+| From | To | Method | Example |
+|------|----|--------|---------|
+| Frontend | Backend | REST API | Fetch investor list |
+| Frontend | Supabase | Realtime subscription | Live update when wire received |
+| Backend | Supabase | Direct queries | CRUD operations |
+| Backend | n8n | Webhook POST | Trigger email sequence |
+| Backend | DocuSign | REST API | Create signing envelope |
+| Supabase | n8n | DB trigger → webhook | New investor → welcome flow |
+| n8n | Klaviyo | REST API | Send email |
+| n8n | Backend | Webhook callback | Notify signing complete |
+| DocuSign | Backend | Webhook | Document signed event |
+
+---
+
+## 7. Supabase Realtime Subscriptions
+
+### Investor Dashboard
+```typescript
+// Subscribe to own profile changes
+supabase
+  .channel('investor-profile')
+  .on('postgres_changes', {
+    event: 'UPDATE',
+    schema: 'public',
+    table: 'investors',
+    filter: `id=eq.${investorId}`
+  }, handleProfileUpdate)
+  .subscribe();
+
+// Subscribe to own documents
+supabase
+  .channel('investor-documents')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'documents',
+    filter: `investor_id=eq.${investorId}`
+  }, handleDocumentChange)
+  .subscribe();
+
+// Subscribe to capital calls
+supabase
+  .channel('investor-capital-calls')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'capital_call_items',
+    filter: `investor_id=eq.${investorId}`
+  }, handleCapitalCallChange)
+  .subscribe();
+```
+
+### Manager Dashboard
+```typescript
+// Subscribe to all fund investors
+supabase
+  .channel('fund-investors')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'investors',
+    filter: `fund_id=eq.${fundId}`
+  }, handleInvestorChange)
+  .subscribe();
+
+// Subscribe to fund documents
+supabase
+  .channel('fund-documents')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'documents',
+    filter: `fund_id=eq.${fundId}`
+  }, handleDocumentChange)
+  .subscribe();
+
+// Subscribe to capital call progress
+supabase
+  .channel('capital-call-items')
+  .on('postgres_changes', {
+    event: 'UPDATE',
+    schema: 'public',
+    table: 'capital_call_items',
+    filter: `capital_call_id=eq.${capitalCallId}`
+  }, handleWireUpdate)
+  .subscribe();
+```
+
+---
+
+## 8. n8n Workflows
+
+### Investor Onboarding
+```
+1. investor.kyc_submitted
+   Trigger: Backend webhook
+   → Send data to verification API
+   → Store verification request ID
+   → Send "KYC received" email via Klaviyo
+
+2. investor.verification_complete
+   Trigger: Verification API webhook
+   → If approved: Update status, trigger docs, send welcome email
+   → If rejected: Update status, send "more info needed" email
+
+3. investor.onboarding_reminder
+   Trigger: Scheduled (daily)
+   → Query incomplete onboarding > 3 days
+   → Send reminder emails
+```
+
+### Documents
+```
+4. document.send_for_signature
+   Trigger: Backend webhook
+   → Create DocuSign envelope
+   → Store envelope ID
+   → Update document status
+
+5. document.signed
+   Trigger: DocuSign webhook
+   → Download signed PDF
+   → Upload to Supabase Storage
+   → Update document status
+   → Send confirmation email
+```
+
+### Capital Calls
+```
+6. capital_call.send
+   Trigger: Backend webhook
+   → Loop through investors
+   → Generate personalized emails
+   → Send via Klaviyo
+   → Log emails sent
+
+7. capital_call.reminder
+   Trigger: Scheduled (daily)
+   → Query overdue items
+   → Send escalating reminders
+   → Update reminder count
+
+8. capital_call.wire_received
+   Trigger: Supabase trigger
+   → Send confirmation email
+   → Check if fully funded
+   → Notify manager if complete
+```
+
+### Reporting
+```
+9. report.quarterly_uploaded
+   Trigger: Supabase trigger (new document, type=report)
+   → Send notification to all fund investors
+
+10. report.k1_generated
+    Trigger: Backend webhook
+    → Loop through investors
+    → Send K-1 notification with secure link
+```
+
+---
+
+## 9. Development Phases
+
+### Phase 1: Foundation (Week 1)
+- [ ] Set up monorepo (pnpm workspaces)
+- [ ] Initialize React app with Tailwind + shadcn/ui
+- [ ] Initialize Fastify backend
+- [ ] Set up shared package with Zod schemas
+- [ ] Connect to Supabase (database + auth)
+- [ ] Create database tables + RLS policies
+- [ ] Build auth flow (signup, login, logout)
+- [ ] Build layout shells for each dashboard
+- [ ] Deploy to AWS (basic CI/CD)
+
+**Deliverable:** Users can sign up, log in, see empty dashboard
+
+---
+
+### Phase 2: Investor Onboarding (Week 2-3)
+- [ ] Build multi-step KYC form (React Hook Form)
+- [ ] Build investor API endpoints (CRUD)
+- [ ] Build document upload to Supabase Storage
+- [ ] Set up n8n instance
+- [ ] Build verification webhook flow
+- [ ] Integrate Klaviyo for emails
+- [ ] Build approval/rejection flow
+- [ ] Build investor profile page
+
+**Deliverable:** Full investor onboarding works end-to-end
+
+---
+
+### Phase 3: Fund Manager Core (Week 3-4)
+- [ ] Build fund settings page
+- [ ] Build investors list + detail view
+- [ ] Build deals CRUD
+- [ ] Build deal KPI tracking
+- [ ] Build manager dashboard overview
+
+**Deliverable:** Managers can manage investors and deals
+
+---
+
+### Phase 4: Documents (Week 4-5)
+- [ ] Integrate DocuSign API
+- [ ] Build document template storage
+- [ ] Build send-for-signature flow
+- [ ] Build DocuSign webhook handler (n8n)
+- [ ] Build document archive views
+- [ ] Build signing status tracking
+
+**Deliverable:** Documents can be signed electronically
+
+---
+
+### Phase 5: Capital Calls (Week 5-6)
+- [ ] Build capital call creation form
+- [ ] Build per-investor calculation logic
+- [ ] Build capital call sending flow (n8n + Klaviyo)
+- [ ] Build wire tracking UI
+- [ ] Build reminder automation (n8n)
+- [ ] Build capital call dashboard
+
+**Deliverable:** Capital calls fully automated
+
+---
+
+### Phase 6: Reporting & K-1 (Week 6-7)
+- [ ] Build quarterly report upload
+- [ ] Build report notification flow
+- [ ] Build K-1 data aggregation
+- [ ] Build K-1 PDF generation
+- [ ] Build K-1 delivery flow
+- [ ] Build accountant dashboard
+
+**Deliverable:** Reporting and tax docs working
+
+---
+
+### Phase 7: Polish & Testing (Week 7-8)
+- [ ] Build attorney dashboard
+- [ ] Real-time subscriptions all dashboards
+- [ ] Error handling and edge cases
+- [ ] Security audit (encryption, RLS)
+- [ ] Performance optimization
+- [ ] Unit tests for calculations
+- [ ] Integration tests for critical flows
+
+**Deliverable:** Production-ready for first client
+
+---
+
+## 10. Environment Variables
+
+```bash
+# /apps/api/.env
+
+# Server
+PORT=3001
+NODE_ENV=development
+
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=xxx
+SUPABASE_SERVICE_ROLE_KEY=xxx
+
+# n8n
+N8N_WEBHOOK_BASE_URL=https://n8n.yourdomain.com/webhook
+
+# DocuSign
+DOCUSIGN_INTEGRATION_KEY=xxx
+DOCUSIGN_SECRET_KEY=xxx
+DOCUSIGN_ACCOUNT_ID=xxx
+DOCUSIGN_BASE_URL=https://demo.docusign.net
+
+# Klaviyo
+KLAVIYO_API_KEY=xxx
+KLAVIYO_LIST_ID=xxx
+
+# Verification API
+VERIFICATION_API_KEY=xxx
+VERIFICATION_API_URL=xxx
+
+# Encryption
+ENCRYPTION_KEY=xxx  # For SSN, bank info
+```
+
+```bash
+# /apps/web/.env
+
+VITE_API_URL=http://localhost:3001/api
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=xxx
+```
+
+---
+
+## 11. Security Checklist
+
+- [ ] SSN and bank info encrypted at rest (AES-256)
+- [ ] Row-level security policies on all tables
+- [ ] JWT validation on all API routes
+- [ ] Role-based access control middleware
+- [ ] Rate limiting on auth endpoints
+- [ ] HTTPS everywhere
+- [ ] Audit logging for sensitive operations
+- [ ] Input validation with Zod on all endpoints
+- [ ] XSS protection (React handles by default)
+- [ ] CSRF protection
+- [ ] Secure headers (helmet)
+- [ ] Environment variables for all secrets
+- [ ] Regular dependency updates
+
+---
+
+*Document Version: 1.0*
+*Created: November 26, 2024*

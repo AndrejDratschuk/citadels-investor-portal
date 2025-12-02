@@ -1,0 +1,277 @@
+import { supabaseAdmin } from '../../common/database/supabase';
+
+export class InvestorsService {
+  /**
+   * Get investor profile by user ID
+   */
+  async getInvestorByUserId(userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching investor:', error);
+      throw new Error('Investor not found');
+    }
+
+    return this.formatInvestor(data);
+  }
+
+  /**
+   * Get investor by ID
+   */
+  async getInvestorById(investorId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .select('*')
+      .eq('id', investorId)
+      .single();
+
+    if (error) {
+      throw new Error('Investor not found');
+    }
+
+    return this.formatInvestor(data);
+  }
+
+  /**
+   * Update investor profile
+   */
+  async updateInvestor(investorId: string, updates: Partial<InvestorUpdate>) {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .update({
+        first_name: updates.firstName,
+        last_name: updates.lastName,
+        phone: updates.phone,
+        address: updates.address,
+        entity_type: updates.entityType,
+        entity_name: updates.entityName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', investorId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating investor:', error);
+      throw new Error('Failed to update investor');
+    }
+
+    return this.formatInvestor(data);
+  }
+
+  /**
+   * Get investor's investments (deals)
+   */
+  async getInvestorInvestments(investorId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('investor_deals')
+      .select(`
+        ownership_percentage,
+        joined_at,
+        deal:deals (
+          id,
+          name,
+          description,
+          status,
+          address,
+          property_type,
+          unit_count,
+          square_footage,
+          acquisition_price,
+          acquisition_date,
+          current_value,
+          total_investment,
+          kpis
+        )
+      `)
+      .eq('investor_id', investorId);
+
+    if (error) {
+      console.error('Error fetching investments:', error);
+      throw new Error('Failed to fetch investments');
+    }
+
+    return data.map((item: any) => ({
+      ownershipPercentage: item.ownership_percentage,
+      joinedAt: item.joined_at,
+      deal: item.deal ? {
+        id: item.deal.id,
+        name: item.deal.name,
+        description: item.deal.description,
+        status: item.deal.status,
+        address: item.deal.address,
+        propertyType: item.deal.property_type,
+        unitCount: item.deal.unit_count,
+        squareFootage: item.deal.square_footage,
+        acquisitionPrice: item.deal.acquisition_price,
+        acquisitionDate: item.deal.acquisition_date,
+        currentValue: item.deal.current_value,
+        totalInvestment: item.deal.total_investment,
+        kpis: item.deal.kpis,
+      } : null,
+    }));
+  }
+
+  /**
+   * Get investor's documents
+   */
+  async getInvestorDocuments(investorId: string, fundId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('documents')
+      .select('*')
+      .or(`investor_id.eq.${investorId},and(fund_id.eq.${fundId},investor_id.is.null)`)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching documents:', error);
+      throw new Error('Failed to fetch documents');
+    }
+
+    return data.map((doc: any) => ({
+      id: doc.id,
+      fundId: doc.fund_id,
+      dealId: doc.deal_id,
+      investorId: doc.investor_id,
+      type: doc.type,
+      name: doc.name,
+      filePath: doc.file_path,
+      requiresSignature: doc.requires_signature,
+      signingStatus: doc.signing_status,
+      signedAt: doc.signed_at,
+      createdAt: doc.created_at,
+    }));
+  }
+
+  /**
+   * Get investor's capital calls
+   */
+  async getInvestorCapitalCalls(investorId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('capital_call_items')
+      .select(`
+        id,
+        amount_due,
+        amount_received,
+        status,
+        wire_received_at,
+        created_at,
+        capital_call:capital_calls (
+          id,
+          total_amount,
+          deadline,
+          status,
+          deal:deals (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('investor_id', investorId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching capital calls:', error);
+      throw new Error('Failed to fetch capital calls');
+    }
+
+    return data.map((item: any) => ({
+      id: item.id,
+      amountDue: item.amount_due,
+      amountReceived: item.amount_received,
+      status: item.status,
+      wireReceivedAt: item.wire_received_at,
+      createdAt: item.created_at,
+      capitalCall: item.capital_call ? {
+        id: item.capital_call.id,
+        totalAmount: item.capital_call.total_amount,
+        deadline: item.capital_call.deadline,
+        status: item.capital_call.status,
+        deal: item.capital_call.deal ? {
+          id: item.capital_call.deal.id,
+          name: item.capital_call.deal.name,
+        } : null,
+      } : null,
+    }));
+  }
+
+  /**
+   * Get dashboard stats for investor
+   */
+  async getInvestorStats(investorId: string) {
+    const investor = await this.getInvestorById(investorId);
+    const investments = await this.getInvestorInvestments(investorId);
+    const capitalCalls = await this.getInvestorCapitalCalls(investorId);
+
+    const pendingCapitalCalls = capitalCalls.filter(
+      (cc) => cc.status === 'pending' || cc.status === 'partial'
+    );
+
+    const totalInvestmentValue = investments.reduce((sum, inv) => {
+      if (inv.deal && inv.deal.currentValue && inv.ownershipPercentage) {
+        return sum + (inv.deal.currentValue * inv.ownershipPercentage);
+      }
+      return sum;
+    }, 0);
+
+    return {
+      commitmentAmount: investor.commitmentAmount,
+      totalCalled: investor.totalCalled,
+      totalInvested: investor.totalInvested,
+      totalInvestmentValue,
+      activeInvestments: investments.length,
+      pendingCapitalCalls: pendingCapitalCalls.length,
+      pendingAmount: pendingCapitalCalls.reduce(
+        (sum, cc) => sum + (cc.amountDue - cc.amountReceived),
+        0
+      ),
+    };
+  }
+
+  private formatInvestor(data: any) {
+    return {
+      id: data.id,
+      userId: data.user_id,
+      fundId: data.fund_id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      address: data.address,
+      entityType: data.entity_type,
+      entityName: data.entity_name,
+      taxIdType: data.tax_id_type,
+      accreditationStatus: data.accreditation_status,
+      accreditationType: data.accreditation_type,
+      accreditationDate: data.accreditation_date,
+      commitmentAmount: parseFloat(data.commitment_amount) || 0,
+      totalCalled: parseFloat(data.total_called) || 0,
+      totalInvested: parseFloat(data.total_invested) || 0,
+      onboardingStep: data.onboarding_step,
+      onboardedAt: data.onboarded_at,
+      status: data.status,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+}
+
+interface InvestorUpdate {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
+  entityType?: string;
+  entityName?: string;
+}
+
+

@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '../../common/database/supabase';
-import { SignupInput, LoginInput } from '@flowveda/shared';
+import { SignupInput, LoginInput, USER_ROLES } from '@flowveda/shared';
 import { User } from '@flowveda/shared';
+
+// Default fund ID for new investors (created by seed data)
+const DEFAULT_FUND_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
 export class AuthService {
   async signup(input: SignupInput) {
@@ -15,6 +18,9 @@ export class AuthService {
       throw new Error(authError?.message || 'Failed to create user');
     }
 
+    // For investors, assign to default fund if no fund specified
+    const fundId = input.fundId || (input.role === USER_ROLES.INVESTOR ? DEFAULT_FUND_ID : null);
+
     // Create user record in database
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
@@ -22,7 +28,7 @@ export class AuthService {
         id: authData.user.id,
         email: input.email,
         role: input.role,
-        fund_id: input.fundId || null,
+        fund_id: fundId,
       })
       .select()
       .single();
@@ -31,6 +37,29 @@ export class AuthService {
       // Rollback: delete auth user if database insert fails
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       throw new Error(userError?.message || 'Failed to create user record');
+    }
+
+    // If user is an investor, create an investor record
+    if (input.role === USER_ROLES.INVESTOR && fundId) {
+      const { error: investorError } = await supabaseAdmin
+        .from('investors')
+        .insert({
+          user_id: authData.user.id,
+          fund_id: fundId,
+          first_name: input.firstName || 'New',
+          last_name: input.lastName || 'Investor',
+          email: input.email,
+          commitment_amount: 0,
+          total_called: 0,
+          total_invested: 0,
+          accreditation_status: 'pending',
+          status: 'onboarding',
+        });
+
+      if (investorError) {
+        console.error('Failed to create investor record:', investorError);
+        // Don't rollback - user can still login, investor record can be created later
+      }
     }
 
     return {
@@ -54,11 +83,20 @@ export class AuthService {
     }
 
     // Get user role from database
+    console.log('Looking for user with ID:', data.user.id);
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, email, role, fund_id, created_at')
       .eq('id', data.user.id)
       .single();
+
+    if (userError) {
+      console.error('Database error fetching user:', userError);
+    }
+    
+    if (!userData) {
+      console.error('User data is null for ID:', data.user.id);
+    }
 
     if (userError || !userData) {
       throw new Error('User not found');

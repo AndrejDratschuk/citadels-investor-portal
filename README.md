@@ -83,6 +83,11 @@ A comprehensive investor portal SaaS platform supporting multiple roles: Investo
    - See `database/README.md` for detailed instructions
 
 6. **Start development servers**
+
+Frontend: cd "E:\Mizu AI\Investor SaaS Project Jay\apps\web"; npx vite
+
+Backend: cd "E:\Mizu AI\Investor SaaS Project Jay\apps\api"; npx tsx watch src/server.ts
+
    ```bash
    pnpm dev
    ```

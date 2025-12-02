@@ -10,6 +10,7 @@ import {
   DollarSign,
   Receipt,
   Settings,
+  UserPlus,
 } from 'lucide-react';
 
 interface NavItem {
@@ -27,6 +28,7 @@ const investorNavItems: NavItem[] = [
 
 const managerNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/manager/dashboard', icon: LayoutDashboard },
+  { title: 'Onboarding', href: '/manager/onboarding', icon: UserPlus },
   { title: 'Investors', href: '/manager/investors', icon: Users },
   { title: 'Deals', href: '/manager/deals', icon: Building2 },
   { title: 'Capital Calls', href: '/manager/capital-calls', icon: DollarSign },

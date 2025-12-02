@@ -1,5 +1,5 @@
 import { DealStatus, PropertyType } from '../constants/status';
-import { Address } from './fund.types';
+import type { Address } from './fund.types';
 
 export interface DealKPIs {
   noi?: number;

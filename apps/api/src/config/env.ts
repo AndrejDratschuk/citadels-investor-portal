@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -15,7 +20,7 @@ const envSchema = z.object({
   KLAVIYO_API_KEY: z.string().optional(),
   KLAVIYO_LIST_ID: z.string().optional(),
   VERIFICATION_API_KEY: z.string().optional(),
-  VERIFICATION_API_URL: z.string().url().optional(),
+  VERIFICATION_API_URL: z.string().url().optional().or(z.literal('')),
   ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters').optional(),
 });
 

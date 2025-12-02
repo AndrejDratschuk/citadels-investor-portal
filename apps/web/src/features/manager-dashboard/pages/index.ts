@@ -1,0 +1,14 @@
+export * from './ManagerDashboard';
+export * from './InvestorsList';
+export * from './InvestorDetail';
+export * from './DealsList';
+export * from './DealDetail';
+export * from './CreateDeal';
+export * from './CapitalCallsList';
+export * from './CapitalCallDetail';
+export * from './CreateCapitalCall';
+export * from './DocumentsManager';
+export * from './FundSettings';
+export * from './OnboardingQueue';
+
+

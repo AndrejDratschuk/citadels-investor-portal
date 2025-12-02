@@ -44,13 +44,16 @@ const N8N_WEBHOOKS = {
  */
 async function triggerWebhook<T>(url: string, payload: T): Promise<boolean> {
   try {
-    const response = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
+
+    // Type assertion for Node.js native fetch Response
+    const response = res as unknown as { ok: boolean; status: number; statusText: string };
 
     if (!response.ok) {
       console.error(`n8n webhook failed: ${response.status} ${response.statusText}`);

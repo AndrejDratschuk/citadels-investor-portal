@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm --filter=@flowveda/shared build && pnpm --filter=@flowveda/web build",
-  "outputDirectory": "apps/web/dist",
+  "outputDirectory": "./apps/web/dist",
   "installCommand": "pnpm install",
-  "framework": "vite",
+  "framework": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { UserPlus, Download, Filter, Users } from 'lucide-react';
+import { UserPlus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InvestorTable, InvestorRow } from '../components/InvestorTable';
 

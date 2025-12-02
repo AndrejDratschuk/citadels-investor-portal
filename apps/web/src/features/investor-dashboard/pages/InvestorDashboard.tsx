@@ -3,7 +3,6 @@ import {
   DollarSign,
   TrendingUp,
   Building2,
-  FileText,
   AlertCircle,
   ArrowRight,
 } from 'lucide-react';

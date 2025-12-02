@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Building2,
   MapPin,
-  Calendar,
   TrendingUp,
   DollarSign,
 } from 'lucide-react';

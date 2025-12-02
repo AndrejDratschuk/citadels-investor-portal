@@ -2,11 +2,8 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  Building2,
   MapPin,
-  Calendar,
   Edit,
-  TrendingUp,
   Users,
   FileText,
   DollarSign,

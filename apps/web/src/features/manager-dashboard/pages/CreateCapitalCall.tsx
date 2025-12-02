@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, DollarSign, Calendar, Users, ChevronRight } from 'lucide-react';
+import { ArrowLeft, DollarSign, Users, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

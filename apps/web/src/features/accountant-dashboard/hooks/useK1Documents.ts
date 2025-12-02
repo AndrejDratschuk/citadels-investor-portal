@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { K1Record, K1Status } from '../components';
+import { K1Record } from '../components';
 
 // Mock data - will be replaced with API call
-const getMockK1Records = (year: number): K1Record[] => [
+const getMockK1Records = (_year: number): K1Record[] => [
   {
     id: '1',
     investorId: 'inv-1',

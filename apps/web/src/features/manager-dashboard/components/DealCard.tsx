@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Building2, MapPin, TrendingUp, Users } from 'lucide-react';
+import { MapPin, TrendingUp, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@flowveda/shared';
 

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Plus, Filter, DollarSign } from 'lucide-react';
 import { formatCurrency, formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
-import { CapitalCallProgress } from '../components/CapitalCallProgress';
 import { cn } from '@/lib/utils';
 
 interface CapitalCall {

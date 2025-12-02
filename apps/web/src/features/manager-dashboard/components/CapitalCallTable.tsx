@@ -84,7 +84,6 @@ export function CapitalCallTable({
           <tbody>
             {items.map((item) => {
               const StatusIcon = statusIcons[item.status];
-              const remaining = item.amountDue - item.amountReceived;
               const progress = (item.amountReceived / item.amountDue) * 100;
 
               return (

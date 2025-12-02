@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authApi } from '@/lib/api/auth';
-import { useAuthStore } from '@/stores/authStore';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -15,7 +14,6 @@ export function SignupForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fundId = searchParams.get('fundId');
-  const setAuth = useAuthStore((state) => state.setAuth);
 
   const {
     register,
@@ -34,7 +32,7 @@ export function SignupForm() {
     setIsLoading(true);
 
     try {
-      const user = await authApi.signup(data);
+      await authApi.signup(data);
       // After signup, user needs to login
       navigate('/login');
     } catch (err) {

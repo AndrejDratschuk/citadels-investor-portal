@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { SigningRecord, SigningStatus } from '../components';
+import { SigningRecord } from '../components';
 
 // Mock data - will be replaced with API call
 const mockSigningRecords: SigningRecord[] = [

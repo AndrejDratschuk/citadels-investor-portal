@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LucideIcon, Plus, UserPlus, FileUp, DollarSign, Building2 } from 'lucide-react';
+import { LucideIcon, UserPlus, FileUp, DollarSign, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface QuickAction {

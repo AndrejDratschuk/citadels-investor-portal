@@ -9,8 +9,6 @@ import {
   MoreHorizontal,
   CheckCircle2,
   Clock,
-  Eye,
-  Trash2,
   X,
 } from 'lucide-react';
 import { formatDate } from '@flowveda/shared';

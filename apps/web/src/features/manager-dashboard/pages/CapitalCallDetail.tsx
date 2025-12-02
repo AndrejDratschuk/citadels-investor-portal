@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   DollarSign,
@@ -9,22 +9,35 @@ import {
   Bell,
   Download,
   CheckCircle2,
-  Clock,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { CapitalCallTable, CapitalCallInvestorItem } from '../components/CapitalCallTable';
 import { cn } from '@/lib/utils';
 
+type CapitalCallStatus = 'draft' | 'sent' | 'partial' | 'funded' | 'closed';
+
+interface MockCapitalCall {
+  id: string;
+  dealId: string;
+  dealName: string;
+  totalAmount: number;
+  receivedAmount: number;
+  deadline: string;
+  status: CapitalCallStatus;
+  sentAt: string;
+  createdAt: string;
+}
+
 // Mock data
-const mockCapitalCall = {
+const mockCapitalCall: MockCapitalCall = {
   id: '1',
   dealId: '2',
   dealName: 'Downtown Office Tower',
   totalAmount: 2500000,
   receivedAmount: 1875000,
   deadline: '2024-03-15',
-  status: 'partial' as const,
+  status: 'partial',
   sentAt: '2024-02-15',
   createdAt: '2024-02-10',
 };
@@ -96,7 +109,6 @@ const statusStyles = {
 };
 
 export function CapitalCallDetail() {
-  const { id } = useParams<{ id: string }>();
   const [call] = useState(mockCapitalCall);
   const [items] = useState(mockItems);
 
@@ -146,7 +158,7 @@ export function CapitalCallDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {call.status !== 'draft' && (
+          {call.status !== 'draft' && call.status !== 'closed' && (
             <>
               <Button variant="outline" size="sm">
                 <Bell className="mr-2 h-4 w-4" />

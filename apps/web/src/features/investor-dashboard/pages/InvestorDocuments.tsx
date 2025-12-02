@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Filter } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
 import { DocumentList } from '../components/DocumentList';
 import { Button } from '@/components/ui/button';

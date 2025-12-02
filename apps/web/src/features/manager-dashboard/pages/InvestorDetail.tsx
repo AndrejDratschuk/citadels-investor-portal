@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   User,
   Mail,
   Phone,
   MapPin,
-  Calendar,
-  DollarSign,
   FileText,
   Clock,
   Edit,
@@ -128,10 +126,10 @@ const mockActivity = [
 type TabType = 'overview' | 'documents' | 'capital-calls' | 'activity';
 
 export function InvestorDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id: _id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
-  // In real app, fetch investor data using id
+  // In real app, fetch investor data using _id
   const investor = mockInvestor;
 
   const tabs: { id: TabType; label: string; count?: number }[] = [

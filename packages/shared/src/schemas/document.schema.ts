@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DOCUMENT_TYPE, SIGNING_STATUS } from '../constants/status';
+import { DOCUMENT_TYPE } from '../constants/status';
 
 export const createDocumentSchema = z.object({
   fundId: z.string().uuid(),

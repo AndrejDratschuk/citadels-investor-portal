@@ -1,8 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-
-// Debug: Log the API URL being used
-console.log('🔗 API_URL:', API_URL);
-console.log('🔗 VITE_API_URL env:', import.meta.env.VITE_API_URL);
+// Use Railway API URL in production, fallback to /api for local dev
+const API_URL = import.meta.env.PROD 
+  ? 'https://citadel-investor-portal-production.up.railway.app/api'
+  : (import.meta.env.VITE_API_URL || '/api');
 
 export interface ApiError {
   success: false;

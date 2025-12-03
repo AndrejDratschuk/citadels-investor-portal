@@ -34,17 +34,32 @@ async function start() {
     // Error handler
     fastify.setErrorHandler(errorHandler);
 
+    // Health check endpoint (root level)
+    fastify.get('/', async (request, reply) => {
+      return { status: 'ok', timestamp: new Date().toISOString() };
+    });
+
+    fastify.get('/health', async (request, reply) => {
+      return { status: 'healthy', timestamp: new Date().toISOString() };
+    });
+
     // Register routes
     await fastify.register(registerRoutes, { prefix: '/api' });
 
+    // Use Railway's PORT or fallback to env.PORT
+    const port = parseInt(process.env.PORT || String(env.PORT), 10);
+    
     // Start server
     const address = await fastify.listen({
-      port: env.PORT,
+      port: port,
       host: '0.0.0.0',
     });
 
+    console.log(`🚀 Server listening on port ${port}`);
+    console.log(`🚀 Server address: ${address}`);
     fastify.log.info(`Server listening on ${address}`);
   } catch (err) {
+    console.error('Failed to start server:', err);
     fastify.log.error(err);
     process.exit(1);
   }

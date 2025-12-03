@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install --no-frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "pnpm --filter=@flowveda/shared build",
+  "pnpm --filter=@flowveda/api build"
+]
+
+[start]
+cmd = "cd apps/api && pnpm start"
+

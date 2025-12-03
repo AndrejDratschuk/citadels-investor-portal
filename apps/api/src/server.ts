@@ -27,7 +27,7 @@ async function start() {
     // Security
     await fastify.register(helmet);
     await fastify.register(cors, {
-      origin: env.NODE_ENV === 'production' ? false : true,
+      origin: true, // Allow all origins (or set specific domains via env)
       credentials: true,
     });
 

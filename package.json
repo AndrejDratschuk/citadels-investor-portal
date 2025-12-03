@@ -8,6 +8,7 @@
     "dev:api": "pnpm --filter './apps/api' dev",
     "dev:web": "pnpm --filter './apps/web' dev",
     "build": "pnpm --filter './apps/*' build",
+    "start": "cd apps/api && node dist/server.js",
     "lint": "pnpm --filter './apps/*' lint",
     "type-check": "pnpm --filter './packages/shared' type-check && pnpm --filter './apps/*' type-check"
   },

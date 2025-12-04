@@ -16,6 +16,7 @@ import {
   AlertCircle,
   MessageSquare,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import { formatCurrency, formatDate, Communication } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
@@ -23,35 +24,9 @@ import { InvestorStatusBadge } from '../components/InvestorStatusBadge';
 import { CommunicationsList } from '../components/CommunicationsList';
 import { LogCommunicationModal, LogCommunicationData } from '../components/LogPhoneCallModal';
 import { useCommunications, useCreateCommunication } from '../hooks/useCommunications';
+import { useInvestor } from '../hooks/useInvestors';
 import { cn } from '@/lib/utils';
-
-// Mock data - will be replaced with API calls
-const mockInvestor = {
-  id: '1',
-  firstName: 'John',
-  lastName: 'Smith',
-  email: 'john.smith@example.com',
-  phone: '+1 (555) 123-4567',
-  address: {
-    street: '123 Main Street',
-    city: 'Austin',
-    state: 'TX',
-    zip: '78701',
-    country: 'USA',
-  },
-  status: 'active' as const,
-  accreditationStatus: 'approved' as const,
-  accreditationType: 'net_worth',
-  accreditationDate: '2023-06-01',
-  entityType: 'individual',
-  entityName: null,
-  commitmentAmount: 500000,
-  totalCalled: 375000,
-  totalInvested: 375000,
-  onboardingStep: 5,
-  onboardedAt: '2023-06-15',
-  createdAt: '2023-06-01',
-};
+import type { InvestorStatus, AccreditationStatus } from '../components/InvestorStatusBadge';
 
 const mockDocuments = [
   {
@@ -215,14 +190,51 @@ export function InvestorDetail() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showCommunicationModal, setShowCommunicationModal] = useState(false);
 
-  // In real app, fetch investor data using id
-  const investor = mockInvestor;
-  const investorId = id || '1';
+  // Fetch real investor data from API
+  const { data: investor, isLoading: investorLoading, error: investorError } = useInvestor(id);
+  const investorId = id || '';
 
   // Communications - use API data if available, fallback to mock
   const { data: apiCommunications, isLoading: communicationsLoading } = useCommunications(investorId);
   const createCommunication = useCreateCommunication(investorId);
   const communications = apiCommunications || mockCommunications;
+
+  // Loading state
+  if (investorLoading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="mt-2 text-muted-foreground">Loading investor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state - investor not found
+  if (investorError || !investor) {
+    return (
+      <div className="space-y-6">
+        <Link to="/manager/investors">
+          <Button variant="ghost" className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back to Investors
+          </Button>
+        </Link>
+        <div className="flex min-h-[300px] items-center justify-center">
+          <div className="text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h2 className="mt-4 text-xl font-semibold">Investor Not Found</h2>
+            <p className="mt-2 text-muted-foreground">
+              The investor you're looking for doesn't exist or you don't have access.
+            </p>
+            <Link to="/manager/investors">
+              <Button className="mt-4">View All Investors</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogCommunication = async (data: LogCommunicationData) => {
     try {
@@ -266,9 +278,9 @@ export function InvestorDetail() {
               {investor.firstName} {investor.lastName}
             </h1>
             <div className="mt-1 flex items-center gap-2">
-              <InvestorStatusBadge status={investor.status} type="investor" />
+              <InvestorStatusBadge status={investor.status as InvestorStatus} type="investor" />
               <InvestorStatusBadge
-                status={investor.accreditationStatus}
+                status={investor.accreditationStatus as AccreditationStatus}
                 type="accreditation"
               />
             </div>

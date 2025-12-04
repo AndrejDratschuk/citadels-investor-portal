@@ -1,100 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { UserPlus, Download } from 'lucide-react';
+import { UserPlus, Download, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InvestorTable, InvestorRow } from '../components/InvestorTable';
-
-// Mock data - will be replaced with API calls
-const mockInvestors: InvestorRow[] = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'john.smith@example.com',
-    status: 'active',
-    accreditationStatus: 'approved',
-    commitmentAmount: 500000,
-    totalCalled: 375000,
-    createdAt: '2023-06-15',
-  },
-  {
-    id: '2',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    email: 'sarah.j@example.com',
-    status: 'active',
-    accreditationStatus: 'approved',
-    commitmentAmount: 250000,
-    totalCalled: 187500,
-    createdAt: '2023-07-20',
-  },
-  {
-    id: '3',
-    firstName: 'Michael',
-    lastName: 'Chen',
-    email: 'mchen@example.com',
-    status: 'onboarding',
-    accreditationStatus: 'pending',
-    commitmentAmount: 1000000,
-    totalCalled: 0,
-    createdAt: '2024-01-10',
-  },
-  {
-    id: '4',
-    firstName: 'Emily',
-    lastName: 'Davis',
-    email: 'emily.davis@example.com',
-    status: 'active',
-    accreditationStatus: 'approved',
-    commitmentAmount: 750000,
-    totalCalled: 562500,
-    createdAt: '2023-08-05',
-  },
-  {
-    id: '5',
-    firstName: 'Robert',
-    lastName: 'Wilson',
-    email: 'rwilson@example.com',
-    status: 'prospect',
-    accreditationStatus: 'pending',
-    commitmentAmount: 0,
-    totalCalled: 0,
-    createdAt: '2024-02-01',
-  },
-  {
-    id: '6',
-    firstName: 'Jennifer',
-    lastName: 'Brown',
-    email: 'jbrown@example.com',
-    status: 'active',
-    accreditationStatus: 'approved',
-    commitmentAmount: 350000,
-    totalCalled: 262500,
-    createdAt: '2023-09-12',
-  },
-  {
-    id: '7',
-    firstName: 'David',
-    lastName: 'Miller',
-    email: 'dmiller@example.com',
-    status: 'inactive',
-    accreditationStatus: 'expired',
-    commitmentAmount: 200000,
-    totalCalled: 150000,
-    createdAt: '2023-05-01',
-  },
-  {
-    id: '8',
-    firstName: 'Lisa',
-    lastName: 'Anderson',
-    email: 'landerson@example.com',
-    status: 'onboarding',
-    accreditationStatus: 'pending',
-    commitmentAmount: 500000,
-    totalCalled: 0,
-    createdAt: '2024-01-25',
-  },
-];
+import { useInvestors } from '../hooks/useInvestors';
 
 type StatusFilter = 'all' | 'prospect' | 'onboarding' | 'active' | 'inactive';
 
@@ -102,7 +11,23 @@ export function InvestorsList() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredInvestors = mockInvestors.filter((investor) => {
+  // Fetch real investors from API
+  const { data: apiInvestors, isLoading, error } = useInvestors();
+
+  // Transform API data to match InvestorRow interface
+  const investors: InvestorRow[] = (apiInvestors || []).map((inv) => ({
+    id: inv.id,
+    firstName: inv.firstName,
+    lastName: inv.lastName,
+    email: inv.email,
+    status: inv.status as InvestorRow['status'],
+    accreditationStatus: inv.accreditationStatus as InvestorRow['accreditationStatus'],
+    commitmentAmount: inv.commitmentAmount,
+    totalCalled: inv.totalCalled,
+    createdAt: inv.createdAt,
+  }));
+
+  const filteredInvestors = investors.filter((investor) => {
     // Status filter
     if (statusFilter !== 'all' && investor.status !== statusFilter) {
       return false;
@@ -120,12 +45,37 @@ export function InvestorsList() {
   });
 
   const statusCounts = {
-    all: mockInvestors.length,
-    prospect: mockInvestors.filter((i) => i.status === 'prospect').length,
-    onboarding: mockInvestors.filter((i) => i.status === 'onboarding').length,
-    active: mockInvestors.filter((i) => i.status === 'active').length,
-    inactive: mockInvestors.filter((i) => i.status === 'inactive').length,
+    all: investors.length,
+    prospect: investors.filter((i) => i.status === 'prospect').length,
+    onboarding: investors.filter((i) => i.status === 'onboarding').length,
+    active: investors.filter((i) => i.status === 'active').length,
+    inactive: investors.filter((i) => i.status === 'inactive').length,
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="mt-2 text-muted-foreground">Loading investors...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
+          <h2 className="mt-4 text-xl font-semibold">Failed to Load Investors</h2>
+          <p className="mt-2 text-muted-foreground">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

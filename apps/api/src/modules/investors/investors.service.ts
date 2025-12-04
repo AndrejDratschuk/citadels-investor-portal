@@ -2,6 +2,24 @@ import { supabaseAdmin } from '../../common/database/supabase';
 
 export class InvestorsService {
   /**
+   * Get all investors for a fund (manager view)
+   */
+  async getAllByFundId(fundId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .select('*')
+      .eq('fund_id', fundId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching investors:', error);
+      throw new Error('Failed to fetch investors');
+    }
+
+    return data.map((investor: any) => this.formatInvestor(investor));
+  }
+
+  /**
    * Get investor profile by user ID
    */
   async getInvestorByUserId(userId: string) {

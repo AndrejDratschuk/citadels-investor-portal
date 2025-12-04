@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
-type InvestorStatus = 'prospect' | 'onboarding' | 'active' | 'inactive';
-type AccreditationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+export type InvestorStatus = 'prospect' | 'onboarding' | 'active' | 'inactive';
+export type AccreditationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 
 interface StatusBadgeProps {
   status: InvestorStatus | AccreditationStatus;

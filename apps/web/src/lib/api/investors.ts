@@ -117,6 +117,8 @@ export interface UpdateProfileInput {
 }
 
 export const investorsApi = {
+  // ==================== Investor Self-Service ====================
+  
   // Get current investor profile
   getMe: async (): Promise<InvestorProfile> => {
     return api.get<InvestorProfile>('/investors/me');
@@ -145,6 +147,18 @@ export const investorsApi = {
   // Get capital calls
   getMyCapitalCalls: async (): Promise<CapitalCallItem[]> => {
     return api.get<CapitalCallItem[]>('/investors/me/capital-calls');
+  },
+
+  // ==================== Manager View ====================
+
+  // Get all investors for the fund (manager only)
+  getAll: async (): Promise<InvestorProfile[]> => {
+    return api.get<InvestorProfile[]>('/investors');
+  },
+
+  // Get single investor by ID (manager only)
+  getById: async (investorId: string): Promise<InvestorProfile> => {
+    return api.get<InvestorProfile>(`/investors/${investorId}`);
   },
 };
 

@@ -32,32 +32,6 @@ export interface Communication {
   createdAt: string;
 }
 
-export interface CreatePhoneCallInput {
-  investorId: string;
-  title: string;
-  content?: string;
-  occurredAt: string;
-  callDirection: CallDirection;
-  callDurationMinutes?: number;
-}
+// Note: CreatePhoneCallInput, CreateEmailInput, CreateMeetingInput are exported from communication.schema.ts
 
-export interface CreateEmailInput {
-  investorId: string;
-  title: string;
-  content?: string;
-  occurredAt: string;
-  emailFrom: string;
-  emailTo: string;
-  externalId?: string;
-}
-
-export interface CreateMeetingInput {
-  investorId: string;
-  title: string;
-  content?: string;
-  occurredAt: string;
-  meetingAttendees?: string[];
-  meetingDurationMinutes?: number;
-  externalId?: string;
-}
 

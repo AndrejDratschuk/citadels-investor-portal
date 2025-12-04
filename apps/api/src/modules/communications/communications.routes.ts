@@ -34,3 +34,4 @@ export async function communicationsRoutes(fastify: FastifyInstance) {
   );
 }
 
+

@@ -37,3 +37,4 @@ CREATE INDEX idx_communications_fund_id ON investor_communications(fund_id);
 CREATE INDEX idx_communications_type ON investor_communications(type);
 CREATE INDEX idx_communications_occurred_at ON investor_communications(occurred_at DESC);
 
+

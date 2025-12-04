@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
-      isLoading: false,
+      isLoading: true, // Start as loading until hydration completes
       isAuthenticated: false,
 
       setAuth: (user, accessToken, refreshToken) => {
@@ -104,7 +104,17 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
+        isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // After hydration, set isLoading to false
+        if (state) {
+          // Derive isAuthenticated from stored data if not set
+          const hasAuth = !!(state.accessToken && state.user);
+          state.isAuthenticated = hasAuth;
+          state.isLoading = false;
+        }
+      },
     }
   )
 );

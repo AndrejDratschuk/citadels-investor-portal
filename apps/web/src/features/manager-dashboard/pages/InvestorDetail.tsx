@@ -228,8 +228,9 @@ export function InvestorDetail() {
     try {
       await createCommunication.mutateAsync(data);
       setShowCommunicationModal(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to log communication:', error);
+      alert(`Failed to log communication: ${error?.message || 'Unknown error'}`);
     }
   };
 

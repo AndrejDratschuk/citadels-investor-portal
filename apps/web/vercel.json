@@ -3,6 +3,9 @@
   "installCommand": "cd ../.. && npm i -g pnpm && pnpm install",
   "buildCommand": "cd ../.. && pnpm --filter=@flowveda/shared build && cd apps/web && npx vite build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ]
 }
 

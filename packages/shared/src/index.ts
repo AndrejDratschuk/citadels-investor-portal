@@ -5,6 +5,7 @@ export * from './schemas/fund.schema';
 export * from './schemas/deal.schema';
 export * from './schemas/document.schema';
 export * from './schemas/capital-call.schema';
+export * from './schemas/communication.schema';
 
 // Types
 export * from './types/auth.types';
@@ -14,6 +15,7 @@ export * from './types/deal.types';
 export * from './types/document.types';
 export * from './types/capital-call.types';
 export * from './types/api.types';
+export * from './types/communication.types';
 
 // Constants
 export * from './constants/roles';

@@ -8,4 +8,7 @@ export * from './InvestorTable';
 export * from './DealCard';
 export * from './DealForm';
 export * from './CapitalCallTable';
+export * from './CommunicationCard';
+export * from './CommunicationsList';
+export * from './LogPhoneCallModal';
 

@@ -14,10 +14,15 @@ import {
   Building2,
   CheckCircle2,
   AlertCircle,
+  MessageSquare,
+  Plus,
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@flowveda/shared';
+import { formatCurrency, formatDate, Communication } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { InvestorStatusBadge } from '../components/InvestorStatusBadge';
+import { CommunicationsList } from '../components/CommunicationsList';
+import { LogPhoneCallModal } from '../components/LogPhoneCallModal';
+import { useCommunications, useCreatePhoneCall } from '../hooks/useCommunications';
 import { cn } from '@/lib/utils';
 
 // Mock data - will be replaced with API calls
@@ -123,19 +128,122 @@ const mockActivity = [
   },
 ];
 
-type TabType = 'overview' | 'documents' | 'capital-calls' | 'activity';
+// Mock communications data - will be replaced with API calls
+const mockCommunications: Communication[] = [
+  {
+    id: '1',
+    investorId: '1',
+    fundId: '1',
+    type: 'email',
+    title: 'Q4 Distribution Notice',
+    content: 'Please find attached the Q4 distribution details for your investment...',
+    occurredAt: '2024-02-15T10:30:00Z',
+    emailFrom: 'distributions@fund.com',
+    emailTo: 'john.smith@example.com',
+    meetingAttendees: null,
+    meetingDurationMinutes: null,
+    callDirection: null,
+    callDurationMinutes: null,
+    source: 'email_sync',
+    externalId: null,
+    createdBy: null,
+    createdAt: '2024-02-15T10:30:00Z',
+  },
+  {
+    id: '2',
+    investorId: '1',
+    fundId: '1',
+    type: 'meeting',
+    title: 'Portfolio Review Meeting',
+    content: 'Discussed current portfolio performance, upcoming capital calls, and investment strategy for 2024. John expressed interest in increasing commitment.',
+    occurredAt: '2024-02-10T14:00:00Z',
+    emailFrom: null,
+    emailTo: null,
+    meetingAttendees: ['John Smith', 'Sarah Manager'],
+    meetingDurationMinutes: 45,
+    callDirection: null,
+    callDurationMinutes: null,
+    source: 'ai_notetaker',
+    externalId: null,
+    createdBy: null,
+    createdAt: '2024-02-10T15:00:00Z',
+  },
+  {
+    id: '3',
+    investorId: '1',
+    fundId: '1',
+    type: 'phone_call',
+    title: 'Follow-up on wire transfer',
+    content: 'Called to confirm wire instructions for upcoming capital call. John confirmed he will send by Friday.',
+    occurredAt: '2024-02-08T11:15:00Z',
+    emailFrom: null,
+    emailTo: null,
+    meetingAttendees: null,
+    meetingDurationMinutes: null,
+    callDirection: 'outbound',
+    callDurationMinutes: 12,
+    source: 'manual',
+    externalId: null,
+    createdBy: 'user-1',
+    createdAt: '2024-02-08T11:30:00Z',
+  },
+  {
+    id: '4',
+    investorId: '1',
+    fundId: '1',
+    type: 'phone_call',
+    title: 'Question about K-1 documents',
+    content: 'John called with questions about his K-1 tax documents. Directed him to our accountant for detailed tax guidance.',
+    occurredAt: '2024-01-25T09:45:00Z',
+    emailFrom: null,
+    emailTo: null,
+    meetingAttendees: null,
+    meetingDurationMinutes: null,
+    callDirection: 'inbound',
+    callDurationMinutes: 8,
+    source: 'manual',
+    externalId: null,
+    createdBy: 'user-1',
+    createdAt: '2024-01-25T10:00:00Z',
+  },
+];
+
+type TabType = 'overview' | 'documents' | 'capital-calls' | 'communications' | 'activity';
 
 export function InvestorDetail() {
-  const { id: _id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [showPhoneCallModal, setShowPhoneCallModal] = useState(false);
 
-  // In real app, fetch investor data using _id
+  // In real app, fetch investor data using id
   const investor = mockInvestor;
+  const investorId = id || '1';
+
+  // Communications - use API data if available, fallback to mock
+  const { data: apiCommunications, isLoading: communicationsLoading } = useCommunications(investorId);
+  const createPhoneCall = useCreatePhoneCall(investorId);
+  const communications = apiCommunications || mockCommunications;
+
+  const handleLogPhoneCall = async (data: {
+    title: string;
+    content?: string;
+    occurredAt: string;
+    callDirection: 'inbound' | 'outbound';
+    callDurationMinutes?: number;
+  }) => {
+    try {
+      await createPhoneCall.mutateAsync(data);
+      setShowPhoneCallModal(false);
+    } catch (error) {
+      console.error('Failed to log phone call:', error);
+    }
+  };
 
   const tabs: { id: TabType; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'documents', label: 'Documents', count: mockDocuments.length },
     { id: 'capital-calls', label: 'Capital Calls', count: mockCapitalCalls.length },
+    { id: 'communications', label: 'Communications', count: communications.length },
     { id: 'activity', label: 'Activity' },
   ];
 
@@ -377,6 +485,27 @@ export function InvestorDetail() {
         </div>
       )}
 
+      {activeTab === 'communications' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Track all communications with this investor
+              </span>
+            </div>
+            <Button onClick={() => setShowPhoneCallModal(true)} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Log Phone Call
+            </Button>
+          </div>
+          <CommunicationsList
+            communications={communications}
+            isLoading={communicationsLoading}
+          />
+        </div>
+      )}
+
       {activeTab === 'activity' && (
         <div className="rounded-xl border bg-card p-6">
           <div className="space-y-4">
@@ -402,6 +531,14 @@ export function InvestorDetail() {
           </div>
         </div>
       )}
+
+      {/* Log Phone Call Modal */}
+      <LogPhoneCallModal
+        isOpen={showPhoneCallModal}
+        onClose={() => setShowPhoneCallModal(false)}
+        onSubmit={handleLogPhoneCall}
+        isLoading={createPhoneCall.isPending}
+      />
     </div>
   );
 }

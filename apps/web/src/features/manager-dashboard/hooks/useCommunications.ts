@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { communicationsApi } from '@/lib/api/communications';
-import { CommunicationType, CreatePhoneCallInput } from '@flowveda/shared';
+import { communicationsApi, CreateCommunicationInput } from '@/lib/api/communications';
+import { CommunicationType } from '@flowveda/shared';
 
 export function useCommunications(investorId: string, type?: CommunicationType) {
   return useQuery({
@@ -10,12 +10,12 @@ export function useCommunications(investorId: string, type?: CommunicationType) 
   });
 }
 
-export function useCreatePhoneCall(investorId: string) {
+export function useCreateCommunication(investorId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: Omit<CreatePhoneCallInput, 'investorId'>) =>
-      communicationsApi.createPhoneCall(investorId, input),
+    mutationFn: (input: CreateCommunicationInput) =>
+      communicationsApi.create(investorId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['communications', investorId] });
     },

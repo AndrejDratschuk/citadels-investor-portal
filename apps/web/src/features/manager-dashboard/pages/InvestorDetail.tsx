@@ -21,8 +21,8 @@ import { formatCurrency, formatDate, Communication } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { InvestorStatusBadge } from '../components/InvestorStatusBadge';
 import { CommunicationsList } from '../components/CommunicationsList';
-import { LogPhoneCallModal } from '../components/LogPhoneCallModal';
-import { useCommunications, useCreatePhoneCall } from '../hooks/useCommunications';
+import { LogCommunicationModal, LogCommunicationData } from '../components/LogPhoneCallModal';
+import { useCommunications, useCreateCommunication } from '../hooks/useCommunications';
 import { cn } from '@/lib/utils';
 
 // Mock data - will be replaced with API calls
@@ -213,7 +213,7 @@ type TabType = 'overview' | 'documents' | 'capital-calls' | 'communications' | '
 export function InvestorDetail() {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [showPhoneCallModal, setShowPhoneCallModal] = useState(false);
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false);
 
   // In real app, fetch investor data using id
   const investor = mockInvestor;
@@ -221,21 +221,15 @@ export function InvestorDetail() {
 
   // Communications - use API data if available, fallback to mock
   const { data: apiCommunications, isLoading: communicationsLoading } = useCommunications(investorId);
-  const createPhoneCall = useCreatePhoneCall(investorId);
+  const createCommunication = useCreateCommunication(investorId);
   const communications = apiCommunications || mockCommunications;
 
-  const handleLogPhoneCall = async (data: {
-    title: string;
-    content?: string;
-    occurredAt: string;
-    callDirection: 'inbound' | 'outbound';
-    callDurationMinutes?: number;
-  }) => {
+  const handleLogCommunication = async (data: LogCommunicationData) => {
     try {
-      await createPhoneCall.mutateAsync(data);
-      setShowPhoneCallModal(false);
+      await createCommunication.mutateAsync(data);
+      setShowCommunicationModal(false);
     } catch (error) {
-      console.error('Failed to log phone call:', error);
+      console.error('Failed to log communication:', error);
     }
   };
 
@@ -494,9 +488,9 @@ export function InvestorDetail() {
                 Track all communications with this investor
               </span>
             </div>
-            <Button onClick={() => setShowPhoneCallModal(true)} size="sm">
+            <Button onClick={() => setShowCommunicationModal(true)} size="sm">
               <Plus className="mr-2 h-4 w-4" />
-              Log Phone Call
+              Log Communication
             </Button>
           </div>
           <CommunicationsList
@@ -532,12 +526,13 @@ export function InvestorDetail() {
         </div>
       )}
 
-      {/* Log Phone Call Modal */}
-      <LogPhoneCallModal
-        isOpen={showPhoneCallModal}
-        onClose={() => setShowPhoneCallModal(false)}
-        onSubmit={handleLogPhoneCall}
-        isLoading={createPhoneCall.isPending}
+      {/* Log Communication Modal */}
+      <LogCommunicationModal
+        isOpen={showCommunicationModal}
+        onClose={() => setShowCommunicationModal(false)}
+        onSubmit={handleLogCommunication}
+        isLoading={createCommunication.isPending}
+        investorEmail={investor.email}
       />
     </div>
   );

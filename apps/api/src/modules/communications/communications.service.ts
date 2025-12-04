@@ -105,7 +105,8 @@ export class CommunicationsService {
   async createEmail(
     input: CreateEmailInput,
     fundId: string,
-    userId?: string
+    userId?: string,
+    source: 'manual' | 'email_sync' = 'manual'
   ): Promise<Communication> {
     const { data, error } = await supabaseAdmin
       .from('investor_communications')
@@ -118,7 +119,7 @@ export class CommunicationsService {
         occurred_at: input.occurredAt,
         email_from: input.emailFrom,
         email_to: input.emailTo,
-        source: 'email_sync',
+        source: source,
         external_id: input.externalId || null,
         created_by: userId || null,
       })
@@ -135,7 +136,8 @@ export class CommunicationsService {
   async createMeeting(
     input: CreateMeetingInput,
     fundId: string,
-    userId?: string
+    userId?: string,
+    source: 'manual' | 'ai_notetaker' = 'manual'
   ): Promise<Communication> {
     const { data, error } = await supabaseAdmin
       .from('investor_communications')
@@ -148,7 +150,7 @@ export class CommunicationsService {
         occurred_at: input.occurredAt,
         meeting_attendees: input.meetingAttendees || null,
         meeting_duration_minutes: input.meetingDurationMinutes || null,
-        source: 'ai_notetaker',
+        source: source,
         external_id: input.externalId || null,
         created_by: userId || null,
       })

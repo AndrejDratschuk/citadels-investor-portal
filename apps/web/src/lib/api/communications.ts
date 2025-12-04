@@ -1,5 +1,21 @@
 import { api } from './client';
-import { Communication, CommunicationType, CreatePhoneCallInput } from '@flowveda/shared';
+import { Communication, CommunicationType, CallDirection } from '@flowveda/shared';
+
+export interface CreateCommunicationInput {
+  type: CommunicationType;
+  title: string;
+  content?: string;
+  occurredAt: string;
+  // Phone call specific
+  callDirection?: CallDirection;
+  callDurationMinutes?: number;
+  // Email specific
+  emailFrom?: string;
+  emailTo?: string;
+  // Meeting specific
+  meetingAttendees?: string[];
+  meetingDurationMinutes?: number;
+}
 
 export const communicationsApi = {
   getByInvestorId: async (
@@ -10,12 +26,12 @@ export const communicationsApi = {
     return api.get<Communication[]>(`/investors/${investorId}/communications${params}`);
   },
 
-  createPhoneCall: async (
+  create: async (
     investorId: string,
-    input: Omit<CreatePhoneCallInput, 'investorId'>
+    input: CreateCommunicationInput
   ): Promise<Communication> => {
     return api.post<Communication>(
-      `/investors/${investorId}/communications/phone-call`,
+      `/investors/${investorId}/communications`,
       input
     );
   },

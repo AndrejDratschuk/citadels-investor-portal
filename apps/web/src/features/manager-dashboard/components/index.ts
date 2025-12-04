@@ -11,4 +11,5 @@ export * from './CapitalCallTable';
 export * from './CommunicationCard';
 export * from './CommunicationsList';
 export * from './LogPhoneCallModal';
+export { LogCommunicationModal } from './LogPhoneCallModal';
 

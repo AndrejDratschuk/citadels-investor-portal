@@ -15,12 +15,12 @@ export async function communicationsRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Log a phone call
+  // Log any type of communication
   fastify.post(
-    '/investors/:investorId/communications/phone-call',
+    '/investors/:investorId/communications',
     { preHandler: [authenticate, requireManager] },
     async (request, reply) => {
-      return communicationsController.createPhoneCall(request as any, reply);
+      return communicationsController.create(request as any, reply);
     }
   );
 

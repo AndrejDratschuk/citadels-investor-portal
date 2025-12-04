@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { OnboardingFormData, OnboardingStatus } from '../types';
+import { onboardingApi } from '@/lib/api/onboarding';
 
 interface UseOnboardingReturn {
   currentStep: number;
@@ -7,15 +8,17 @@ interface UseOnboardingReturn {
   status: OnboardingStatus;
   isSubmitting: boolean;
   error: string | null;
+  kycApplicationId: string | null;
   goToStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
   updateFormData: (data: Partial<OnboardingFormData>) => void;
-  submitApplication: () => Promise<void>;
+  setKycApplicationId: (id: string | null) => void;
+  submitApplication: (password?: string) => Promise<void>;
   resetForm: () => void;
 }
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 const initialFormData: Partial<OnboardingFormData> = {
   preferredContact: 'email',
@@ -25,6 +28,9 @@ const initialFormData: Partial<OnboardingFormData> = {
   country: 'United States',
   taxResidency: 'United States',
   consent: false,
+  // Banking defaults
+  distributionMethod: 'wire',
+  accountType: 'checking',
 };
 
 export function useOnboarding(inviteCode: string): UseOnboardingReturn {
@@ -33,6 +39,7 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
   const [status, setStatus] = useState<OnboardingStatus>('draft');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kycApplicationId, setKycApplicationId] = useState<string | null>(null);
 
   const goToStep = useCallback((step: number) => {
     if (step >= 1 && step <= TOTAL_STEPS) {
@@ -57,23 +64,17 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     setError(null);
   }, []);
 
-  const submitApplication = useCallback(async () => {
+  const submitApplication = useCallback(async (password?: string) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/onboarding/submit', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ inviteCode, data: formData }),
-      // });
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Simulate success
-      console.log('Submitting onboarding application:', { inviteCode, formData });
+      await onboardingApi.submit(
+        inviteCode,
+        formData,
+        password,
+        kycApplicationId || undefined
+      );
       
       setStatus('submitted');
     } catch (err) {
@@ -82,13 +83,14 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     } finally {
       setIsSubmitting(false);
     }
-  }, [inviteCode, formData]);
+  }, [inviteCode, formData, kycApplicationId]);
 
   const resetForm = useCallback(() => {
     setCurrentStep(1);
     setFormData(initialFormData);
     setStatus('draft');
     setError(null);
+    setKycApplicationId(null);
   }, []);
 
   return {
@@ -97,10 +99,12 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     status,
     isSubmitting,
     error,
+    kycApplicationId,
     goToStep,
     nextStep,
     prevStep,
     updateFormData,
+    setKycApplicationId,
     submitApplication,
     resetForm,
   };

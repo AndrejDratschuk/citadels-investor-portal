@@ -62,12 +62,38 @@ export const investmentConsentSchema = z.object({
   consent: z.boolean().refine((val) => val === true, 'You must agree to the terms'),
 });
 
+// Distribution method options
+export const DISTRIBUTION_METHODS = [
+  { value: 'wire', label: 'Wire Transfer' },
+  { value: 'ach', label: 'ACH Transfer' },
+  { value: 'check', label: 'Check' },
+] as const;
+
+// Account types
+export const ACCOUNT_TYPES = [
+  { value: 'checking', label: 'Checking' },
+  { value: 'savings', label: 'Savings' },
+] as const;
+
+// Step 5: Banking Information
+export const bankingInfoSchema = z.object({
+  distributionMethod: z.enum(['wire', 'ach', 'check']),
+  bankName: z.string().min(1, 'Bank name is required'),
+  bankAddress: z.string().min(1, 'Bank address is required'),
+  routingNumber: z.string().min(9, 'Routing number must be 9 digits').max(9).regex(/^\d{9}$/, 'Routing number must be 9 digits'),
+  accountNumber: z.string().min(4, 'Account number is required').max(17),
+  accountType: z.enum(['checking', 'savings']),
+  beneficiaryName: z.string().min(1, 'Beneficiary name is required'),
+  beneficiaryInfo: z.string().optional(),
+});
+
 // Combined schema for full form
 export const onboardingFormSchema = z.object({
   ...personalInfoSchema.shape,
   ...addressEntitySchema.shape,
   ...taxAccreditationSchema.shape,
   ...investmentConsentSchema.shape,
+  ...bankingInfoSchema.shape,
 });
 
 // Types
@@ -75,6 +101,7 @@ export type PersonalInfoData = z.infer<typeof personalInfoSchema>;
 export type AddressEntityData = z.infer<typeof addressEntitySchema>;
 export type TaxAccreditationData = z.infer<typeof taxAccreditationSchema>;
 export type InvestmentConsentData = z.infer<typeof investmentConsentSchema>;
+export type BankingInfoData = z.infer<typeof bankingInfoSchema>;
 export type OnboardingFormData = z.infer<typeof onboardingFormSchema>;
 
 // Onboarding application status

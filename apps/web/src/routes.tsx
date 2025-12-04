@@ -39,6 +39,7 @@ import {
   OnboardingSuccess,
   OnboardingPending,
 } from './features/onboarding/pages';
+import { KYCPage } from './features/kyc/pages';
 import { OnboardingQueue } from './features/manager-dashboard/pages/OnboardingQueue';
 import { USER_ROLES } from '@flowveda/shared';
 
@@ -67,6 +68,11 @@ export const router = createBrowserRouter([
   {
     path: '/onboard/pending',
     element: <OnboardingPending />,
+  },
+  // KYC pre-qualification form (public)
+  {
+    path: '/kyc/:fundCode',
+    element: <KYCPage />,
   },
   {
     path: '/investor',

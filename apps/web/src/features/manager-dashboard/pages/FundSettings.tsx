@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { emailApi, EmailConnectionStatus } from '@/lib/api/email';
-import { fundsApi, Fund, FundBranding, FundAddress, UpdateFundProfileInput } from '@/lib/api/funds';
+import { fundsApi, Fund, FundBranding, FundAddress } from '@/lib/api/funds';
 
 interface TeamMember {
   id: string;

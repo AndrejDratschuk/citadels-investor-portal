@@ -24,7 +24,7 @@ import {
 } from '../types';
 
 // Default Calendly URL - should be configured per fund
-const DEFAULT_CALENDLY_URL = 'https://calendly.com/flowveda/investor-meeting';
+const DEFAULT_CALENDLY_URL = 'https://calendly.com/andrejdrats/test';
 
 export function KYCPage() {
   const { fundCode } = useParams<{ fundCode: string }>();

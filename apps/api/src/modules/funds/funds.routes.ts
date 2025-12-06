@@ -20,6 +20,11 @@ export async function fundsRoutes(fastify: FastifyInstance) {
     return fundsController.getCurrent(request as any, reply);
   });
 
+  // Update fund profile (name, legal name, address)
+  fastify.patch('/profile', { preHandler: managerPreHandler }, async (request, reply) => {
+    return fundsController.updateProfile(request as any, reply);
+  });
+
   // Update branding (colors)
   fastify.patch('/branding', { preHandler: managerPreHandler }, async (request, reply) => {
     return fundsController.updateBranding(request as any, reply);

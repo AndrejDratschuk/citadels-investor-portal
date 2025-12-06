@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
-import { fundsService, FundBranding } from './funds.service';
+import { fundsService, FundBranding, UpdateFundProfileInput } from './funds.service';
 
 export class FundsController {
   /**
@@ -70,6 +70,36 @@ export class FundsController {
       return reply.status(500).send({
         success: false,
         error: error.message || 'Failed to get fund branding',
+      });
+    }
+  }
+
+  /**
+   * Update fund profile (name, legal name, address)
+   */
+  async updateProfile(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    const input = request.body as UpdateFundProfileInput;
+
+    try {
+      const fund = await fundsService.updateProfile(fundId, input);
+
+      return reply.send({
+        success: true,
+        data: fund,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to update fund profile',
       });
     }
   }

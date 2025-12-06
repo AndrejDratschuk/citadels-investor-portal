@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { emailApi, EmailConnectionStatus } from '@/lib/api/email';
-import { fundsApi, Fund, FundBranding } from '@/lib/api/funds';
+import { fundsApi, Fund, FundBranding, FundAddress, UpdateFundProfileInput } from '@/lib/api/funds';
 
 interface TeamMember {
   id: string;
@@ -68,6 +68,20 @@ export function FundSettings() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Fund profile state
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    legalName: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      zip: '',
+    } as FundAddress,
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   // Fund branding state
   const [, setFund] = useState<Fund | null>(null);
   const [brandingForm, setBrandingForm] = useState<FundBranding>({
@@ -84,6 +98,18 @@ export function FundSettings() {
     try {
       const fundData = await fundsApi.getCurrent();
       setFund(fundData);
+      // Populate profile form
+      setProfileForm({
+        name: fundData.name || '',
+        legalName: fundData.legalName || '',
+        address: {
+          street: fundData.address?.street || '',
+          city: fundData.address?.city || '',
+          state: fundData.address?.state || '',
+          zip: fundData.address?.zip || '',
+        },
+      });
+      // Populate branding form
       setBrandingForm({
         logoUrl: fundData.branding?.logoUrl || '',
         primaryColor: fundData.branding?.primaryColor || '#4f46e5',
@@ -152,6 +178,27 @@ export function FundSettings() {
       setBrandingMessage({ type: 'error', text: err.message || 'Failed to save branding' });
     } finally {
       setBrandingSaving(false);
+    }
+  };
+
+  // Save fund profile
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    setProfileMessage(null);
+    try {
+      await fundsApi.updateProfile({
+        name: profileForm.name,
+        legalName: profileForm.legalName,
+        address: profileForm.address,
+      });
+      setProfileMessage({ type: 'success', text: 'Profile saved successfully!' });
+      // Invalidate fund query so sidebar updates if name changed
+      queryClient.invalidateQueries({ queryKey: ['fund', 'current'] });
+      fetchFund();
+    } catch (err: any) {
+      setProfileMessage({ type: 'error', text: err.message || 'Failed to save profile' });
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -305,23 +352,35 @@ export function FundSettings() {
       {/* Tab Content */}
       {activeTab === 'profile' && (
         <div className="space-y-6">
+          {profileMessage && (
+            <div className={cn(
+              'p-4 rounded-lg',
+              profileMessage.type === 'success' 
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
+            )}>
+              {profileMessage.text}
+            </div>
+          )}
+
           <div className="rounded-xl border bg-card p-6">
             <h3 className="text-lg font-semibold">Fund Information</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="fundName">Fund Name</Label>
-                <Input id="fundName" defaultValue={mockFund.name} />
+                <Input 
+                  id="fundName" 
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="legalName">Legal Name</Label>
-                <Input id="legalName" defaultValue={mockFund.legalName} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ein">EIN</Label>
-                <Input id="ein" defaultValue={mockFund.ein} disabled />
-                <p className="text-xs text-muted-foreground">
-                  Contact support to update tax ID
-                </p>
+                <Input 
+                  id="legalName" 
+                  value={profileForm.legalName}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, legalName: e.target.value }))}
+                />
               </div>
             </div>
           </div>
@@ -331,26 +390,58 @@ export function FundSettings() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2 space-y-2">
                 <Label htmlFor="street">Street Address</Label>
-                <Input id="street" defaultValue={mockFund.address.street} />
+                <Input 
+                  id="street" 
+                  value={profileForm.address.street}
+                  onChange={(e) => setProfileForm(prev => ({ 
+                    ...prev, 
+                    address: { ...prev.address, street: e.target.value }
+                  }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
-                <Input id="city" defaultValue={mockFund.address.city} />
+                <Input 
+                  id="city" 
+                  value={profileForm.address.city}
+                  onChange={(e) => setProfileForm(prev => ({ 
+                    ...prev, 
+                    address: { ...prev.address, city: e.target.value }
+                  }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">State</Label>
-                <Input id="state" defaultValue={mockFund.address.state} />
+                <Input 
+                  id="state" 
+                  value={profileForm.address.state}
+                  onChange={(e) => setProfileForm(prev => ({ 
+                    ...prev, 
+                    address: { ...prev.address, state: e.target.value }
+                  }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="zip">ZIP Code</Label>
-                <Input id="zip" defaultValue={mockFund.address.zip} />
+                <Input 
+                  id="zip" 
+                  value={profileForm.address.zip}
+                  onChange={(e) => setProfileForm(prev => ({ 
+                    ...prev, 
+                    address: { ...prev.address, zip: e.target.value }
+                  }))}
+                />
               </div>
             </div>
           </div>
 
           <div className="flex justify-end">
-            <Button>
-              <Save className="mr-2 h-4 w-4" />
+            <Button onClick={handleSaveProfile} disabled={profileSaving}>
+              {profileSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
               Save Changes
             </Button>
           </div>

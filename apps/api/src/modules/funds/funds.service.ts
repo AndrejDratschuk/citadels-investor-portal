@@ -6,12 +6,26 @@ export interface FundBranding {
   secondaryColor?: string;
 }
 
+export interface FundAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
 export interface Fund {
   id: string;
   name: string;
   legalName: string;
+  address: FundAddress;
   branding: FundBranding;
   status: string;
+}
+
+export interface UpdateFundProfileInput {
+  name?: string;
+  legalName?: string;
+  address?: FundAddress;
 }
 
 export class FundsService {
@@ -21,7 +35,7 @@ export class FundsService {
   async getById(fundId: string): Promise<Fund | null> {
     const { data, error } = await supabaseAdmin
       .from('funds')
-      .select('id, name, legal_name, branding, status')
+      .select('id, name, legal_name, address, branding, status')
       .eq('id', fundId)
       .single();
 
@@ -33,6 +47,45 @@ export class FundsService {
       id: data.id,
       name: data.name,
       legalName: data.legal_name,
+      address: data.address || {},
+      branding: data.branding || {},
+      status: data.status,
+    };
+  }
+
+  /**
+   * Update fund profile (name, legal name, address)
+   */
+  async updateProfile(fundId: string, input: UpdateFundProfileInput): Promise<Fund> {
+    const updateData: Record<string, unknown> = {};
+
+    if (input.name !== undefined) {
+      updateData.name = input.name;
+    }
+    if (input.legalName !== undefined) {
+      updateData.legal_name = input.legalName;
+    }
+    if (input.address !== undefined) {
+      updateData.address = input.address;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('funds')
+      .update(updateData)
+      .eq('id', fundId)
+      .select('id, name, legal_name, address, branding, status')
+      .single();
+
+    if (error) {
+      console.error('Error updating fund profile:', error);
+      throw new Error('Failed to update fund profile');
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      legalName: data.legal_name,
+      address: data.address || {},
       branding: data.branding || {},
       status: data.status,
     };

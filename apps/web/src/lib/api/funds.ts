@@ -6,12 +6,26 @@ export interface FundBranding {
   secondaryColor?: string;
 }
 
+export interface FundAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
 export interface Fund {
   id: string;
   name: string;
   legalName: string;
+  address: FundAddress;
   branding: FundBranding;
   status: string;
+}
+
+export interface UpdateFundProfileInput {
+  name?: string;
+  legalName?: string;
+  address?: FundAddress;
 }
 
 export interface FundBrandingPublic {
@@ -28,6 +42,11 @@ export const fundsApi = {
   // Get fund branding (public - for forms)
   getBranding: async (fundId: string): Promise<FundBrandingPublic> => {
     return api.get<FundBrandingPublic>(`/funds/branding/${fundId}`);
+  },
+
+  // Update fund profile (name, legal name, address)
+  updateProfile: async (input: UpdateFundProfileInput): Promise<Fund> => {
+    return api.patch<Fund>('/funds/profile', input);
   },
 
   // Update branding (colors)

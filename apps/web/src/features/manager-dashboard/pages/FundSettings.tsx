@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Building2,
   Palette,
@@ -10,11 +11,17 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Mail,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { emailApi, EmailConnectionStatus } from '@/lib/api/email';
 
 interface TeamMember {
   id: string;
@@ -47,17 +54,92 @@ const mockTeam: TeamMember[] = [
   { id: '3', name: 'Alice Attorney', email: 'alice@lawfirm.com', role: 'attorney' },
 ];
 
-type TabType = 'profile' | 'branding' | 'banking' | 'team';
+type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'email';
 
 export function FundSettings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [showWireDetails, setShowWireDetails] = useState(false);
+  
+  // Email connection state
+  const [emailStatus, setEmailStatus] = useState<EmailConnectionStatus | null>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Check for OAuth callback params
+  useEffect(() => {
+    const emailConnected = searchParams.get('email_connected');
+    const emailError = searchParams.get('email_error');
+    const connectedEmail = searchParams.get('email');
+
+    if (emailConnected) {
+      setActiveTab('email');
+      setEmailMessage({ type: 'success', text: `Successfully connected ${connectedEmail || 'your email'}!` });
+      // Clear params
+      searchParams.delete('email_connected');
+      searchParams.delete('email');
+      setSearchParams(searchParams);
+      // Refresh status
+      fetchEmailStatus();
+    } else if (emailError) {
+      setActiveTab('email');
+      setEmailMessage({ type: 'error', text: `Failed to connect: ${emailError}` });
+      searchParams.delete('email_error');
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Fetch email connection status
+  const fetchEmailStatus = async () => {
+    try {
+      const status = await emailApi.getStatus();
+      setEmailStatus(status);
+    } catch (err) {
+      console.error('Failed to fetch email status:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmailStatus();
+  }, []);
+
+  // Connect Gmail
+  const handleConnectGmail = async () => {
+    setEmailLoading(true);
+    setEmailMessage(null);
+    try {
+      const { authUrl } = await emailApi.connectGmail();
+      // Redirect to Google OAuth
+      window.location.href = authUrl;
+    } catch (err: any) {
+      setEmailMessage({ type: 'error', text: err.message || 'Failed to start connection' });
+      setEmailLoading(false);
+    }
+  };
+
+  // Disconnect email
+  const handleDisconnectEmail = async () => {
+    if (!confirm('Are you sure you want to disconnect your email account?')) return;
+    
+    setEmailLoading(true);
+    setEmailMessage(null);
+    try {
+      await emailApi.disconnect(emailStatus?.provider || 'gmail');
+      setEmailStatus({ connected: false, provider: null, email: null });
+      setEmailMessage({ type: 'success', text: 'Email disconnected successfully' });
+    } catch (err: any) {
+      setEmailMessage({ type: 'error', text: err.message || 'Failed to disconnect' });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
 
   const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
     { id: 'profile', label: 'Fund Profile', icon: Building2 },
     { id: 'branding', label: 'Branding', icon: Palette },
     { id: 'banking', label: 'Banking', icon: CreditCard },
     { id: 'team', label: 'Team', icon: Users },
+    { id: 'email', label: 'Email', icon: Mail },
   ];
 
   return (
@@ -321,6 +403,144 @@ export function FundSettings() {
             <p className="mt-1 text-sm text-muted-foreground">
               Manager: Full access • Accountant: View + K-1s • Attorney: Documents only
             </p>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'email' && (
+        <div className="space-y-6">
+          <div className="rounded-xl border bg-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Email Integration</h3>
+                <p className="text-sm text-muted-foreground">
+                  Connect your email account to send emails directly from the app
+                </p>
+              </div>
+            </div>
+
+            {/* Status Messages */}
+            {emailMessage && (
+              <div className={cn(
+                'mb-6 flex items-center gap-3 rounded-lg border p-4',
+                emailMessage.type === 'success' 
+                  ? 'border-green-200 bg-green-50' 
+                  : 'border-red-200 bg-red-50'
+              )}>
+                {emailMessage.type === 'success' ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" />
+                )}
+                <p className={cn(
+                  'text-sm',
+                  emailMessage.type === 'success' ? 'text-green-700' : 'text-red-700'
+                )}>
+                  {emailMessage.text}
+                </p>
+              </div>
+            )}
+
+            {/* Connected State */}
+            {emailStatus?.connected ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-green-900">
+                        {emailStatus.provider === 'gmail' ? 'Gmail' : 'Outlook'} Connected
+                      </p>
+                      <p className="text-sm text-green-700">{emailStatus.email}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleDisconnectEmail}
+                    disabled={emailLoading}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    {emailLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Disconnect
+                  </Button>
+                </div>
+
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <h4 className="font-medium mb-2">How it works</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Emails are sent directly from your {emailStatus.email} account</li>
+                    <li>• Sent emails appear in your Gmail/Outlook "Sent" folder</li>
+                    <li>• Investors will reply directly to you</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              /* Not Connected State */
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Connect your email account to send investor communications directly from FlowVeda. 
+                  Emails will be sent from your own email address for a professional touch.
+                </p>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Gmail */}
+                  <button
+                    onClick={handleConnectGmail}
+                    disabled={emailLoading}
+                    className={cn(
+                      'flex items-center gap-4 rounded-xl border-2 p-6 text-left transition-all',
+                      'hover:border-primary hover:bg-primary/5',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
+                      <svg viewBox="0 0 24 24" className="h-7 w-7">
+                        <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Connect Gmail</p>
+                      <p className="text-sm text-muted-foreground">Google Workspace or personal Gmail</p>
+                    </div>
+                    {emailLoading && (
+                      <Loader2 className="ml-auto h-5 w-5 animate-spin" />
+                    )}
+                  </button>
+
+                  {/* Outlook - Coming Soon */}
+                  <div className={cn(
+                    'flex items-center gap-4 rounded-xl border-2 border-dashed p-6 text-left opacity-60'
+                  )}>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+                      <svg viewBox="0 0 24 24" className="h-7 w-7">
+                        <path fill="#0078D4" d="M24 7.387v10.478c0 .23-.08.424-.238.576-.16.154-.352.23-.578.23h-8.547v-6.959l1.203.86c.118.09.262.135.43.135.168 0 .312-.045.43-.135L24 7.387zm-.238-1.33c.079.063.142.14.188.227l-7.168 5.133-7.163-5.133c.045-.088.109-.164.188-.227.158-.152.35-.228.577-.228h12.8c.226 0 .418.076.578.228zM9.047 8.882v9.789H.816c-.226 0-.418-.076-.578-.23-.158-.152-.238-.345-.238-.575V4.613l4.297 3.36-4.297 3.468v3.187l4.805-3.883 4.242 3.883v-5.746zm-4.5 8.789h3.93v-2.836l-3.93 3.18v-.344z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Connect Outlook</p>
+                      <p className="text-sm text-muted-foreground">Coming soon</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-muted/50 p-4 mt-6">
+                  <h4 className="font-medium mb-2">Why connect your email?</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Send emails directly from your own email address</li>
+                    <li>• Build trust with investors who see emails from you</li>
+                    <li>• Keep all sent emails in your regular inbox</li>
+                    <li>• No complex setup - just click and authorize</li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

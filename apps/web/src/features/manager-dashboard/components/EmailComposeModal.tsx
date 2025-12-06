@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { X, Copy, Check, Send, Mail, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { X, Copy, Check, Send, Mail, Loader2, CheckCircle2, AlertCircle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { emailApi } from '@/lib/api/email';
+import { emailApi, EmailConnectionStatus } from '@/lib/api/email';
 
 interface EmailComposeModalProps {
   isOpen: boolean;
@@ -29,6 +30,19 @@ export function EmailComposeModal({
   const [copied, setCopied] = useState(false);
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState<EmailConnectionStatus | null>(null);
+  const [checkingConnection, setCheckingConnection] = useState(true);
+
+  // Check email connection status when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCheckingConnection(true);
+      emailApi.getStatus()
+        .then(setConnectionStatus)
+        .catch(() => setConnectionStatus({ connected: false, provider: null, email: null }))
+        .finally(() => setCheckingConnection(false));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -113,6 +127,38 @@ export function EmailComposeModal({
           </button>
         </div>
 
+        {/* Loading Connection Status */}
+        {checkingConnection && (
+          <div className="flex-1 flex flex-col items-center justify-center p-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="mt-2 text-muted-foreground">Checking email connection...</p>
+          </div>
+        )}
+
+        {/* Not Connected State */}
+        {!checkingConnection && !connectionStatus?.connected && sendStatus !== 'success' && (
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <Mail className="h-8 w-8 text-amber-600" />
+            </div>
+            <h3 className="mt-4 text-xl font-semibold">Connect Your Email</h3>
+            <p className="mt-2 text-muted-foreground max-w-sm">
+              To send emails directly from the app, please connect your Gmail or Outlook account in Settings.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button asChild>
+                <Link to="/manager/settings?tab=email">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Go to Settings
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Success State */}
         {sendStatus === 'success' && (
           <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -123,11 +169,16 @@ export function EmailComposeModal({
             <p className="mt-2 text-green-700 text-center">
               Your email has been sent successfully to {to}
             </p>
+            {connectionStatus?.email && (
+              <p className="mt-1 text-sm text-green-600">
+                Sent from {connectionStatus.email}
+              </p>
+            )}
           </div>
         )}
 
         {/* Form State */}
-        {sendStatus !== 'success' && (
+        {!checkingConnection && connectionStatus?.connected && sendStatus !== 'success' && (
           <>
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -196,9 +247,16 @@ export function EmailComposeModal({
 
             {/* Footer */}
             <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
-              <Button variant="outline" onClick={handleClose} disabled={sendStatus === 'sending'}>
-                Cancel
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleClose} disabled={sendStatus === 'sending'}>
+                  Cancel
+                </Button>
+                {connectionStatus?.email && (
+                  <span className="text-xs text-muted-foreground">
+                    Sending from {connectionStatus.email}
+                  </span>
+                )}
+              </div>
               
               <div className="flex gap-2">
                 <Button

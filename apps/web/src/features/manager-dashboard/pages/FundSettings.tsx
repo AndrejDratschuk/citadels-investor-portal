@@ -67,7 +67,7 @@ export function FundSettings() {
   const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Fund branding state
-  const [fund, setFund] = useState<Fund | null>(null);
+  const [, setFund] = useState<Fund | null>(null);
   const [brandingForm, setBrandingForm] = useState<FundBranding>({
     logoUrl: '',
     primaryColor: '#4f46e5',

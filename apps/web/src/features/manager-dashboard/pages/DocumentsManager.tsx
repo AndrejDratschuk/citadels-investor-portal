@@ -173,7 +173,7 @@ export function DocumentsManager() {
           )}
         >
           <Building2 className="h-4 w-4" />
-          By Deal
+          Deal Documents
         </button>
         <button
           onClick={() => handleTabChange('by-investor')}
@@ -185,7 +185,7 @@ export function DocumentsManager() {
           )}
         >
           <Users className="h-4 w-4" />
-          By Investor
+          Investor Documents
         </button>
         <button
           onClick={() => handleTabChange('all')}
@@ -205,7 +205,7 @@ export function DocumentsManager() {
       {viewMode === 'detail' && (
         <Button variant="ghost" onClick={handleBack} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Back to {activeTab === 'by-deal' ? 'Deals' : 'Investors'}
+          Back to {activeTab === 'by-deal' ? 'Deal Documents' : 'Investor Documents'}
         </Button>
       )}
 

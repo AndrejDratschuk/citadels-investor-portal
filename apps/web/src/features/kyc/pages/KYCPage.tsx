@@ -37,7 +37,6 @@ export function KYCPage() {
   const [emailError, setEmailError] = useState('');
 
   const {
-    application,
     currentStep,
     formData,
     isLoading,

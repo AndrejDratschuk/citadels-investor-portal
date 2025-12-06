@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Building2,
   Palette,
@@ -58,6 +59,7 @@ type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'email';
 
 export function FundSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [showWireDetails, setShowWireDetails] = useState(false);
   
@@ -107,7 +109,9 @@ export function FundSettings() {
       const { logoUrl } = await fundsApi.uploadLogo(file);
       setBrandingForm(prev => ({ ...prev, logoUrl }));
       setBrandingMessage({ type: 'success', text: 'Logo uploaded successfully!' });
-      fetchFund(); // Refresh fund data
+      fetchFund(); // Refresh local fund data
+      // Invalidate the fund query so Sidebar refreshes
+      queryClient.invalidateQueries({ queryKey: ['fund', 'current'] });
     } catch (err: any) {
       setBrandingMessage({ type: 'error', text: err.message || 'Failed to upload logo' });
     } finally {
@@ -124,6 +128,8 @@ export function FundSettings() {
       setBrandingForm(prev => ({ ...prev, logoUrl: '' }));
       setBrandingMessage({ type: 'success', text: 'Logo removed successfully!' });
       fetchFund();
+      // Invalidate the fund query so Sidebar refreshes
+      queryClient.invalidateQueries({ queryKey: ['fund', 'current'] });
     } catch (err: any) {
       setBrandingMessage({ type: 'error', text: err.message || 'Failed to delete logo' });
     } finally {

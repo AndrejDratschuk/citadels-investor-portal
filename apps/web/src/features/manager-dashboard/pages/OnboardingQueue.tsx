@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { kycApi } from '@/lib/api/kyc';
 import { KYCApplication } from '@/features/kyc/types';
 import { useAuthStore } from '@/stores/authStore';
+import { EmailComposeModal } from '../components/EmailComposeModal';
 
 // Types for Investor Applications (Form 2)
 interface InvestorApplication {
@@ -147,6 +148,7 @@ export function OnboardingQueue() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [kycLinkCopied, setKycLinkCopied] = useState(false);
+  const [emailModalApp, setEmailModalApp] = useState<KYCApplication | null>(null);
 
   // Fetch KYC applications
   const { data: kycApplications = [], isLoading: kycLoading, refetch: refetchKyc } = useQuery({
@@ -262,8 +264,8 @@ export function OnboardingQueue() {
     }
   };
 
-  // Generate mailto link for Form 2
-  const getForm2EmailLink = (kycApp: KYCApplication): string => {
+  // Generate email data for Form 2
+  const getForm2EmailData = (kycApp: KYCApplication) => {
     const inviteCode = 'citadel-2024'; // Placeholder - should come from fund settings
     const form2Url = `${getForm2BaseUrl()}/onboard/${inviteCode}?kyc=${kycApp.id}`;
     const investorName = getKycDisplayName(kycApp);
@@ -287,7 +289,7 @@ If you have any questions, please don't hesitate to reach out.
 Best regards,
 The Investment Team`;
 
-    return `mailto:${investorEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return { email: investorEmail, name: investorName, subject, body };
   };
 
   const getKycDisplayName = (app: KYCApplication): string => {
@@ -690,13 +692,13 @@ The Investment Team`;
                                 </Button>
                                 <Button
                                   size="sm"
-                                  asChild
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEmailModalApp(app);
+                                  }}
                                 >
-                                  <a href={getForm2EmailLink(app)}>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    Email Link
-                                  </a>
+                                  <Send className="mr-2 h-4 w-4" />
+                                  Email Link
                                 </Button>
                               </div>
                             </div>
@@ -944,6 +946,22 @@ The Investment Team`;
             </div>
           )}
         </div>
+      )}
+
+      {/* Email Compose Modal */}
+      {emailModalApp && (
+        <EmailComposeModal
+          isOpen={!!emailModalApp}
+          onClose={() => setEmailModalApp(null)}
+          recipientEmail={
+            emailModalApp.investorCategory === 'entity'
+              ? emailModalApp.workEmail || emailModalApp.email
+              : emailModalApp.email
+          }
+          recipientName={getKycDisplayName(emailModalApp)}
+          defaultSubject={getForm2EmailData(emailModalApp).subject}
+          defaultBody={getForm2EmailData(emailModalApp).body}
+        />
       )}
     </div>
   );

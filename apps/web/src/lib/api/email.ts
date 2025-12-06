@@ -14,12 +14,21 @@ export interface SendEmailResult {
 
 export interface EmailConnectionStatus {
   connected: boolean;
-  provider: 'gmail' | 'outlook' | null;
+  provider: 'gmail' | 'outlook' | 'smtp' | null;
   email: string | null;
 }
 
 export interface OAuthConnectResult {
   authUrl: string;
+}
+
+export interface SmtpConfig {
+  email: string;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
 }
 
 export const emailApi = {
@@ -38,8 +47,13 @@ export const emailApi = {
     return api.get<OAuthConnectResult>('/email/outlook/connect');
   },
 
+  // Connect SMTP account
+  connectSmtp: async (config: SmtpConfig): Promise<EmailConnectionStatus> => {
+    return api.post<EmailConnectionStatus>('/email/smtp/connect', config);
+  },
+
   // Disconnect email account
-  disconnect: async (provider: 'gmail' | 'outlook' = 'gmail'): Promise<void> => {
+  disconnect: async (provider: 'gmail' | 'outlook' | 'smtp' = 'gmail'): Promise<void> => {
     await api.post('/email/disconnect', { provider });
   },
 

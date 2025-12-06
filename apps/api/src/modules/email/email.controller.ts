@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { gmailService } from './gmail.service';
 import { outlookService } from './outlook.service';
+import { smtpService, SmtpConfig } from './smtp.service';
 
 // Frontend URLs
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -137,6 +138,71 @@ export class EmailController {
     }
   }
 
+  // ==================== SMTP Endpoints ====================
+
+  /**
+   * Connect SMTP account
+   */
+  async smtpConnect(request: AuthenticatedRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    const fundId = request.user?.fundId;
+
+    if (!userId || !fundId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    const config = request.body as SmtpConfig;
+
+    // Validate required fields
+    if (!config.email || !config.host || !config.port || !config.username || !config.password) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Missing required fields: email, host, port, username, password',
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(config.email)) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Invalid email address',
+      });
+    }
+
+    try {
+      // Test connection first
+      const testResult = await smtpService.testConnection(config);
+      if (!testResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: testResult.error || 'Failed to connect to SMTP server. Please check your settings.',
+        });
+      }
+
+      // Save connection
+      const connection = await smtpService.saveConnection(userId, fundId, config);
+
+      return reply.send({
+        success: true,
+        data: {
+          connected: true,
+          provider: 'smtp',
+          email: connection.email,
+        },
+      });
+    } catch (error: any) {
+      console.error('SMTP connect error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to save SMTP connection',
+      });
+    }
+  }
+
   // ==================== Shared Endpoints ====================
 
   /**
@@ -152,7 +218,7 @@ export class EmailController {
       });
     }
 
-    // Check for any active connection (Gmail or Outlook)
+    // Check for any active connection (Gmail, Outlook, or SMTP)
     const gmailConnection = await gmailService.getActiveConnection(userId);
     if (gmailConnection) {
       return reply.send({
@@ -177,6 +243,18 @@ export class EmailController {
       });
     }
 
+    const smtpConnection = await smtpService.getConnection(userId);
+    if (smtpConnection) {
+      return reply.send({
+        success: true,
+        data: {
+          connected: true,
+          provider: 'smtp',
+          email: smtpConnection.email,
+        },
+      });
+    }
+
     return reply.send({
       success: true,
       data: {
@@ -192,7 +270,7 @@ export class EmailController {
    */
   async disconnect(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user?.id;
-    const { provider } = request.body as { provider?: 'gmail' | 'outlook' };
+    const { provider } = request.body as { provider?: 'gmail' | 'outlook' | 'smtp' };
 
     if (!userId) {
       return reply.status(401).send({
@@ -204,6 +282,8 @@ export class EmailController {
     try {
       if (provider === 'outlook') {
         await outlookService.disconnect(userId);
+      } else if (provider === 'smtp') {
+        await smtpService.disconnect(userId);
       } else {
         await gmailService.disconnect(userId, 'gmail');
       }
@@ -317,10 +397,40 @@ export class EmailController {
       }
     }
 
+    // Check for SMTP connection
+    const smtpConnection = await smtpService.getConnection(userId);
+    if (smtpConnection) {
+      try {
+        const result = await smtpService.sendEmail(smtpConnection, to, subject, body);
+
+        if (!result.success) {
+          return reply.status(500).send({
+            success: false,
+            error: result.error || 'Failed to send email',
+          });
+        }
+
+        return reply.send({
+          success: true,
+          data: {
+            messageId: result.messageId,
+            message: 'Email sent successfully',
+            from: smtpConnection.email,
+          },
+        });
+      } catch (error: any) {
+        console.error('SMTP send error:', error);
+        return reply.status(500).send({
+          success: false,
+          error: error.message || 'Failed to send email',
+        });
+      }
+    }
+
     // No connection found
     return reply.status(400).send({
       success: false,
-      error: 'No email account connected. Please connect your Gmail or Outlook account in Settings.',
+      error: 'No email account connected. Please connect your email account in Settings.',
     });
   }
 }

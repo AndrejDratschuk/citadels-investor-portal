@@ -130,6 +130,34 @@ export function FundSettings() {
     }
   };
 
+  // SMTP Modal State
+  const [showSmtpModal, setShowSmtpModal] = useState(false);
+  const [smtpForm, setSmtpForm] = useState({
+    email: '',
+    host: '',
+    port: 587,
+    secure: true,
+    username: '',
+    password: '',
+  });
+  const [smtpLoading, setSmtpLoading] = useState(false);
+
+  // Connect SMTP
+  const handleConnectSmtp = async () => {
+    setSmtpLoading(true);
+    setEmailMessage(null);
+    try {
+      await emailApi.connectSmtp(smtpForm);
+      setShowSmtpModal(false);
+      setEmailMessage({ type: 'success', text: `Successfully connected ${smtpForm.email}!` });
+      fetchEmailStatus();
+    } catch (err: any) {
+      setEmailMessage({ type: 'error', text: err.message || 'Failed to connect SMTP' });
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
   // Disconnect email
   const handleDisconnectEmail = async () => {
     if (!confirm('Are you sure you want to disconnect your email account?')) return;
@@ -502,7 +530,7 @@ export function FundSettings() {
                   Emails will be sent from your own email address for a professional touch.
                 </p>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {/* Gmail */}
                   <button
                     onClick={handleConnectGmail}
@@ -550,6 +578,25 @@ export function FundSettings() {
                       <Loader2 className="ml-auto h-5 w-5 animate-spin" />
                     )}
                   </button>
+
+                  {/* SMTP / Other Email */}
+                  <button
+                    onClick={() => setShowSmtpModal(true)}
+                    disabled={emailLoading}
+                    className={cn(
+                      'flex items-center gap-4 rounded-xl border-2 p-6 text-left transition-all',
+                      'hover:border-primary hover:bg-primary/5',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
+                      <Mail className="h-7 w-7 text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Other Email (SMTP)</p>
+                      <p className="text-sm text-muted-foreground">Zoho, ProtonMail, custom domain</p>
+                    </div>
+                  </button>
                 </div>
 
                 <div className="rounded-lg border bg-muted/50 p-4 mt-6">
@@ -563,6 +610,137 @@ export function FundSettings() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* SMTP Configuration Modal */}
+      {showSmtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-xl shadow-xl w-full max-w-md p-6 m-4">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">Connect SMTP Email</h2>
+              <button
+                onClick={() => setShowSmtpModal(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="smtp-email">Email Address</Label>
+                <Input
+                  id="smtp-email"
+                  type="email"
+                  placeholder="you@yourdomain.com"
+                  value={smtpForm.email}
+                  onChange={(e) => setSmtpForm({ ...smtpForm, email: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="smtp-host">SMTP Host</Label>
+                  <Input
+                    id="smtp-host"
+                    placeholder="smtp.example.com"
+                    value={smtpForm.host}
+                    onChange={(e) => setSmtpForm({ ...smtpForm, host: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="smtp-port">Port</Label>
+                  <Input
+                    id="smtp-port"
+                    type="number"
+                    placeholder="587"
+                    value={smtpForm.port}
+                    onChange={(e) => setSmtpForm({ ...smtpForm, port: parseInt(e.target.value) || 587 })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="smtp-username">Username</Label>
+                <Input
+                  id="smtp-username"
+                  placeholder="Usually your email address"
+                  value={smtpForm.username}
+                  onChange={(e) => setSmtpForm({ ...smtpForm, username: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="smtp-password">Password / App Password</Label>
+                <Input
+                  id="smtp-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={smtpForm.password}
+                  onChange={(e) => setSmtpForm({ ...smtpForm, password: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="smtp-secure"
+                  checked={smtpForm.secure}
+                  onChange={(e) => setSmtpForm({ ...smtpForm, secure: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="smtp-secure" className="text-sm font-normal">
+                  Use TLS/SSL (recommended)
+                </Label>
+              </div>
+
+              <div className="rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
+                <p className="font-medium mb-1">Common Settings:</p>
+                <ul className="space-y-1 text-xs">
+                  <li>• <strong>Zoho:</strong> smtp.zoho.com, port 465</li>
+                  <li>• <strong>Yahoo:</strong> smtp.mail.yahoo.com, port 465 (app password)</li>
+                  <li>• <strong>ProtonMail:</strong> 127.0.0.1, port 1025 (Bridge required)</li>
+                </ul>
+              </div>
+
+              {emailMessage && (
+                <div className={cn(
+                  'p-3 rounded-lg text-sm',
+                  emailMessage.type === 'success' 
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                )}>
+                  {emailMessage.text}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSmtpModal(false)}
+                  className="flex-1"
+                  disabled={smtpLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConnectSmtp}
+                  className="flex-1"
+                  disabled={smtpLoading || !smtpForm.email || !smtpForm.host || !smtpForm.username || !smtpForm.password}
+                >
+                  {smtpLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Testing...
+                    </>
+                  ) : (
+                    'Connect'
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

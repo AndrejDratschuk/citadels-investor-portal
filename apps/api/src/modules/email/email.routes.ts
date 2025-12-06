@@ -30,6 +30,13 @@ export async function emailRoutes(fastify: FastifyInstance) {
     return emailController.outlookCallback(request, reply);
   });
 
+  // ==================== SMTP Routes ====================
+
+  // Connect SMTP account
+  fastify.post('/smtp/connect', { preHandler: managerPreHandler }, async (request, reply) => {
+    return emailController.smtpConnect(request as any, reply);
+  });
+
   // ==================== Shared Routes ====================
 
   // Get connection status

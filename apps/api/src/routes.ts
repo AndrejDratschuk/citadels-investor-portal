@@ -5,6 +5,7 @@ import { webhooksRoutes } from './modules/webhooks/webhooks.routes';
 import { communicationsRoutes } from './modules/communications/communications.routes';
 import { kycRoutes } from './modules/kyc/kyc.routes';
 import { onboardingRoutes } from './modules/onboarding/onboarding.routes';
+import { emailRoutes } from './modules/email/email.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -14,6 +15,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(communicationsRoutes); // No prefix, routes have full paths
   await fastify.register(kycRoutes, { prefix: '/kyc' });
   await fastify.register(onboardingRoutes, { prefix: '/onboarding' });
+  await fastify.register(emailRoutes, { prefix: '/email' });
 
   // Health check
   fastify.get('/health', async () => {

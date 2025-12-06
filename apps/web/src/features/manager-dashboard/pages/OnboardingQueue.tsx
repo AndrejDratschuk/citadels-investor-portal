@@ -958,7 +958,6 @@ The Investment Team`;
               ? emailModalApp.workEmail || emailModalApp.email
               : emailModalApp.email
           }
-          recipientName={getKycDisplayName(emailModalApp)}
           defaultSubject={getForm2EmailData(emailModalApp).subject}
           defaultBody={getForm2EmailData(emailModalApp).body}
         />

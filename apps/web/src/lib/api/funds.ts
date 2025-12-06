@@ -41,7 +41,7 @@ export const fundsApi = {
     formData.append('file', file);
 
     // Use fetch directly for multipart
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('accessToken');
     const API_URL = import.meta.env.PROD
       ? 'https://citadel-investor-portal-production.up.railway.app/api'
       : (import.meta.env.VITE_API_URL || '/api');

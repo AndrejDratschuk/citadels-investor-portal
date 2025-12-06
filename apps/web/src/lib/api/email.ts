@@ -18,7 +18,7 @@ export interface EmailConnectionStatus {
   email: string | null;
 }
 
-export interface GmailConnectResult {
+export interface OAuthConnectResult {
   authUrl: string;
 }
 
@@ -29,8 +29,13 @@ export const emailApi = {
   },
 
   // Start Gmail OAuth flow
-  connectGmail: async (): Promise<GmailConnectResult> => {
-    return api.get<GmailConnectResult>('/email/gmail/connect');
+  connectGmail: async (): Promise<OAuthConnectResult> => {
+    return api.get<OAuthConnectResult>('/email/gmail/connect');
+  },
+
+  // Start Outlook OAuth flow
+  connectOutlook: async (): Promise<OAuthConnectResult> => {
+    return api.get<OAuthConnectResult>('/email/outlook/connect');
   },
 
   // Disconnect email account

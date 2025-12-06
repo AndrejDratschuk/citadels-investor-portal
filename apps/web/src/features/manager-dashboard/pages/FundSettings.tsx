@@ -116,6 +116,20 @@ export function FundSettings() {
     }
   };
 
+  // Connect Outlook
+  const handleConnectOutlook = async () => {
+    setEmailLoading(true);
+    setEmailMessage(null);
+    try {
+      const { authUrl } = await emailApi.connectOutlook();
+      // Redirect to Microsoft OAuth
+      window.location.href = authUrl;
+    } catch (err: any) {
+      setEmailMessage({ type: 'error', text: err.message || 'Failed to start connection' });
+      setEmailLoading(false);
+    }
+  };
+
   // Disconnect email
   const handleDisconnectEmail = async () => {
     if (!confirm('Are you sure you want to disconnect your email account?')) return;
@@ -513,10 +527,16 @@ export function FundSettings() {
                     )}
                   </button>
 
-                  {/* Outlook - Coming Soon */}
-                  <div className={cn(
-                    'flex items-center gap-4 rounded-xl border-2 border-dashed p-6 text-left opacity-60'
-                  )}>
+                  {/* Outlook */}
+                  <button
+                    onClick={handleConnectOutlook}
+                    disabled={emailLoading}
+                    className={cn(
+                      'flex items-center gap-4 rounded-xl border-2 p-6 text-left transition-all',
+                      'hover:border-primary hover:bg-primary/5',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
                       <svg viewBox="0 0 24 24" className="h-7 w-7">
                         <path fill="#0078D4" d="M24 7.387v10.478c0 .23-.08.424-.238.576-.16.154-.352.23-.578.23h-8.547v-6.959l1.203.86c.118.09.262.135.43.135.168 0 .312-.045.43-.135L24 7.387zm-.238-1.33c.079.063.142.14.188.227l-7.168 5.133-7.163-5.133c.045-.088.109-.164.188-.227.158-.152.35-.228.577-.228h12.8c.226 0 .418.076.578.228zM9.047 8.882v9.789H.816c-.226 0-.418-.076-.578-.23-.158-.152-.238-.345-.238-.575V4.613l4.297 3.36-4.297 3.468v3.187l4.805-3.883 4.242 3.883v-5.746zm-4.5 8.789h3.93v-2.836l-3.93 3.18v-.344z"/>
@@ -524,9 +544,12 @@ export function FundSettings() {
                     </div>
                     <div>
                       <p className="font-semibold">Connect Outlook</p>
-                      <p className="text-sm text-muted-foreground">Coming soon</p>
+                      <p className="text-sm text-muted-foreground">Microsoft 365 or personal Outlook</p>
                     </div>
-                  </div>
+                    {emailLoading && (
+                      <Loader2 className="ml-auto h-5 w-5 animate-spin" />
+                    )}
+                  </button>
                 </div>
 
                 <div className="rounded-lg border bg-muted/50 p-4 mt-6">

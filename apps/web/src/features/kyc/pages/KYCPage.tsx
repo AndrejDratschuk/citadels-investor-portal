@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Shield, Loader2, XCircle } from 'lucide-react';
+import { Loader2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PublicFormHeader } from '@/components/layout/PublicFormHeader';
 import {
   KYCWizard,
   InvestorTypeStep,
@@ -125,17 +126,7 @@ export function KYCPage() {
   if (eligible === false) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-        <header className="border-b bg-white">
-          <div className="mx-auto max-w-3xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold">FlowVeda</h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                Secure Form
-              </div>
-            </div>
-          </div>
-        </header>
+        <PublicFormHeader fundId={fundCode} />
 
         <main className="mx-auto max-w-3xl px-4 py-8">
           <div className="rounded-xl border bg-white p-8 shadow-sm text-center">
@@ -178,17 +169,7 @@ export function KYCPage() {
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-        <header className="border-b bg-white">
-          <div className="mx-auto max-w-4xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold">FlowVeda</h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                Secure Form
-              </div>
-            </div>
-          </div>
-        </header>
+        <PublicFormHeader fundId={fundCode} />
 
         <main className="mx-auto max-w-4xl px-4 py-8 pb-16">
           <div className="rounded-xl border bg-white p-6 shadow-sm sm:p-8">
@@ -207,17 +188,7 @@ export function KYCPage() {
   if (showEmailForm) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-        <header className="border-b bg-white">
-          <div className="mx-auto max-w-3xl px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold">FlowVeda</h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Shield className="h-4 w-4" />
-                Secure Form
-              </div>
-            </div>
-          </div>
-        </header>
+        <PublicFormHeader fundId={fundCode} />
 
         <main className="mx-auto max-w-lg px-4 py-16">
           <div className="text-center mb-8">
@@ -324,23 +295,7 @@ export function KYCPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">FlowVeda</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {isSaving && (
-                <span className="flex items-center gap-1 text-xs">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Saving...
-                </span>
-              )}
-              <Shield className="h-4 w-4" />
-              Secure Form
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicFormHeader fundId={fundCode} showSaving={true} isSaving={isSaving} />
 
       {/* Main Content */}
       <main className="mx-auto max-w-3xl px-4 py-8">

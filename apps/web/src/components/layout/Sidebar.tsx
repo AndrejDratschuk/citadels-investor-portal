@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useFund } from '@/hooks/useFund';
 import { USER_ROLES } from '@flowveda/shared';
 import {
   LayoutDashboard,
@@ -68,11 +69,22 @@ export function Sidebar() {
   const { user } = useAuth();
   const location = useLocation();
   const navItems = user ? getNavItems(user.role) : [];
+  const { data: fund } = useFund();
+
+  const logoUrl = fund?.branding?.logoUrl;
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card">
       <div className="flex h-16 items-center border-b px-6">
-        <h1 className="text-xl font-bold">FlowVeda</h1>
+        {logoUrl ? (
+          <img 
+            src={logoUrl} 
+            alt={fund?.name || 'Fund logo'} 
+            className="h-10 max-w-[160px] object-contain"
+          />
+        ) : (
+          <h1 className="text-xl font-bold">{fund?.name || 'FlowVeda'}</h1>
+        )}
       </div>
       <nav className="flex-1 space-y-1 p-4">
         {navItems.map((item) => {

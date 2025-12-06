@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { registerRoutes } from './routes';
 import { errorHandler } from './common/middleware/error-handler';
 import { env } from './config/env';
@@ -29,6 +30,13 @@ async function start() {
     await fastify.register(cors, {
       origin: true, // Allow all origins (or set specific domains via env)
       credentials: true,
+    });
+
+    // File uploads
+    await fastify.register(multipart, {
+      limits: {
+        fileSize: 2 * 1024 * 1024, // 2MB max
+      },
     });
 
     // Error handler

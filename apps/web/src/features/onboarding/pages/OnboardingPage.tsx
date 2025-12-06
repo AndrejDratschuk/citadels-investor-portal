@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Shield, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { PublicFormHeader } from '@/components/layout/PublicFormHeader';
 import {
   OnboardingWizard,
   PersonalInfoStep,
@@ -211,17 +212,7 @@ export function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">FlowVeda</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Shield className="h-4 w-4" />
-              Secure Form
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicFormHeader fundId={kycData?.fundId} />
 
       {/* Main Content */}
       <main className="mx-auto max-w-3xl px-4 py-8">

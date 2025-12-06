@@ -95,8 +95,8 @@ export function CalendlyEmbed({
       {/* Calendly Widget */}
       <div
         id="calendly-embed"
-        className="min-h-[650px] rounded-lg border"
-        style={{ minWidth: '320px' }}
+        className="rounded-lg border overflow-hidden"
+        style={{ minWidth: '320px', height: '700px' }}
       />
     </div>
   );

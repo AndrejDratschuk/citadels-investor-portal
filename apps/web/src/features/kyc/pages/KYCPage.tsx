@@ -179,7 +179,7 @@ export function KYCPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
         <header className="border-b bg-white">
-          <div className="mx-auto max-w-3xl px-4 py-4">
+          <div className="mx-auto max-w-4xl px-4 py-4">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-bold">FlowVeda</h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -190,7 +190,7 @@ export function KYCPage() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-3xl px-4 py-8">
+        <main className="mx-auto max-w-4xl px-4 py-8 pb-16">
           <div className="rounded-xl border bg-white p-6 shadow-sm sm:p-8">
             <CalendlyEmbed
               calendlyUrl={DEFAULT_CALENDLY_URL}

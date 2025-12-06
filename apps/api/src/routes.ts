@@ -7,6 +7,8 @@ import { kycRoutes } from './modules/kyc/kyc.routes';
 import { onboardingRoutes } from './modules/onboarding/onboarding.routes';
 import { emailRoutes } from './modules/email/email.routes';
 import { fundsRoutes } from './modules/funds/funds.routes';
+import { documentsRoutes } from './modules/documents/documents.routes';
+import { dealsRoutes } from './modules/deals/deals.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -18,6 +20,8 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(onboardingRoutes, { prefix: '/onboarding' });
   await fastify.register(emailRoutes, { prefix: '/email' });
   await fastify.register(fundsRoutes, { prefix: '/funds' });
+  await fastify.register(documentsRoutes, { prefix: '/documents' });
+  await fastify.register(dealsRoutes, { prefix: '/deals' });
 
   // Health check
   fastify.get('/health', async () => {

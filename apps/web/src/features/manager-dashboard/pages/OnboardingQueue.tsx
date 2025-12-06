@@ -20,6 +20,7 @@ import {
   UserCheck,
   Loader2,
   Share2,
+  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -259,6 +260,34 @@ export function OnboardingQueue() {
     } catch (err) {
       console.error('Failed to copy:', err);
     }
+  };
+
+  // Generate mailto link for Form 2
+  const getForm2EmailLink = (kycApp: KYCApplication): string => {
+    const inviteCode = 'citadel-2024'; // Placeholder - should come from fund settings
+    const form2Url = `${getForm2BaseUrl()}/onboard/${inviteCode}?kyc=${kycApp.id}`;
+    const investorName = getKycDisplayName(kycApp);
+    const investorEmail = kycApp.investorCategory === 'entity' 
+      ? kycApp.workEmail || kycApp.email 
+      : kycApp.email;
+    
+    const subject = 'Complete Your Investor Application';
+    const body = `Hi ${investorName.split(' ')[0] || 'there'},
+
+Thank you for completing the pre-qualification form. We're pleased to inform you that you meet the requirements to proceed with the investment.
+
+Please click the link below to complete your investor application:
+
+${form2Url}
+
+This secure form will allow you to provide the necessary information to finalize your investment. Your information from the pre-qualification form has been saved and will be pre-filled for your convenience.
+
+If you have any questions, please don't hesitate to reach out.
+
+Best regards,
+The Investment Team`;
+
+    return `mailto:${investorEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const getKycDisplayName = (app: KYCApplication): string => {
@@ -634,30 +663,42 @@ export function OnboardingQueue() {
                               <CheckCircle2 className="h-4 w-4" />
                               Pre-qualified. Send them the investor application form:
                             </div>
-                            <div className="flex items-center gap-2 max-w-xl">
-                              <div className="flex-1 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-mono truncate">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex-1 min-w-0 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-mono truncate">
                                 {`${getForm2BaseUrl()}/onboard/citadel-2024?kyc=${app.id}`}
                               </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  copyForm2Link(app);
-                                }}
-                              >
-                                {copiedId === app.id ? (
-                                  <>
-                                    <Check className="mr-2 h-4 w-4 text-green-500" />
-                                    Copied!
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="mr-2 h-4 w-4" />
-                                    Copy Link
-                                  </>
-                                )}
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyForm2Link(app);
+                                  }}
+                                >
+                                  {copiedId === app.id ? (
+                                    <>
+                                      <Check className="mr-2 h-4 w-4 text-green-500" />
+                                      Copied!
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      Copy Link
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  asChild
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <a href={getForm2EmailLink(app)}>
+                                    <Send className="mr-2 h-4 w-4" />
+                                    Email Link
+                                  </a>
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         )}

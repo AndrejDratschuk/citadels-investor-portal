@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { KYCService, KYCApplicationData } from './kyc.service';
 import { supabaseAdmin } from '../../common/database/supabase';
+import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 
 const kycService = new KYCService();
 
@@ -162,6 +163,81 @@ export class KYCController {
       return reply.status(500).send({
         success: false,
         error: error.message || 'Failed to update Calendly event',
+      });
+    }
+  }
+
+  // ==================== Manager Methods ====================
+
+  /**
+   * Get all KYC applications for the manager's fund
+   */
+  async getAll(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Manager is not associated with a fund',
+      });
+    }
+
+    try {
+      const applications = await kycService.getAllByFundId(fundId);
+
+      return reply.send({
+        success: true,
+        data: applications,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to fetch KYC applications',
+      });
+    }
+  }
+
+  /**
+   * Approve a KYC application
+   */
+  async approve(request: AuthenticatedRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+
+    try {
+      const application = await kycService.approve(id);
+
+      return reply.send({
+        success: true,
+        data: application,
+        message: 'KYC application approved',
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to approve KYC application',
+      });
+    }
+  }
+
+  /**
+   * Reject a KYC application
+   */
+  async reject(request: AuthenticatedRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const { reason } = request.body as { reason?: string };
+
+    try {
+      const application = await kycService.reject(id, reason);
+
+      return reply.send({
+        success: true,
+        data: application,
+        message: 'KYC application rejected',
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to reject KYC application',
       });
     }
   }

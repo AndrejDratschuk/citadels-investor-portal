@@ -11,7 +11,7 @@ interface UseKYCReturn {
   isSubmitting: boolean;
   error: string | null;
   eligible: boolean | null;
-  startApplication: (fundCode: string, email: string) => Promise<void>;
+  startApplication: (fundCode: string, email: string) => Promise<KYCApplication>;
   loadApplication: (id: string) => Promise<void>;
   updateFormData: (data: Partial<KYCFormData>) => Promise<void>;
   submitApplication: () => Promise<void>;
@@ -32,8 +32,8 @@ export function useKYC(): UseKYCReturn {
   const [error, setError] = useState<string | null>(null);
   const [eligible, setEligible] = useState<boolean | null>(null);
 
-  // Start a new application
-  const startApplication = useCallback(async (fundCode: string, email: string) => {
+  // Start a new application - returns the app so caller can use the ID immediately
+  const startApplication = useCallback(async (fundCode: string, email: string): Promise<KYCApplication> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -44,6 +44,7 @@ export function useKYC(): UseKYCReturn {
         investorCategory: app.investorCategory,
         investorType: app.investorType,
       });
+      return app; // Return the app so caller can use the ID
     } catch (err: any) {
       setError(err.message || 'Failed to start application');
       throw err;

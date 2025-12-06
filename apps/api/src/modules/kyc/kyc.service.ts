@@ -205,6 +205,70 @@ export class KYCService {
     return this.formatKYCApplication(data);
   }
 
+  // ==================== Manager Methods ====================
+
+  /**
+   * Get all KYC applications for a fund (manager only)
+   */
+  async getAllByFundId(fundId: string): Promise<KYCApplication[]> {
+    const { data, error } = await supabaseAdmin
+      .from('kyc_applications')
+      .select('*')
+      .eq('fund_id', fundId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching KYC applications:', error);
+      throw new Error('Failed to fetch KYC applications');
+    }
+
+    return data.map((item) => this.formatKYCApplication(item));
+  }
+
+  /**
+   * Approve a KYC application (manager only)
+   */
+  async approve(id: string): Promise<KYCApplication> {
+    const { data, error } = await supabaseAdmin
+      .from('kyc_applications')
+      .update({
+        status: 'pre_qualified',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error approving KYC application:', error);
+      throw new Error('Failed to approve KYC application');
+    }
+
+    return this.formatKYCApplication(data);
+  }
+
+  /**
+   * Reject a KYC application (manager only)
+   */
+  async reject(id: string, reason?: string): Promise<KYCApplication> {
+    const { data, error } = await supabaseAdmin
+      .from('kyc_applications')
+      .update({
+        status: 'not_eligible',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error rejecting KYC application:', error);
+      throw new Error('Failed to reject KYC application');
+    }
+
+    return this.formatKYCApplication(data);
+  }
+
   private formatKYCApplication(data: any): KYCApplication {
     return {
       id: data.id,

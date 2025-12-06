@@ -71,11 +71,11 @@ export function KYCPage() {
     }
 
     try {
-      await startApplication(fundCode || '', email);
+      const app = await startApplication(fundCode || '', email);
       setShowEmailForm(false);
-      // Update URL with application ID
-      if (application?.id) {
-        navigate(`/kyc/${fundCode}?id=${application.id}`, { replace: true });
+      // Update URL with application ID from the returned app (not from state)
+      if (app?.id) {
+        navigate(`/kyc/${fundCode}?id=${app.id}`, { replace: true });
       }
     } catch (err) {
       // Error is handled in the hook

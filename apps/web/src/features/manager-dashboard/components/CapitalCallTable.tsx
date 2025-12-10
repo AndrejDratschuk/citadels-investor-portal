@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Mail,
   DollarSign,
   CreditCard,
   Bell,

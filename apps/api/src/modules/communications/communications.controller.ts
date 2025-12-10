@@ -27,8 +27,24 @@ export class CommunicationsController {
    * Get all communications for the fund (manager view)
    */
   async getAll(request: AuthenticatedRequest, reply: FastifyReply) {
-    const fundId = request.user?.fundId;
+    let fundId = request.user?.fundId;
+    const userId = request.user?.id;
     console.log('[getAll communications] User:', request.user?.email, 'Fund ID:', fundId);
+
+    // If no fund_id on user, try to find the fund they manage
+    if (!fundId && userId) {
+      console.log('[getAll communications] No fund_id, looking up fund for user');
+      const { data: fund, error: fundError } = await supabaseAdmin
+        .from('funds')
+        .select('id')
+        .eq('created_by', userId)
+        .single();
+      
+      if (fund && !fundError) {
+        fundId = fund.id;
+        console.log('[getAll communications] Found fund via created_by:', fundId);
+      }
+    }
 
     if (!fundId) {
       console.error('[getAll communications] No fund_id for user');

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DollarSign,
@@ -5,27 +6,70 @@ import {
   Building2,
   AlertCircle,
   ArrowRight,
+  Bell,
+  Filter,
 } from 'lucide-react';
 import { formatCurrency } from '@flowveda/shared';
 import { useInvestorStats, useInvestorProfile } from '../hooks/useInvestorData';
 import { useDocuments } from '../hooks/useDocuments';
-import { useCapitalCalls } from '../hooks/useCapitalCalls';
+import { useNotices } from '../hooks/useNotices';
 import { StatsCard } from '../components/StatsCard';
 import { DocumentList } from '../components/DocumentList';
-import { CapitalCallCard } from '../components/CapitalCallCard';
+import { NoticeCard, NoticeType } from '../components/NoticeCard';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+type NoticeFilter = 'all' | NoticeType | 'action_required';
+
+const filterLabels: Record<NoticeFilter, string> = {
+  all: 'All',
+  action_required: 'Action Required',
+  capital_call: 'Capital Calls',
+  distribution: 'Distributions',
+  distribution_election: 'Elections',
+  quarterly_meeting: 'Meetings',
+  announcement: 'Announcements',
+};
 
 export function InvestorDashboard() {
   const { data: profile, isLoading: profileLoading } = useInvestorProfile();
   const { data: stats, isLoading: statsLoading } = useInvestorStats();
   const { data: documents, isLoading: docsLoading } = useDocuments();
-  const { data: capitalCalls, isLoading: ccLoading } = useCapitalCalls();
+  const { data: noticesData, isLoading: noticesLoading } = useNotices();
+  const [noticeFilter, setNoticeFilter] = useState<NoticeFilter>('all');
 
-  const isLoading = profileLoading || statsLoading || docsLoading || ccLoading;
+  const isLoading = profileLoading || statsLoading || docsLoading || noticesLoading;
 
-  const pendingCapitalCalls = capitalCalls?.filter(
-    (cc) => cc.status === 'pending' || cc.status === 'partial'
-  );
+  const actionRequiredNotices = noticesData?.actionRequired || [];
+  const pendingCapitalCalls = noticesData?.capitalCalls.filter(
+    (n) => n.status === 'pending' || n.status === 'partial'
+  ) || [];
+
+  // Get filtered notices based on selected filter
+  const getFilteredNotices = () => {
+    if (!noticesData) return [];
+    
+    switch (noticeFilter) {
+      case 'all':
+        return noticesData.all;
+      case 'action_required':
+        return noticesData.actionRequired;
+      case 'capital_call':
+        return noticesData.capitalCalls;
+      case 'distribution':
+        return noticesData.distributions;
+      case 'distribution_election':
+        return noticesData.elections;
+      case 'quarterly_meeting':
+        return noticesData.meetings;
+      case 'announcement':
+        return noticesData.announcements;
+      default:
+        return noticesData.all;
+    }
+  };
+
+  const filteredNotices = getFilteredNotices();
 
   if (isLoading) {
     return (
@@ -78,25 +122,39 @@ export function InvestorDashboard() {
         />
       </div>
 
-      {/* Pending Capital Calls Alert */}
-      {pendingCapitalCalls && pendingCapitalCalls.length > 0 && (
+      {/* Action Required Alert */}
+      {actionRequiredNotices.length > 0 && (
         <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-orange-600" />
             <div className="flex-1">
               <p className="font-medium text-orange-800">
-                You have {pendingCapitalCalls.length} pending capital call
-                {pendingCapitalCalls.length > 1 ? 's' : ''}
+                You have {actionRequiredNotices.length} item
+                {actionRequiredNotices.length > 1 ? 's' : ''} requiring action
               </p>
               <p className="text-sm text-orange-700">
-                Total due: {formatCurrency(stats?.pendingAmount || 0)}
+                {pendingCapitalCalls.length > 0 && (
+                  <>
+                    {pendingCapitalCalls.length} capital call
+                    {pendingCapitalCalls.length > 1 ? 's' : ''} pending
+                    {actionRequiredNotices.length > pendingCapitalCalls.length && ' • '}
+                  </>
+                )}
+                {actionRequiredNotices.length - pendingCapitalCalls.length > 0 && (
+                  <>
+                    {actionRequiredNotices.length - pendingCapitalCalls.length} other action
+                    {actionRequiredNotices.length - pendingCapitalCalls.length > 1 ? 's' : ''} needed
+                  </>
+                )}
               </p>
             </div>
-            <Link to="/investor/capital-calls">
-              <Button variant="outline" size="sm">
-                View Details
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setNoticeFilter('action_required')}
+            >
+              View All
+            </Button>
           </div>
         </div>
       )}
@@ -117,28 +175,97 @@ export function InvestorDashboard() {
           <DocumentList documents={documents || []} limit={5} />
         </div>
 
-        {/* Pending Capital Calls */}
+        {/* Notices Section */}
         <div>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Capital Calls</h2>
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">Notices</h2>
+              {noticesData && noticesData.counts.total > 0 && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  {noticesData.counts.total}
+                </span>
+              )}
+            </div>
             <Link
-              to="/investor/capital-calls"
+              to="/investor/notices"
               className="flex items-center gap-1 text-sm text-primary hover:underline"
             >
               View all <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          {pendingCapitalCalls && pendingCapitalCalls.length > 0 ? (
+
+          {/* Filter Pills */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground self-center" />
+            {(['all', 'action_required', 'capital_call', 'distribution', 'quarterly_meeting'] as const).map(
+              (filter) => {
+                const count =
+                  filter === 'all'
+                    ? noticesData?.counts.total
+                    : filter === 'action_required'
+                    ? noticesData?.counts.actionRequired
+                    : filter === 'capital_call'
+                    ? noticesData?.counts.capitalCalls
+                    : filter === 'distribution'
+                    ? noticesData?.counts.distributions
+                    : filter === 'quarterly_meeting'
+                    ? noticesData?.counts.meetings
+                    : 0;
+
+                if (count === 0 && filter !== 'all') return null;
+
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setNoticeFilter(filter)}
+                    className={cn(
+                      'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                      noticeFilter === filter
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80'
+                    )}
+                  >
+                    {filterLabels[filter]}
+                    {count !== undefined && count > 0 && (
+                      <span className="ml-1 opacity-70">({count})</span>
+                    )}
+                  </button>
+                );
+              }
+            )}
+          </div>
+
+          {/* Notices List */}
+          {filteredNotices.length > 0 ? (
             <div className="space-y-4">
-              {pendingCapitalCalls.slice(0, 3).map((cc) => (
-                <CapitalCallCard key={cc.id} capitalCall={cc} />
+              {filteredNotices.slice(0, 4).map((notice) => (
+                <NoticeCard
+                  key={notice.id}
+                  notice={notice}
+                  onAction={(n) => {
+                    if (n.actionUrl) {
+                      window.location.href = n.actionUrl;
+                    }
+                  }}
+                />
               ))}
+              {filteredNotices.length > 4 && (
+                <Link to="/investor/notices">
+                  <Button variant="outline" className="w-full">
+                    View {filteredNotices.length - 4} more notices
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="rounded-lg border bg-card p-8 text-center">
-              <DollarSign className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <Bell className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <p className="mt-4 text-muted-foreground">
-                No pending capital calls
+                {noticeFilter === 'all'
+                  ? 'No notices at this time'
+                  : `No ${filterLabels[noticeFilter].toLowerCase()} notices`}
               </p>
             </div>
           )}

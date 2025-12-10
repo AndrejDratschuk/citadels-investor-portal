@@ -81,3 +81,5 @@ export const propertyTypeLabels: Record<string, string> = {
   other: 'Other',
 };
 
+
+

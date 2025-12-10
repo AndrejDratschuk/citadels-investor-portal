@@ -216,3 +216,5 @@ export class DealsService {
 
 export const dealsService = new DealsService();
 
+
+

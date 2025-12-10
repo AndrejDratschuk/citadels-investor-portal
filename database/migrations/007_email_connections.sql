@@ -32,3 +32,5 @@ CREATE INDEX IF NOT EXISTS idx_email_connections_user_id ON email_connections(us
 CREATE INDEX IF NOT EXISTS idx_email_connections_fund_id ON email_connections(fund_id);
 CREATE INDEX IF NOT EXISTS idx_email_connections_provider ON email_connections(provider);
 
+
+

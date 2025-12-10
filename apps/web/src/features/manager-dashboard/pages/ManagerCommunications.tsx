@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   MessageSquare,
   Mail,
@@ -18,10 +19,16 @@ import {
   Plus,
   Send,
   X,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
 import { formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { investorsApi } from '@/lib/api/investors';
+import { emailApi } from '@/lib/api/email';
+import { communicationsApi } from '@/lib/api/communications';
 
 type CommunicationType = 'email' | 'meeting' | 'phone_call';
 type FilterType = 'all' | CommunicationType;
@@ -284,6 +291,221 @@ interface CommunicationDetailProps {
   onBack: () => void;
 }
 
+// Compose Email Modal
+interface ComposeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  investors: { id: string; name: string; email: string }[];
+  onSuccess: () => void;
+}
+
+function ComposeEmailModal({ isOpen, onClose, investors, onSuccess }: ComposeModalProps) {
+  const [selectedInvestorId, setSelectedInvestorId] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // Get email connection status
+  const { data: emailStatus } = useQuery({
+    queryKey: ['email', 'status'],
+    queryFn: emailApi.getStatus,
+  });
+
+  const selectedInvestor = investors.find((i) => i.id === selectedInvestorId);
+
+  const handleSend = async () => {
+    if (!selectedInvestor || !subject.trim() || !body.trim()) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (!emailStatus?.connected) {
+      setError('Please connect your email account in Settings first');
+      return;
+    }
+
+    setSending(true);
+    setError(null);
+
+    try {
+      // Send the email
+      const result = await emailApi.send({
+        to: selectedInvestor.email,
+        subject: subject.trim(),
+        body: body.trim(),
+      });
+
+      // Log the communication in the database
+      await communicationsApi.create(selectedInvestorId, {
+        type: 'email',
+        title: subject.trim(),
+        content: body.trim(),
+        occurredAt: new Date().toISOString(),
+        emailFrom: result.from,
+        emailTo: selectedInvestor.email,
+      });
+
+      setSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+        resetForm();
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send email');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedInvestorId('');
+    setSubject('');
+    setBody('');
+    setError(null);
+    setSuccess(false);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-2xl mx-4 bg-card rounded-xl shadow-xl border overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            Compose Email
+          </h2>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-lg hover:bg-muted transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Email Status Warning */}
+        {!emailStatus?.connected && (
+          <div className="mx-4 mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-2 text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>
+              No email connected.{' '}
+              <Link to="/manager/settings" className="underline font-medium">
+                Connect your email
+              </Link>{' '}
+              to send messages.
+            </span>
+          </div>
+        )}
+
+        {emailStatus?.connected && (
+          <div className="mx-4 mt-4 p-3 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2 text-sm text-green-800">
+            <CheckCircle className="h-4 w-4 flex-shrink-0" />
+            <span>
+              Sending from: <strong>{emailStatus.email}</strong>
+            </span>
+          </div>
+        )}
+
+        {/* Form */}
+        <div className="p-4 space-y-4">
+          {/* Recipient */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">To:</label>
+            <select
+              value={selectedInvestorId}
+              onChange={(e) => setSelectedInvestorId(e.target.value)}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Select an investor...</option>
+              {investors.map((investor) => (
+                <option key={investor.id} value={investor.id}>
+                  {investor.name} ({investor.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subject */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Subject:</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Enter subject..."
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          {/* Body */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Message:</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Write your message..."
+              rows={8}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+            />
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Success */}
+          {success && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              Email sent successfully!
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-4 border-t bg-muted/30">
+          <Button variant="outline" onClick={handleClose} disabled={sending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSend}
+            disabled={sending || !selectedInvestorId || !subject.trim() || !body.trim() || !emailStatus?.connected}
+          >
+            {sending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send Email
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CommunicationDetail({ communication, onBack }: CommunicationDetailProps) {
   const config = typeConfig[communication.type];
   const Icon = config.icon;
@@ -417,6 +639,7 @@ function CommunicationDetail({ communication, onBack }: CommunicationDetailProps
 }
 
 export function ManagerCommunications() {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [dealFilter, setDealFilter] = useState<string | null>(
@@ -430,6 +653,23 @@ export function ManagerCommunications() {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showComposeModal, setShowComposeModal] = useState(false);
+
+  // Fetch real investors from API
+  const { data: investorsList } = useQuery({
+    queryKey: ['investors'],
+    queryFn: investorsApi.getAll,
+  });
+
+  // Transform investors for the modal
+  const investorsForModal = (investorsList || []).map((inv) => ({
+    id: inv.id,
+    name: `${inv.firstName} ${inv.lastName}`,
+    email: inv.email,
+  }));
+
+  // Use real investors if available, otherwise fall back to mock
+  const displayInvestors = investorsForModal.length > 0 ? investorsForModal : mockInvestors;
 
   // Filter communications
   const filteredCommunications = mockCommunications.filter((c) => {
@@ -486,11 +726,22 @@ export function ManagerCommunications() {
             View and manage all investor communications
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setShowComposeModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
           New Communication
         </Button>
       </div>
+
+      {/* Compose Email Modal */}
+      <ComposeEmailModal
+        isOpen={showComposeModal}
+        onClose={() => setShowComposeModal(false)}
+        investors={displayInvestors}
+        onSuccess={() => {
+          // Refresh communications list (when connected to real API)
+          queryClient.invalidateQueries({ queryKey: ['communications'] });
+        }}
+      />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">

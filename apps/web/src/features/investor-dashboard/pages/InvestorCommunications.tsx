@@ -13,11 +13,13 @@ import {
   Building2,
   ChevronRight,
   Calendar,
+  Plus,
+  X,
 } from 'lucide-react';
 import { formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useCommunications, useMarkAsRead, InvestorCommunication } from '../hooks/useCommunications';
+import { useCommunications, useMarkAsRead, useUpdateTags, suggestedTags, InvestorCommunication } from '../hooks/useCommunications';
 import { CommunicationType } from '../components/CommunicationsPreview';
 
 type FilterType = 'all' | CommunicationType;
@@ -143,11 +145,16 @@ function CommunicationRow({ communication, isSelected, onClick }: CommunicationR
 interface CommunicationDetailProps {
   communication: InvestorCommunication;
   onBack: () => void;
+  onUpdateTags: (tags: string[]) => void;
 }
 
-function CommunicationDetail({ communication, onBack }: CommunicationDetailProps) {
+function CommunicationDetail({ communication, onBack, onUpdateTags }: CommunicationDetailProps) {
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [newTag, setNewTag] = useState('');
   const config = typeConfig[communication.type];
   const Icon = config.icon;
+
+  const currentTags = communication.tags || [];
 
   let from = 'Fund Manager';
   if (communication.type === 'email' && communication.emailFrom) {
@@ -155,6 +162,22 @@ function CommunicationDetail({ communication, onBack }: CommunicationDetailProps
   } else if (communication.type === 'meeting' && communication.meetingAttendees?.length) {
     from = communication.meetingAttendees.join(', ');
   }
+
+  const handleAddTag = (tag: string) => {
+    const trimmedTag = tag.trim().toLowerCase();
+    if (trimmedTag && !currentTags.includes(trimmedTag)) {
+      onUpdateTags([...currentTags, trimmedTag]);
+    }
+    setNewTag('');
+    setShowTagInput(false);
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    onUpdateTags(currentTags.filter((t) => t !== tagToRemove));
+  };
+
+  // Get suggested tags that aren't already applied
+  const availableSuggestions = suggestedTags.filter((t) => !currentTags.includes(t));
 
   return (
     <div className="h-full flex flex-col">
@@ -223,19 +246,84 @@ function CommunicationDetail({ communication, onBack }: CommunicationDetailProps
             </span>
           </div>
         )}
-        {communication.tags && communication.tags.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
+
+        {/* Tags Section with Add/Remove */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-muted-foreground" />
-            {communication.tags.map((tag) => (
+            <span className="text-sm text-muted-foreground">Tags:</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentTags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
               >
                 {tag}
+                <button
+                  onClick={() => handleRemoveTag(tag)}
+                  className="ml-0.5 hover:text-red-600 transition-colors"
+                  title="Remove tag"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </span>
             ))}
+            {showTagInput ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddTag(newTag);
+                    } else if (e.key === 'Escape') {
+                      setShowTagInput(false);
+                      setNewTag('');
+                    }
+                  }}
+                  placeholder="Type tag..."
+                  autoFocus
+                  className="h-6 w-24 rounded border px-2 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  onClick={() => {
+                    setShowTagInput(false);
+                    setNewTag('');
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowTagInput(true)}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-muted-foreground/50 px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Add tag
+              </button>
+            )}
           </div>
-        )}
+
+          {/* Suggested Tags */}
+          {showTagInput && availableSuggestions.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <span className="text-xs text-muted-foreground">Suggestions:</span>
+              {availableSuggestions.slice(0, 5).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => handleAddTag(tag)}
+                  className="rounded-full bg-muted px-2 py-0.5 text-xs hover:bg-muted/80 transition-colors"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -255,6 +343,7 @@ function CommunicationDetail({ communication, onBack }: CommunicationDetailProps
 export function InvestorCommunications() {
   const { data, isLoading, error } = useCommunications();
   const markAsRead = useMarkAsRead();
+  const updateTags = useUpdateTags();
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [tagFilter, setTagFilter] = useState<TagFilter>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -267,6 +356,11 @@ export function InvestorCommunications() {
     if (!communication.isRead) {
       markAsRead.mutate(communication.id);
     }
+  };
+
+  // Handle updating tags for a communication
+  const handleUpdateTags = (communicationId: string, tags: string[]) => {
+    updateTags.mutate({ communicationId, tags });
   };
 
   // Filter communications
@@ -463,6 +557,7 @@ export function InvestorCommunications() {
             <CommunicationDetail
               communication={selectedCommunication}
               onBack={() => setSelectedId(null)}
+              onUpdateTags={(tags) => handleUpdateTags(selectedCommunication.id, tags)}
             />
           ) : (
             <div className="p-8 text-center">

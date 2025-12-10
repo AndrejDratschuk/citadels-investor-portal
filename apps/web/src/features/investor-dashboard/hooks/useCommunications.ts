@@ -215,6 +215,20 @@ export function useCommunications() {
   });
 }
 
+// Default suggested tags
+export const suggestedTags = [
+  'important',
+  'follow-up',
+  'capital-call',
+  'distribution',
+  'quarterly-report',
+  'tax',
+  'k1',
+  'meeting',
+  'action-required',
+  'archived',
+];
+
 export function useMarkAsRead() {
   const queryClient = useQueryClient();
 
@@ -258,6 +272,65 @@ export function useMarkAsRead() {
     },
     onError: (_err, _communicationId, context) => {
       // Roll back on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['investor', 'communications'], context.previousData);
+      }
+    },
+  });
+}
+
+interface UpdateTagsInput {
+  communicationId: string;
+  tags: string[];
+}
+
+export function useUpdateTags() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ communicationId, tags }: UpdateTagsInput) => {
+      // TODO: Replace with actual API call
+      // await api.patch(`/communications/${communicationId}/tags`, { tags });
+      return { communicationId, tags };
+    },
+    onMutate: async ({ communicationId, tags }) => {
+      await queryClient.cancelQueries({ queryKey: ['investor', 'communications'] });
+
+      const previousData = queryClient.getQueryData<CommunicationsData>(['investor', 'communications']);
+
+      if (previousData) {
+        const updatedAll = previousData.all.map((c) =>
+          c.id === communicationId ? { ...c, tags } : c
+        );
+        const updatedPreviews = previousData.previews.map((p) =>
+          p.id === communicationId ? { ...p, tags } : p
+        );
+
+        // Rebuild byTag
+        const byTag: Record<string, InvestorCommunication[]> = {};
+        updatedAll.forEach((c) => {
+          c.tags?.forEach((tag) => {
+            if (!byTag[tag]) byTag[tag] = [];
+            byTag[tag].push(c);
+          });
+        });
+
+        queryClient.setQueryData<CommunicationsData>(['investor', 'communications'], {
+          ...previousData,
+          all: updatedAll,
+          previews: updatedPreviews,
+          byTag,
+          byType: {
+            email: updatedAll.filter((c) => c.type === 'email'),
+            meeting: updatedAll.filter((c) => c.type === 'meeting'),
+            phone_call: updatedAll.filter((c) => c.type === 'phone_call'),
+          },
+        });
+      }
+
+      return { previousData };
+    },
+    onError: (_err, _variables, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(['investor', 'communications'], context.previousData);
       }

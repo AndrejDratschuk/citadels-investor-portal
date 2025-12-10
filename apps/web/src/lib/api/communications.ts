@@ -3,6 +3,19 @@ import { Communication, CommunicationType } from '@flowveda/shared';
 
 export type { Communication, CommunicationType };
 
+export interface CommunicationWithInvestor extends Communication {
+  investor: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  deal: {
+    id: string;
+    name: string;
+  } | null;
+  tags: string[];
+}
+
 export interface CreateCommunicationInput {
   type: CommunicationType;
   title: string;
@@ -20,6 +33,11 @@ export interface CreateCommunicationInput {
 }
 
 export const communicationsApi = {
+  // Get all communications for the fund (manager view)
+  getAll: async (): Promise<CommunicationWithInvestor[]> => {
+    return api.get<CommunicationWithInvestor[]>('/communications');
+  },
+
   // Get communications for an investor
   getByInvestorId: async (investorId: string, type?: CommunicationType): Promise<Communication[]> => {
     const params = type ? `?type=${type}` : '';

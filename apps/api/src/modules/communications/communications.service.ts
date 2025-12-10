@@ -49,7 +49,62 @@ function mapDbToCommunication(db: DbCommunication): Communication {
   };
 }
 
+export interface CommunicationWithInvestor extends Communication {
+  investor: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  deal: {
+    id: string;
+    name: string;
+  } | null;
+  tags: string[];
+}
+
 export class CommunicationsService {
+  /**
+   * Get all communications for a fund (manager view)
+   */
+  async getAllByFundId(fundId: string): Promise<CommunicationWithInvestor[]> {
+    const { data, error } = await supabaseAdmin
+      .from('investor_communications')
+      .select(`
+        *,
+        investor:investors (
+          id,
+          first_name,
+          last_name,
+          email
+        ),
+        deal:deals (
+          id,
+          name
+        )
+      `)
+      .eq('fund_id', fundId)
+      .order('occurred_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching fund communications:', error);
+      throw new Error(`Failed to fetch communications: ${error.message}`);
+    }
+
+    return (data || []).map((item: any) => ({
+      ...mapDbToCommunication(item),
+      investor: item.investor ? {
+        id: item.investor.id,
+        name: `${item.investor.first_name} ${item.investor.last_name}`,
+        email: item.investor.email,
+      } : { id: '', name: 'Unknown', email: '' },
+      deal: item.deal ? {
+        id: item.deal.id,
+        name: item.deal.name,
+      } : null,
+      tags: item.tags || [],
+    }));
+  }
+
   async getByInvestorId(
     investorId: string,
     type?: CommunicationType

@@ -6,6 +6,15 @@ import { requireManager } from '../../common/middleware/rbac.middleware';
 const communicationsController = new CommunicationsController();
 
 export async function communicationsRoutes(fastify: FastifyInstance) {
+  // Get all communications for the fund (manager view)
+  fastify.get(
+    '/communications',
+    { preHandler: [authenticate, requireManager] },
+    async (request, reply) => {
+      return communicationsController.getAll(request as any, reply);
+    }
+  );
+
   // Get all communications for an investor
   fastify.get(
     '/investors/:investorId/communications',

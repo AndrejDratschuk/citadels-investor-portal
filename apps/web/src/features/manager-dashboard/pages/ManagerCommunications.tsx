@@ -670,6 +670,32 @@ export function ManagerCommunications() {
     queryFn: investorsApi.getAll,
   });
 
+  // Fetch real communications from API
+  const { data: communicationsList, isLoading: communicationsLoading } = useQuery({
+    queryKey: ['manager', 'communications'],
+    queryFn: communicationsApi.getAll,
+  });
+
+  // Use real data or empty array
+  const communications: Communication[] = (communicationsList || []).map((c) => ({
+    id: c.id,
+    type: c.type,
+    title: c.title,
+    content: c.content,
+    occurredAt: c.occurredAt,
+    emailFrom: c.emailFrom,
+    emailTo: c.emailTo,
+    meetingAttendees: c.meetingAttendees,
+    meetingDurationMinutes: c.meetingDurationMinutes,
+    callDirection: c.callDirection,
+    callDurationMinutes: c.callDurationMinutes,
+    source: c.source,
+    createdAt: c.createdAt,
+    tags: c.tags || [],
+    investor: c.investor,
+    deal: c.deal,
+  }));
+
   // Transform investors for the modal
   const investorsForModal = (investorsList || []).map((inv) => ({
     id: inv.id,
@@ -680,7 +706,6 @@ export function ManagerCommunications() {
   // Use real investors if available, otherwise fall back to mock
   const displayInvestors = investorsForModal.length > 0 ? investorsForModal : mockInvestors;
 
-  // Filter communications
   // Helper to determine if a communication is "sent" (to investor) or "received" (from investor)
   const isSentToInvestor = (comm: Communication): boolean => {
     if (comm.type === 'email') {
@@ -695,7 +720,7 @@ export function ManagerCommunications() {
     return true;
   };
 
-  const filteredCommunications = mockCommunications.filter((c) => {
+  const filteredCommunications = communications.filter((c) => {
     if (typeFilter !== 'all' && c.type !== typeFilter) return false;
     if (dealFilter && c.deal?.id !== dealFilter) return false;
     if (investorFilter && c.investor.id !== investorFilter) return false;
@@ -722,28 +747,28 @@ export function ManagerCommunications() {
   });
 
   // Count by direction
-  const sentCount = mockCommunications.filter((c) => 
+  const sentCount = communications.filter((c) => 
     c.type === 'email' || c.type === 'phone_call' ? isSentToInvestor(c) : true
   ).length;
-  const receivedCount = mockCommunications.filter((c) => 
+  const receivedCount = communications.filter((c) => 
     c.type === 'email' || c.type === 'phone_call' ? !isSentToInvestor(c) : true
   ).length;
 
   const selectedCommunication = selectedId
-    ? mockCommunications.find((c) => c.id === selectedId)
+    ? communications.find((c) => c.id === selectedId)
     : null;
 
   // Get unique tags from communications
   const availableTags = Array.from(
-    new Set(mockCommunications.flatMap((c) => c.tags))
+    new Set(communications.flatMap((c) => c.tags))
   );
 
   // Count by type
   const typeCounts = {
-    all: mockCommunications.length,
-    email: mockCommunications.filter((c) => c.type === 'email').length,
-    meeting: mockCommunications.filter((c) => c.type === 'meeting').length,
-    phone_call: mockCommunications.filter((c) => c.type === 'phone_call').length,
+    all: communications.length,
+    email: communications.filter((c) => c.type === 'email').length,
+    meeting: communications.filter((c) => c.type === 'meeting').length,
+    phone_call: communications.filter((c) => c.type === 'phone_call').length,
   };
 
   const clearFilters = () => {
@@ -780,8 +805,8 @@ export function ManagerCommunications() {
         onClose={() => setShowComposeModal(false)}
         investors={displayInvestors}
         onSuccess={() => {
-          // Refresh communications list (when connected to real API)
-          queryClient.invalidateQueries({ queryKey: ['communications'] });
+          // Refresh communications list
+          queryClient.invalidateQueries({ queryKey: ['manager', 'communications'] });
         }}
       />
 
@@ -790,7 +815,7 @@ export function ManagerCommunications() {
         {directionOptions.map((option) => {
           const Icon = option.icon;
           const count = option.id === 'all'
-            ? mockCommunications.length
+            ? communications.length
             : option.id === 'sent'
             ? sentCount
             : receivedCount;

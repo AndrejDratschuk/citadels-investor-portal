@@ -23,6 +23,35 @@ interface CreateCommunicationBody {
 }
 
 export class CommunicationsController {
+  /**
+   * Get all communications for the fund (manager view)
+   */
+  async getAll(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+
+    if (!fundId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized - no fund associated with user',
+      });
+    }
+
+    try {
+      const communications = await communicationsService.getAllByFundId(fundId);
+
+      return reply.send({
+        success: true,
+        data: communications,
+      });
+    } catch (error: any) {
+      console.error('Error fetching all communications:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to fetch communications',
+      });
+    }
+  }
+
   async getByInvestorId(request: FastifyRequest, reply: FastifyReply) {
     const { investorId } = request.params as { investorId: string };
     const { type } = request.query as { type?: CommunicationType };

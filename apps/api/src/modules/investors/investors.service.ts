@@ -253,7 +253,8 @@ export class InvestorsService {
    * Get investor's communications
    */
   async getInvestorCommunications(investorId: string): Promise<InvestorCommunication[]> {
-    const { data, error } = await supabaseAdmin
+    // First try with the new columns
+    let { data, error } = await supabaseAdmin
       .from('investor_communications')
       .select(`
         id,
@@ -284,13 +285,43 @@ export class InvestorsService {
       .eq('investor_id', investorId)
       .order('occurred_at', { ascending: false });
 
+    // If error about missing columns, try without them
+    if (error && (error.message?.includes('column') || error.code === '42703' || error.message?.includes('is_read') || error.message?.includes('tags'))) {
+      console.warn('Communications table missing new columns, falling back to basic query');
+      const fallbackResult = await supabaseAdmin
+        .from('investor_communications')
+        .select(`
+          id,
+          investor_id,
+          fund_id,
+          type,
+          title,
+          content,
+          occurred_at,
+          email_from,
+          email_to,
+          meeting_attendees,
+          meeting_duration_minutes,
+          call_direction,
+          call_duration_minutes,
+          source,
+          external_id,
+          created_by,
+          created_at,
+          deal:deals (
+            id,
+            name
+          )
+        `)
+        .eq('investor_id', investorId)
+        .order('occurred_at', { ascending: false });
+
+      data = fallbackResult.data;
+      error = fallbackResult.error;
+    }
+
     if (error) {
       console.error('Error fetching communications:', error);
-      // If the error is about missing columns (migration not run), return empty array
-      if (error.message?.includes('column') || error.code === '42703') {
-        console.warn('Communications table may need migration. Returning empty array.');
-        return [];
-      }
       throw new Error('Failed to fetch communications');
     }
 

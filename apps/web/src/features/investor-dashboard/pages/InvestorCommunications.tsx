@@ -400,10 +400,12 @@ export function InvestorCommunications() {
     );
   }
 
-  if (error) {
+  // Only show error if we have a real error (not just empty data)
+  if (error && !data) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-red-800">Failed to load communications</p>
+        <p className="text-sm text-red-600 mt-2">Please try again later or contact support.</p>
       </div>
     );
   }

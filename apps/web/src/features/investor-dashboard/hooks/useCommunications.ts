@@ -88,11 +88,19 @@ export function useCommunications() {
   return useQuery({
     queryKey: ['investor', 'communications'],
     queryFn: async (): Promise<CommunicationsData> => {
-      // Fetch from real API
-      const apiCommunications = await investorsApi.getMyCommunications();
+      let communications: InvestorCommunication[] = [];
       
-      // Transform to internal format
-      const communications = apiCommunications.map(transformApiCommunication);
+      try {
+        // Fetch from real API
+        const apiCommunications = await investorsApi.getMyCommunications();
+        
+        // Transform to internal format
+        communications = apiCommunications.map(transformApiCommunication);
+      } catch (error) {
+        // If API fails (e.g., migration not run), return empty data
+        console.warn('Failed to fetch communications from API, using empty data:', error);
+        communications = [];
+      }
 
       // Sort by date (newest first)
       communications.sort(

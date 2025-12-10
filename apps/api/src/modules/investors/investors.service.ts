@@ -256,7 +256,26 @@ export class InvestorsService {
     const { data, error } = await supabaseAdmin
       .from('investor_communications')
       .select(`
-        *,
+        id,
+        investor_id,
+        fund_id,
+        type,
+        title,
+        content,
+        occurred_at,
+        email_from,
+        email_to,
+        meeting_attendees,
+        meeting_duration_minutes,
+        call_direction,
+        call_duration_minutes,
+        source,
+        external_id,
+        created_by,
+        created_at,
+        is_read,
+        read_at,
+        tags,
         deal:deals (
           id,
           name
@@ -267,10 +286,15 @@ export class InvestorsService {
 
     if (error) {
       console.error('Error fetching communications:', error);
+      // If the error is about missing columns (migration not run), return empty array
+      if (error.message?.includes('column') || error.code === '42703') {
+        console.warn('Communications table may need migration. Returning empty array.');
+        return [];
+      }
       throw new Error('Failed to fetch communications');
     }
 
-    return data.map((comm: any) => this.formatCommunication(comm));
+    return (data || []).map((comm: any) => this.formatCommunication(comm));
   }
 
   /**

@@ -1,26 +1,7 @@
 import { api } from './client';
+import { Communication, CommunicationType } from '@flowveda/shared';
 
-export type CommunicationType = 'email' | 'meeting' | 'phone_call';
-
-export interface Communication {
-  id: string;
-  investorId: string;
-  fundId: string;
-  type: CommunicationType;
-  title: string;
-  content: string | null;
-  occurredAt: string;
-  emailFrom: string | null;
-  emailTo: string | null;
-  meetingAttendees: string[] | null;
-  meetingDurationMinutes: number | null;
-  callDirection: 'inbound' | 'outbound' | null;
-  callDurationMinutes: number | null;
-  source: string;
-  externalId: string | null;
-  createdBy: string | null;
-  createdAt: string;
-}
+export type { Communication, CommunicationType };
 
 export interface CreateCommunicationInput {
   type: CommunicationType;

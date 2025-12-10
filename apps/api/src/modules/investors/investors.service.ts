@@ -262,13 +262,7 @@ export class InvestorsService {
     // Use SELECT * to avoid column issues with migrations not yet run
     const { data, error } = await supabaseAdmin
       .from('investor_communications')
-      .select(`
-        *,
-        deal:deals (
-          id,
-          name
-        )
-      `)
+      .select('*')
       .eq('investor_id', investorId)
       .order('occurred_at', { ascending: false });
 
@@ -295,13 +289,7 @@ export class InvestorsService {
       })
       .eq('id', communicationId)
       .eq('investor_id', investorId)
-      .select(`
-        *,
-        deal:deals (
-          id,
-          name
-        )
-      `)
+      .select('*')
       .single();
 
     if (error) {
@@ -323,13 +311,7 @@ export class InvestorsService {
       })
       .eq('id', communicationId)
       .eq('investor_id', investorId)
-      .select(`
-        *,
-        deal:deals (
-          id,
-          name
-        )
-      `)
+      .select('*')
       .single();
 
     if (error) {

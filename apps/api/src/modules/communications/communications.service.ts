@@ -78,10 +78,6 @@ export class CommunicationsService {
           first_name,
           last_name,
           email
-        ),
-        deal:deals (
-          id,
-          name
         )
       `)
       .eq('fund_id', fundId)
@@ -102,10 +98,7 @@ export class CommunicationsService {
         name: `${item.investor.first_name} ${item.investor.last_name}`,
         email: item.investor.email,
       } : { id: '', name: 'Unknown', email: '' },
-      deal: item.deal ? {
-        id: item.deal.id,
-        name: item.deal.name,
-      } : null,
+      deal: null, // Deal join removed due to missing FK relationship
       tags: item.tags || [],
     }));
   }

@@ -234,6 +234,65 @@ export class InvestorsController {
       return reply.status(404).send({ success: false, error: 'Communication not found' });
     }
   }
+
+  /**
+   * Get fund contact info for investor
+   */
+  async getFundContact(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    try {
+      const investor = await investorsService.getInvestorByUserId(request.user.id);
+      const fundContact = await investorsService.getFundContact(investor.fundId);
+
+      return reply.send({
+        success: true,
+        data: fundContact,
+      });
+    } catch (error: any) {
+      console.error('[getFundContact] Error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to get fund contact',
+      });
+    }
+  }
+
+  /**
+   * Send email to fund (investor -> fund manager)
+   */
+  async sendEmailToFund(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { subject, body } = request.body as { subject: string; body: string };
+
+    if (!subject || !body) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Missing required fields: subject, body',
+      });
+    }
+
+    try {
+      const investor = await investorsService.getInvestorByUserId(request.user.id);
+      const result = await investorsService.sendEmailToFund(investor, subject, body);
+
+      return reply.send({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error('[sendEmailToFund] Error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to send email',
+      });
+    }
+  }
 }
 
 

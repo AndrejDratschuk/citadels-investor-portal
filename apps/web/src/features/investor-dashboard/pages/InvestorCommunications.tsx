@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   MessageSquare,
   Mail,
@@ -17,12 +18,18 @@ import {
   X,
   Send,
   Inbox,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
 import { formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCommunications, useMarkAsRead, useUpdateTags, suggestedTags, InvestorCommunication } from '../hooks/useCommunications';
 import { CommunicationType } from '../components/CommunicationsPreview';
+import { emailApi } from '@/lib/api/email';
+import { investorsApi } from '@/lib/api/investors';
+import { fundsApi } from '@/lib/api/funds';
 
 type FilterType = 'all' | CommunicationType;
 type TagFilter = string | null;
@@ -66,6 +73,171 @@ const typeConfig: Record<CommunicationType, {
     iconColor: 'text-green-600',
   },
 };
+
+// Compose Email Modal for Investors
+interface ComposeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeModalProps) {
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // Get fund contact info
+  const { data: fundContact, isLoading: loadingContact } = useQuery({
+    queryKey: ['fund-contact'],
+    queryFn: investorsApi.getFundContact,
+    enabled: isOpen,
+  });
+
+  const handleSend = async () => {
+    if (!subject.trim() || !body.trim()) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setSending(true);
+    setError(null);
+
+    try {
+      await investorsApi.sendEmailToFund(subject.trim(), body.trim());
+      setSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+        resetForm();
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send email');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSubject('');
+    setBody('');
+    setError(null);
+    setSuccess(false);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-2xl mx-4 bg-card rounded-xl shadow-xl border overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            Contact Fund Manager
+          </h2>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-lg hover:bg-muted transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Recipient Info */}
+        {loadingContact ? (
+          <div className="mx-4 mt-4 p-3 rounded-lg bg-muted flex items-center gap-2 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading fund contact...
+          </div>
+        ) : fundContact ? (
+          <div className="mx-4 mt-4 p-3 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2 text-sm text-green-800">
+            <CheckCircle className="h-4 w-4 flex-shrink-0" />
+            <span>
+              Sending to: <strong>{fundContact.managerName}</strong> at <strong>{fundContact.fundName}</strong>
+            </span>
+          </div>
+        ) : null}
+
+        {/* Form */}
+        <div className="p-4 space-y-4">
+          {/* Subject */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Subject:</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Enter subject..."
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          {/* Body */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Message:</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Write your message..."
+              rows={8}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+            />
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Success */}
+          {success && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              Message sent successfully!
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-4 border-t bg-muted/30">
+          <Button variant="outline" onClick={handleClose} disabled={sending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSend}
+            disabled={sending || !subject.trim() || !body.trim() || !fundContact}
+          >
+            {sending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send Message
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface CommunicationRowProps {
   communication: InvestorCommunication;
@@ -350,6 +522,7 @@ function CommunicationDetail({ communication, onBack, onUpdateTags }: Communicat
 }
 
 export function InvestorCommunications() {
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useCommunications();
   const markAsRead = useMarkAsRead();
   const updateTags = useUpdateTags();
@@ -358,6 +531,7 @@ export function InvestorCommunications() {
   const [tagFilter, setTagFilter] = useState<TagFilter>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showComposeModal, setShowComposeModal] = useState(false);
 
   // Helper to determine if a communication is "sent" (from investor) or "received" (from fund)
   // For investor view: "received" = from fund to investor, "sent" = from investor to fund
@@ -465,15 +639,30 @@ export function InvestorCommunications() {
             View messages and updates from your fund manager
           </p>
         </div>
-        {data && data.unreadCount > 0 && (
-          <div className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
-            <span className="text-sm font-medium text-blue-700">
-              {data.unreadCount} unread
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {data && data.unreadCount > 0 && (
+            <div className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5">
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              <span className="text-sm font-medium text-blue-700">
+                {data.unreadCount} unread
+              </span>
+            </div>
+          )}
+          <Button onClick={() => setShowComposeModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Contact Fund
+          </Button>
+        </div>
       </div>
+
+      {/* Compose Modal */}
+      <ComposeEmailModal
+        isOpen={showComposeModal}
+        onClose={() => setShowComposeModal(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['investor', 'communications'] });
+        }}
+      />
 
       {/* Search & Filters */}
       <div className="space-y-4">

@@ -54,6 +54,16 @@ export async function investorsRoutes(fastify: FastifyInstance) {
     return investorsController.updateCommunicationTags(request as any, reply);
   });
 
+  // Get fund contact info
+  fastify.get('/me/fund-contact', { preHandler: investorPreHandler }, async (request, reply) => {
+    return investorsController.getFundContact(request as any, reply);
+  });
+
+  // Send email to fund
+  fastify.post('/me/send-email', { preHandler: investorPreHandler }, async (request, reply) => {
+    return investorsController.sendEmailToFund(request as any, reply);
+  });
+
   // Manager routes - require manager role
   const managerPreHandler = [authenticate, requireManager];
 

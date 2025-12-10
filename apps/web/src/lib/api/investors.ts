@@ -193,6 +193,16 @@ export const investorsApi = {
     return api.patch<InvestorCommunication>(`/investors/me/communications/${communicationId}/tags`, { tags });
   },
 
+  // Get fund contact info
+  getFundContact: async (): Promise<{ fundName: string; email: string; managerName: string }> => {
+    return api.get<{ fundName: string; email: string; managerName: string }>('/investors/me/fund-contact');
+  },
+
+  // Send email to fund
+  sendEmailToFund: async (subject: string, body: string): Promise<{ success: boolean; messageId?: string }> => {
+    return api.post<{ success: boolean; messageId?: string }>('/investors/me/send-email', { subject, body });
+  },
+
   // ==================== Manager View ====================
 
   // Get all investors for the fund (manager only)

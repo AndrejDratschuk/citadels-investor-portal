@@ -351,6 +351,87 @@ export class InvestorsService {
     };
   }
 
+  /**
+   * Get fund contact info for investor
+   */
+  async getFundContact(fundId: string): Promise<{ fundName: string; email: string; managerName: string }> {
+    // Get fund info
+    const { data: fund, error: fundError } = await supabaseAdmin
+      .from('funds')
+      .select('id, name, created_by')
+      .eq('id', fundId)
+      .single();
+
+    if (fundError || !fund) {
+      throw new Error('Fund not found');
+    }
+
+    // Get fund manager (creator) info
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('email, first_name, last_name')
+      .eq('id', fund.created_by)
+      .single();
+
+    if (managerError || !manager) {
+      throw new Error('Fund manager not found');
+    }
+
+    return {
+      fundName: fund.name,
+      email: manager.email,
+      managerName: `${manager.first_name || ''} ${manager.last_name || ''}`.trim() || 'Fund Manager',
+    };
+  }
+
+  /**
+   * Send email to fund (from investor)
+   */
+  async sendEmailToFund(
+    investor: any,
+    subject: string,
+    body: string
+  ): Promise<{ success: boolean; messageId?: string }> {
+    // Get fund contact
+    const fundContact = await this.getFundContact(investor.fundId);
+
+    // For now, we'll use a simple email service
+    // In production, you'd use a real email service
+    console.log('[sendEmailToFund] Sending email from', investor.email, 'to', fundContact.email);
+    console.log('[sendEmailToFund] Subject:', subject);
+
+    // Store the communication in the database
+    const { data: communication, error: commError } = await supabaseAdmin
+      .from('investor_communications')
+      .insert({
+        investor_id: investor.id,
+        fund_id: investor.fundId,
+        type: 'email',
+        title: subject,
+        content: body,
+        occurred_at: new Date().toISOString(),
+        email_from: investor.email,
+        email_to: fundContact.email,
+        source: 'manual',
+      })
+      .select()
+      .single();
+
+    if (commError) {
+      console.error('[sendEmailToFund] Error storing communication:', commError);
+      throw new Error('Failed to store communication');
+    }
+
+    // TODO: Actually send the email via email service
+    // For now, we just store it in the database
+    // You can integrate with Resend, SendGrid, etc.
+
+    return {
+      success: true,
+      messageId: communication.id,
+    };
+  }
+
   private formatInvestor(data: any) {
     return {
       id: data.id,

@@ -23,6 +23,8 @@ export class InvestorsService {
    * Get investor profile by user ID
    */
   async getInvestorByUserId(userId: string) {
+    console.log('[getInvestorByUserId] Looking up investor for user_id:', userId);
+    
     const { data, error } = await supabaseAdmin
       .from('investors')
       .select('*')
@@ -30,10 +32,12 @@ export class InvestorsService {
       .single();
 
     if (error) {
-      console.error('Error fetching investor:', error);
+      console.error('[getInvestorByUserId] Error fetching investor:', error);
+      console.error('[getInvestorByUserId] User ID was:', userId);
       throw new Error('Investor not found');
     }
 
+    console.log('[getInvestorByUserId] Found investor:', data.id, data.email);
     return this.formatInvestor(data);
   }
 
@@ -255,30 +259,11 @@ export class InvestorsService {
   async getInvestorCommunications(investorId: string): Promise<InvestorCommunication[]> {
     console.log('[getInvestorCommunications] Querying for investor_id:', investorId);
     
-    // First try with the new columns
-    let { data, error } = await supabaseAdmin
+    // Use SELECT * to avoid column issues with migrations not yet run
+    const { data, error } = await supabaseAdmin
       .from('investor_communications')
       .select(`
-        id,
-        investor_id,
-        fund_id,
-        type,
-        title,
-        content,
-        occurred_at,
-        email_from,
-        email_to,
-        meeting_attendees,
-        meeting_duration_minutes,
-        call_direction,
-        call_duration_minutes,
-        source,
-        external_id,
-        created_by,
-        created_at,
-        is_read,
-        read_at,
-        tags,
+        *,
         deal:deals (
           id,
           name
@@ -288,42 +273,6 @@ export class InvestorsService {
       .order('occurred_at', { ascending: false });
 
     console.log('[getInvestorCommunications] Query result - data:', data?.length || 0, 'error:', error?.message || 'none');
-
-    // If error about missing columns, try without them
-    if (error && (error.message?.includes('column') || error.code === '42703' || error.message?.includes('is_read') || error.message?.includes('tags'))) {
-      console.warn('[getInvestorCommunications] Missing columns, falling back to basic query');
-      const fallbackResult = await supabaseAdmin
-        .from('investor_communications')
-        .select(`
-          id,
-          investor_id,
-          fund_id,
-          type,
-          title,
-          content,
-          occurred_at,
-          email_from,
-          email_to,
-          meeting_attendees,
-          meeting_duration_minutes,
-          call_direction,
-          call_duration_minutes,
-          source,
-          external_id,
-          created_by,
-          created_at,
-          deal:deals (
-            id,
-            name
-          )
-        `)
-        .eq('investor_id', investorId)
-        .order('occurred_at', { ascending: false });
-
-      data = fallbackResult.data;
-      error = fallbackResult.error;
-      console.log('[getInvestorCommunications] Fallback result - data:', data?.length || 0, 'error:', error?.message || 'none');
-    }
 
     if (error) {
       console.error('[getInvestorCommunications] Error fetching communications:', error);

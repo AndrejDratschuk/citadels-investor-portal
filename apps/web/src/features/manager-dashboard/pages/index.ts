@@ -7,6 +7,7 @@ export * from './CreateDeal';
 export * from './CapitalCallsList';
 export * from './CapitalCallDetail';
 export * from './CreateCapitalCall';
+export * from './ManagerCommunications';
 export * from './DocumentsManager';
 export * from './FundSettings';
 export * from './OnboardingQueue';

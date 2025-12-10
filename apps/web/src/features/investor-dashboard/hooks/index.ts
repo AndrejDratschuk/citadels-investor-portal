@@ -3,5 +3,6 @@ export * from './useInvestments';
 export * from './useDocuments';
 export * from './useCapitalCalls';
 export * from './useNotices';
+export * from './useCommunications';
 export * from './useRealtimeSubscriptions';
 

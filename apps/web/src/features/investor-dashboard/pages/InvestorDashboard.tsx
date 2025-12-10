@@ -13,9 +13,11 @@ import { formatCurrency } from '@flowveda/shared';
 import { useInvestorStats, useInvestorProfile } from '../hooks/useInvestorData';
 import { useDocuments } from '../hooks/useDocuments';
 import { useNotices } from '../hooks/useNotices';
+import { useCommunications } from '../hooks/useCommunications';
 import { StatsCard } from '../components/StatsCard';
 import { DocumentList } from '../components/DocumentList';
 import { NoticeCard, NoticeType } from '../components/NoticeCard';
+import { CommunicationsPreview } from '../components/CommunicationsPreview';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -36,9 +38,10 @@ export function InvestorDashboard() {
   const { data: stats, isLoading: statsLoading } = useInvestorStats();
   const { data: documents, isLoading: docsLoading } = useDocuments();
   const { data: noticesData, isLoading: noticesLoading } = useNotices();
+  const { data: communicationsData, isLoading: commsLoading } = useCommunications();
   const [noticeFilter, setNoticeFilter] = useState<NoticeFilter>('all');
 
-  const isLoading = profileLoading || statsLoading || docsLoading || noticesLoading;
+  const isLoading = profileLoading || statsLoading || docsLoading || noticesLoading || commsLoading;
 
   const actionRequiredNotices = noticesData?.actionRequired || [];
   const pendingCapitalCalls = noticesData?.capitalCalls.filter(
@@ -271,6 +274,13 @@ export function InvestorDashboard() {
           )}
         </div>
       </div>
+
+      {/* Communications Preview */}
+      <CommunicationsPreview
+        communications={communicationsData?.previews || []}
+        isLoading={commsLoading}
+        limit={5}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   InvestorInvestments,
   InvestorInvestmentDetail,
   InvestorDocuments,
+  InvestorCommunications,
   InvestorProfile,
 } from './features/investor-dashboard/pages';
 import {
@@ -21,6 +22,7 @@ import {
   CapitalCallsList,
   CapitalCallDetail,
   CreateCapitalCall,
+  ManagerCommunications,
   DocumentsManager,
   FundSettings,
 } from './features/manager-dashboard/pages';
@@ -103,6 +105,14 @@ export const router = createBrowserRouter([
         element: <InvestorDocuments />,
       },
       {
+        path: 'communications',
+        element: <InvestorCommunications />,
+      },
+      {
+        path: 'communications/:id',
+        element: <InvestorCommunications />,
+      },
+      {
         path: 'profile',
         element: <InvestorProfile />,
       },
@@ -155,6 +165,10 @@ export const router = createBrowserRouter([
       {
         path: 'capital-calls/:id',
         element: <CapitalCallDetail />,
+      },
+      {
+        path: 'communications',
+        element: <ManagerCommunications />,
       },
       {
         path: 'documents',

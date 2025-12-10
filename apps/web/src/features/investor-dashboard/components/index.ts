@@ -3,5 +3,6 @@ export * from './InvestmentCard';
 export * from './DocumentList';
 export * from './CapitalCallCard';
 export * from './NoticeCard';
+export * from './CommunicationsPreview';
 
 

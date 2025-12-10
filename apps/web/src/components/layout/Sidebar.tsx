@@ -12,6 +12,7 @@ import {
   Receipt,
   Settings,
   UserPlus,
+  MessageSquare,
 } from 'lucide-react';
 
 interface NavItem {
@@ -24,6 +25,7 @@ const investorNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/investor/dashboard', icon: LayoutDashboard },
   { title: 'Investments', href: '/investor/investments', icon: Building2 },
   { title: 'Documents', href: '/investor/documents', icon: FileText },
+  { title: 'Communications', href: '/investor/communications', icon: MessageSquare },
   { title: 'Profile', href: '/investor/profile', icon: Settings },
 ];
 
@@ -33,6 +35,7 @@ const managerNavItems: NavItem[] = [
   { title: 'Investors', href: '/manager/investors', icon: Users },
   { title: 'Deals', href: '/manager/deals', icon: Building2 },
   { title: 'Capital Calls', href: '/manager/capital-calls', icon: DollarSign },
+  { title: 'Communications', href: '/manager/communications', icon: MessageSquare },
   { title: 'Documents', href: '/manager/documents', icon: FileText },
   { title: 'Reports', href: '/manager/reports', icon: Receipt },
   { title: 'Settings', href: '/manager/settings', icon: Settings },

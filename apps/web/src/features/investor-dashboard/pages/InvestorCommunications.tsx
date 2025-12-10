@@ -27,9 +27,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCommunications, useMarkAsRead, useUpdateTags, suggestedTags, InvestorCommunication } from '../hooks/useCommunications';
 import { CommunicationType } from '../components/CommunicationsPreview';
-import { emailApi } from '@/lib/api/email';
 import { investorsApi } from '@/lib/api/investors';
-import { fundsApi } from '@/lib/api/funds';
 
 type FilterType = 'all' | CommunicationType;
 type TagFilter = string | null;

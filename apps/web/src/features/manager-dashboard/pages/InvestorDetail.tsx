@@ -509,6 +509,7 @@ export function InvestorDetail() {
           <CommunicationsList
             communications={communications}
             isLoading={communicationsLoading}
+            investorEmail={investor?.email}
           />
         </div>
       )}

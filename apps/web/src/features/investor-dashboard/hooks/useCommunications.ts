@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
 import { CommunicationPreviewItem, CommunicationType } from '../components/CommunicationsPreview';
 
 export interface InvestorCommunication {

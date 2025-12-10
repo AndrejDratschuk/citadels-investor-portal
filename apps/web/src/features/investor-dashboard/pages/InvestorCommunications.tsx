@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   MessageSquare,
   Mail,
@@ -18,7 +18,7 @@ import {
 import { formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useCommunications, useCommunicationById, InvestorCommunication } from '../hooks/useCommunications';
+import { useCommunications, InvestorCommunication } from '../hooks/useCommunications';
 import { CommunicationType } from '../components/CommunicationsPreview';
 
 type FilterType = 'all' | CommunicationType;
@@ -56,20 +56,6 @@ const typeConfig: Record<CommunicationType, {
     iconColor: 'text-green-600',
   },
 };
-
-// Default tags that can be used for filtering
-const defaultTags = [
-  'capital-call',
-  'distribution',
-  'quarterly-report',
-  'annual',
-  'tax',
-  'k1',
-  'meeting',
-  'follow-up',
-  'performance',
-  'important',
-];
 
 interface CommunicationRowProps {
   communication: InvestorCommunication;

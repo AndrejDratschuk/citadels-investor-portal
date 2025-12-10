@@ -181,22 +181,6 @@ const mockInvestors = [
   { id: '5', name: 'Robert Wilson', email: 'robert.wilson@email.com' },
 ];
 
-// Default tags
-const defaultTags = [
-  'capital-call',
-  'distribution',
-  'quarterly-report',
-  'annual',
-  'tax',
-  'k1',
-  'meeting',
-  'follow-up',
-  'performance',
-  'bulk-send',
-  'important',
-  'all-investors',
-];
-
 const filterOptions: { id: FilterType; label: string; icon: typeof Mail }[] = [
   { id: 'all', label: 'All', icon: MessageSquare },
   { id: 'email', label: 'Emails', icon: Mail },

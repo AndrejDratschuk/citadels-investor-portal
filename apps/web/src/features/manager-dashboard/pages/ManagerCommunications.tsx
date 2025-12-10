@@ -22,6 +22,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
+  Inbox,
 } from 'lucide-react';
 import { formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,13 @@ import { communicationsApi } from '@/lib/api/communications';
 
 type CommunicationType = 'email' | 'meeting' | 'phone_call';
 type FilterType = 'all' | CommunicationType;
+type DirectionFilter = 'all' | 'sent' | 'received';
+
+const directionOptions: { id: DirectionFilter; label: string; icon: typeof Send }[] = [
+  { id: 'all', label: 'All', icon: MessageSquare },
+  { id: 'sent', label: 'Sent', icon: Send },
+  { id: 'received', label: 'Received', icon: Inbox },
+];
 
 interface Communication {
   id: string;
@@ -642,6 +650,7 @@ export function ManagerCommunications() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
   const [dealFilter, setDealFilter] = useState<string | null>(
     searchParams.get('deal') || null
   );
@@ -672,11 +681,35 @@ export function ManagerCommunications() {
   const displayInvestors = investorsForModal.length > 0 ? investorsForModal : mockInvestors;
 
   // Filter communications
+  // Helper to determine if a communication is "sent" (to investor) or "received" (from investor)
+  const isSentToInvestor = (comm: Communication): boolean => {
+    if (comm.type === 'email') {
+      // If emailTo matches investor email, it was sent TO the investor
+      return comm.emailTo?.toLowerCase() === comm.investor.email.toLowerCase();
+    }
+    if (comm.type === 'phone_call') {
+      // Outbound calls are "sent" to investor
+      return comm.callDirection === 'outbound';
+    }
+    // Meetings are shown in both
+    return true;
+  };
+
   const filteredCommunications = mockCommunications.filter((c) => {
     if (typeFilter !== 'all' && c.type !== typeFilter) return false;
     if (dealFilter && c.deal?.id !== dealFilter) return false;
     if (investorFilter && c.investor.id !== investorFilter) return false;
     if (tagFilter && !c.tags.includes(tagFilter)) return false;
+    
+    // Direction filter
+    if (directionFilter !== 'all') {
+      if (c.type === 'email' || c.type === 'phone_call') {
+        const isSent = isSentToInvestor(c);
+        if (directionFilter === 'sent' && !isSent) return false;
+        if (directionFilter === 'received' && isSent) return false;
+      }
+    }
+    
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchesTitle = c.title.toLowerCase().includes(query);
@@ -687,6 +720,14 @@ export function ManagerCommunications() {
     }
     return true;
   });
+
+  // Count by direction
+  const sentCount = mockCommunications.filter((c) => 
+    c.type === 'email' || c.type === 'phone_call' ? isSentToInvestor(c) : true
+  ).length;
+  const receivedCount = mockCommunications.filter((c) => 
+    c.type === 'email' || c.type === 'phone_call' ? !isSentToInvestor(c) : true
+  ).length;
 
   const selectedCommunication = selectedId
     ? mockCommunications.find((c) => c.id === selectedId)
@@ -707,6 +748,7 @@ export function ManagerCommunications() {
 
   const clearFilters = () => {
     setTypeFilter('all');
+    setDirectionFilter('all');
     setDealFilter(null);
     setInvestorFilter(null);
     setTagFilter(null);
@@ -714,7 +756,7 @@ export function ManagerCommunications() {
     setSearchParams({});
   };
 
-  const hasActiveFilters = typeFilter !== 'all' || dealFilter || investorFilter || tagFilter || searchQuery;
+  const hasActiveFilters = typeFilter !== 'all' || directionFilter !== 'all' || dealFilter || investorFilter || tagFilter || searchQuery;
 
   return (
     <div className="space-y-6">
@@ -742,6 +784,42 @@ export function ManagerCommunications() {
           queryClient.invalidateQueries({ queryKey: ['communications'] });
         }}
       />
+
+      {/* Direction Tabs (Sent/Received) */}
+      <div className="flex items-center gap-2 border-b pb-3">
+        {directionOptions.map((option) => {
+          const Icon = option.icon;
+          const count = option.id === 'all'
+            ? mockCommunications.length
+            : option.id === 'sent'
+            ? sentCount
+            : receivedCount;
+          
+          return (
+            <button
+              key={option.id}
+              onClick={() => setDirectionFilter(option.id)}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-3',
+                directionFilter === option.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {option.label}
+              <span className={cn(
+                'rounded-full px-1.5 py-0.5 text-xs',
+                directionFilter === option.id
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-muted'
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">

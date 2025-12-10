@@ -15,6 +15,8 @@ import {
   Calendar,
   Plus,
   X,
+  Send,
+  Inbox,
 } from 'lucide-react';
 import { formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
@@ -24,12 +26,19 @@ import { CommunicationType } from '../components/CommunicationsPreview';
 
 type FilterType = 'all' | CommunicationType;
 type TagFilter = string | null;
+type DirectionFilter = 'all' | 'sent' | 'received';
 
 const filterOptions: { id: FilterType; label: string; icon: typeof Mail }[] = [
   { id: 'all', label: 'All', icon: MessageSquare },
   { id: 'email', label: 'Emails', icon: Mail },
   { id: 'meeting', label: 'Meetings', icon: Video },
   { id: 'phone_call', label: 'Calls', icon: Phone },
+];
+
+const directionOptions: { id: DirectionFilter; label: string; icon: typeof Send }[] = [
+  { id: 'all', label: 'All', icon: MessageSquare },
+  { id: 'sent', label: 'Sent', icon: Send },
+  { id: 'received', label: 'Received', icon: Inbox },
 ];
 
 const typeConfig: Record<CommunicationType, {
@@ -345,9 +354,26 @@ export function InvestorCommunications() {
   const markAsRead = useMarkAsRead();
   const updateTags = useUpdateTags();
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
   const [tagFilter, setTagFilter] = useState<TagFilter>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Helper to determine if a communication is "sent" (from investor) or "received" (from fund)
+  // For investor view: "received" = from fund to investor, "sent" = from investor to fund
+  const isReceivedFromFund = (comm: InvestorCommunication): boolean => {
+    if (comm.type === 'email') {
+      // If emailFrom is not the investor (emailTo), then it was received from fund
+      // Typically, emails to investors have emailTo = investor email
+      return !!comm.emailFrom && !comm.emailTo?.includes(comm.emailFrom);
+    }
+    if (comm.type === 'phone_call') {
+      // Inbound calls are received from fund
+      return comm.callDirection === 'inbound';
+    }
+    // Meetings are shown in both
+    return true;
+  };
 
   // Handle selecting a communication and marking it as read
   const handleSelectCommunication = (communication: InvestorCommunication) => {
@@ -369,6 +395,16 @@ export function InvestorCommunications() {
     if (typeFilter !== 'all' && c.type !== typeFilter) return false;
     // Tag filter
     if (tagFilter && !c.tags?.includes(tagFilter)) return false;
+    
+    // Direction filter
+    if (directionFilter !== 'all') {
+      if (c.type === 'email' || c.type === 'phone_call') {
+        const isReceived = isReceivedFromFund(c);
+        if (directionFilter === 'received' && !isReceived) return false;
+        if (directionFilter === 'sent' && isReceived) return false;
+      }
+    }
+    
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -379,6 +415,15 @@ export function InvestorCommunications() {
     }
     return true;
   }) || [];
+
+  // Count by direction
+  const allComms = data?.all || [];
+  const receivedCount = allComms.filter((c) => 
+    c.type === 'email' || c.type === 'phone_call' ? isReceivedFromFund(c) : true
+  ).length;
+  const sentCount = allComms.filter((c) => 
+    c.type === 'email' || c.type === 'phone_call' ? !isReceivedFromFund(c) : true
+  ).length;
 
   const selectedCommunication = selectedId
     ? data?.all.find((c) => c.id === selectedId)
@@ -444,6 +489,42 @@ export function InvestorCommunications() {
           />
         </div>
 
+        {/* Direction Tabs (Sent/Received) */}
+        <div className="flex items-center gap-2 border-b pb-3 mb-2">
+          {directionOptions.map((option) => {
+            const Icon = option.icon;
+            const count = option.id === 'all'
+              ? allComms.length
+              : option.id === 'received'
+              ? receivedCount
+              : sentCount;
+            
+            return (
+              <button
+                key={option.id}
+                onClick={() => setDirectionFilter(option.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-3',
+                  directionFilter === option.id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {option.label}
+                <span className={cn(
+                  'rounded-full px-1.5 py-0.5 text-xs',
+                  directionFilter === option.id
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted'
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Type Filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
           <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -451,8 +532,8 @@ export function InvestorCommunications() {
             const Icon = option.icon;
             const count =
               option.id === 'all'
-                ? data?.all.length || 0
-                : data?.byType[option.id]?.length || 0;
+                ? filteredCommunications.length
+                : filteredCommunications.filter((c) => c.type === option.id).length;
 
             return (
               <button

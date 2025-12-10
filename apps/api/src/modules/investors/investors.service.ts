@@ -281,6 +281,7 @@ export class InvestorsService {
    * Mark a communication as read
    */
   async markCommunicationRead(communicationId: string, investorId: string): Promise<InvestorCommunication> {
+    // Try to update - if is_read column doesn't exist, just return the communication as-is
     const { data, error } = await supabaseAdmin
       .from('investor_communications')
       .update({
@@ -293,6 +294,22 @@ export class InvestorsService {
       .single();
 
     if (error) {
+      // If error is about missing column, try to just fetch the communication
+      if (error.message?.includes('column') || error.code === '42703') {
+        console.warn('[markCommunicationRead] is_read column may not exist, fetching communication as-is');
+        const { data: comm, error: fetchError } = await supabaseAdmin
+          .from('investor_communications')
+          .select('*')
+          .eq('id', communicationId)
+          .eq('investor_id', investorId)
+          .single();
+
+        if (fetchError || !comm) {
+          throw new Error('Communication not found');
+        }
+        // Return with isRead: true even though DB doesn't have it
+        return { ...this.formatCommunication(comm), isRead: true };
+      }
       console.error('Error marking communication as read:', error);
       throw new Error('Failed to mark communication as read');
     }

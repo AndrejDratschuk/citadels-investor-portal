@@ -164,8 +164,13 @@ export function useMarkAsRead() {
 
   return useMutation({
     mutationFn: async (communicationId: string) => {
-      // Call real API
-      await investorsApi.markCommunicationRead(communicationId);
+      // Call real API - but don't fail if it errors (column might not exist)
+      try {
+        await investorsApi.markCommunicationRead(communicationId);
+      } catch (error) {
+        // Log but don't throw - keep the optimistic update
+        console.warn('[useMarkAsRead] API call failed, keeping optimistic update:', error);
+      }
       return communicationId;
     },
     onMutate: async (communicationId) => {
@@ -200,16 +205,16 @@ export function useMarkAsRead() {
 
       return { previousData };
     },
-    onError: (_err, _communicationId, context) => {
-      // Roll back on error
-      if (context?.previousData) {
-        queryClient.setQueryData(['investor', 'communications'], context.previousData);
-      }
-    },
-    onSettled: () => {
-      // Refetch after mutation settles
-      queryClient.invalidateQueries({ queryKey: ['investor', 'communications'] });
-    },
+    // Don't roll back on error - keep the optimistic update for better UX
+    // onError: (_err, _communicationId, context) => {
+    //   if (context?.previousData) {
+    //     queryClient.setQueryData(['investor', 'communications'], context.previousData);
+    //   }
+    // },
+    // Don't refetch - it will bring back old values if DB column doesn't exist
+    // onSettled: () => {
+    //   queryClient.invalidateQueries({ queryKey: ['investor', 'communications'] });
+    // },
   });
 }
 

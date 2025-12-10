@@ -253,6 +253,8 @@ export class InvestorsService {
    * Get investor's communications
    */
   async getInvestorCommunications(investorId: string): Promise<InvestorCommunication[]> {
+    console.log('[getInvestorCommunications] Querying for investor_id:', investorId);
+    
     // First try with the new columns
     let { data, error } = await supabaseAdmin
       .from('investor_communications')
@@ -285,9 +287,11 @@ export class InvestorsService {
       .eq('investor_id', investorId)
       .order('occurred_at', { ascending: false });
 
+    console.log('[getInvestorCommunications] Query result - data:', data?.length || 0, 'error:', error?.message || 'none');
+
     // If error about missing columns, try without them
     if (error && (error.message?.includes('column') || error.code === '42703' || error.message?.includes('is_read') || error.message?.includes('tags'))) {
-      console.warn('Communications table missing new columns, falling back to basic query');
+      console.warn('[getInvestorCommunications] Missing columns, falling back to basic query');
       const fallbackResult = await supabaseAdmin
         .from('investor_communications')
         .select(`
@@ -318,13 +322,15 @@ export class InvestorsService {
 
       data = fallbackResult.data;
       error = fallbackResult.error;
+      console.log('[getInvestorCommunications] Fallback result - data:', data?.length || 0, 'error:', error?.message || 'none');
     }
 
     if (error) {
-      console.error('Error fetching communications:', error);
+      console.error('[getInvestorCommunications] Error fetching communications:', error);
       throw new Error('Failed to fetch communications');
     }
 
+    console.log('[getInvestorCommunications] Returning', (data || []).length, 'communications');
     return (data || []).map((comm: any) => this.formatCommunication(comm));
   }
 

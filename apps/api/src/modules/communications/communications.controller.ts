@@ -42,6 +42,9 @@ export class CommunicationsController {
     const { investorId } = request.params as { investorId: string };
     const body = request.body as CreateCommunicationBody;
 
+    console.log('[create communication] Creating for investor_id:', investorId);
+    console.log('[create communication] Body:', JSON.stringify(body));
+
     if (!body.type || !body.title || !body.occurredAt) {
       return reply.status(400).send({
         success: false,
@@ -52,11 +55,14 @@ export class CommunicationsController {
     // Get the investor to find fund_id
     const { data: investor, error: investorError } = await supabaseAdmin
       .from('investors')
-      .select('fund_id')
+      .select('fund_id, email')
       .eq('id', investorId)
       .single();
 
+    console.log('[create communication] Found investor:', investor?.email || 'NOT FOUND');
+
     if (investorError || !investor) {
+      console.error('[create communication] Investor not found:', investorError);
       return reply.status(404).send({
         success: false,
         error: 'Investor not found',

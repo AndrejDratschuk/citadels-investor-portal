@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CommunicationPreviewItem, CommunicationType } from '../components/CommunicationsPreview';
 
 export interface InvestorCommunication {
@@ -215,15 +215,52 @@ export function useCommunications() {
   });
 }
 
-export function useCommunicationById(id: string) {
-  return useQuery({
-    queryKey: ['investor', 'communication', id],
-    queryFn: async (): Promise<InvestorCommunication | null> => {
+export function useMarkAsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (communicationId: string) => {
       // TODO: Replace with actual API call
-      const communications = getMockCommunications();
-      return communications.find((c) => c.id === id) || null;
+      // await api.patch(`/communications/${communicationId}/read`);
+      return communicationId;
     },
-    enabled: !!id,
+    onMutate: async (communicationId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['investor', 'communications'] });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData<CommunicationsData>(['investor', 'communications']);
+
+      // Optimistically update to the new value
+      if (previousData) {
+        const updatedAll = previousData.all.map((c) =>
+          c.id === communicationId ? { ...c, isRead: true } : c
+        );
+        const updatedPreviews = previousData.previews.map((p) =>
+          p.id === communicationId ? { ...p, isRead: true } : p
+        );
+        const newUnreadCount = updatedAll.filter((c) => !c.isRead).length;
+
+        queryClient.setQueryData<CommunicationsData>(['investor', 'communications'], {
+          ...previousData,
+          all: updatedAll,
+          previews: updatedPreviews,
+          unreadCount: newUnreadCount,
+          byType: {
+            email: updatedAll.filter((c) => c.type === 'email'),
+            meeting: updatedAll.filter((c) => c.type === 'meeting'),
+            phone_call: updatedAll.filter((c) => c.type === 'phone_call'),
+          },
+        });
+      }
+
+      return { previousData };
+    },
+    onError: (_err, _communicationId, context) => {
+      // Roll back on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['investor', 'communications'], context.previousData);
+      }
+    },
   });
 }
-

@@ -17,7 +17,7 @@ import {
 import { formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useCommunications, InvestorCommunication } from '../hooks/useCommunications';
+import { useCommunications, useMarkAsRead, InvestorCommunication } from '../hooks/useCommunications';
 import { CommunicationType } from '../components/CommunicationsPreview';
 
 type FilterType = 'all' | CommunicationType;
@@ -254,10 +254,20 @@ function CommunicationDetail({ communication, onBack }: CommunicationDetailProps
 
 export function InvestorCommunications() {
   const { data, isLoading, error } = useCommunications();
+  const markAsRead = useMarkAsRead();
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [tagFilter, setTagFilter] = useState<TagFilter>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Handle selecting a communication and marking it as read
+  const handleSelectCommunication = (communication: InvestorCommunication) => {
+    setSelectedId(communication.id);
+    // Mark as read if not already read
+    if (!communication.isRead) {
+      markAsRead.mutate(communication.id);
+    }
+  };
 
   // Filter communications
   const filteredCommunications = data?.all.filter((c) => {
@@ -435,7 +445,7 @@ export function InvestorCommunications() {
                   key={communication.id}
                   communication={communication}
                   isSelected={selectedId === communication.id}
-                  onClick={() => setSelectedId(communication.id)}
+                  onClick={() => handleSelectCommunication(communication)}
                 />
               ))}
             </div>

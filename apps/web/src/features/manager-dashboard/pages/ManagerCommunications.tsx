@@ -559,10 +559,28 @@ export function ManagerCommunications() {
   });
 
   // Fetch real communications from API
-  const { data: communicationsList } = useQuery({
+  const { data: communicationsList, error: communicationsError, isLoading: communicationsLoading } = useQuery({
     queryKey: ['manager', 'communications'],
-    queryFn: communicationsApi.getAll,
+    queryFn: async () => {
+      console.log('[Manager Communications] Fetching communications...');
+      try {
+        const result = await communicationsApi.getAll();
+        console.log('[Manager Communications] Received:', result?.length || 0, 'communications');
+        return result;
+      } catch (err) {
+        console.error('[Manager Communications] Error fetching:', err);
+        throw err;
+      }
+    },
   });
+
+  // Log any errors
+  if (communicationsError) {
+    console.error('[Manager Communications] Query error:', communicationsError);
+  }
+  if (communicationsLoading) {
+    console.log('[Manager Communications] Loading...');
+  }
 
   // Use real data or empty array
   const communications: Communication[] = (communicationsList || []).map((c) => ({

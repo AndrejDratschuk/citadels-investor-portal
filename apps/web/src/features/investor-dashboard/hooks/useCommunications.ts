@@ -90,15 +90,20 @@ export function useCommunications() {
     queryFn: async (): Promise<CommunicationsData> => {
       let communications: InvestorCommunication[] = [];
       
+      console.log('[Investor Communications] Fetching communications...');
+      
       try {
         // Fetch from real API
         const apiCommunications = await investorsApi.getMyCommunications();
+        console.log('[Investor Communications] Received from API:', apiCommunications?.length || 0, 'communications');
+        console.log('[Investor Communications] Raw data:', JSON.stringify(apiCommunications?.slice(0, 2)));
         
         // Transform to internal format
         communications = apiCommunications.map(transformApiCommunication);
+        console.log('[Investor Communications] Transformed:', communications.length, 'communications');
       } catch (error) {
         // If API fails (e.g., migration not run), return empty data
-        console.warn('Failed to fetch communications from API, using empty data:', error);
+        console.error('[Investor Communications] Failed to fetch:', error);
         communications = [];
       }
 

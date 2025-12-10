@@ -67,6 +67,8 @@ export class CommunicationsService {
    * Get all communications for a fund (manager view)
    */
   async getAllByFundId(fundId: string): Promise<CommunicationWithInvestor[]> {
+    console.log('[getAllByFundId] Querying for fund_id:', fundId);
+    
     const { data, error } = await supabaseAdmin
       .from('investor_communications')
       .select(`
@@ -85,11 +87,14 @@ export class CommunicationsService {
       .eq('fund_id', fundId)
       .order('occurred_at', { ascending: false });
 
+    console.log('[getAllByFundId] Query result - data:', data?.length || 0, 'error:', error?.message || 'none');
+
     if (error) {
-      console.error('Error fetching fund communications:', error);
+      console.error('[getAllByFundId] Error fetching fund communications:', error);
       throw new Error(`Failed to fetch communications: ${error.message}`);
     }
 
+    console.log('[getAllByFundId] Returning', (data || []).length, 'communications');
     return (data || []).map((item: any) => ({
       ...mapDbToCommunication(item),
       investor: item.investor ? {

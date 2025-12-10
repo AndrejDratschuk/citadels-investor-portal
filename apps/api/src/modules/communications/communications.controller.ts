@@ -28,8 +28,10 @@ export class CommunicationsController {
    */
   async getAll(request: AuthenticatedRequest, reply: FastifyReply) {
     const fundId = request.user?.fundId;
+    console.log('[getAll communications] User:', request.user?.email, 'Fund ID:', fundId);
 
     if (!fundId) {
+      console.error('[getAll communications] No fund_id for user');
       return reply.status(401).send({
         success: false,
         error: 'Unauthorized - no fund associated with user',
@@ -38,13 +40,14 @@ export class CommunicationsController {
 
     try {
       const communications = await communicationsService.getAllByFundId(fundId);
+      console.log('[getAll communications] Returning', communications.length, 'communications');
 
       return reply.send({
         success: true,
         data: communications,
       });
     } catch (error: any) {
-      console.error('Error fetching all communications:', error);
+      console.error('[getAll communications] Error:', error);
       return reply.status(500).send({
         success: false,
         error: error.message || 'Failed to fetch communications',
@@ -88,7 +91,7 @@ export class CommunicationsController {
       .eq('id', investorId)
       .single();
 
-    console.log('[create communication] Found investor:', investor?.email || 'NOT FOUND');
+    console.log('[create communication] Found investor:', investor?.email || 'NOT FOUND', 'fund_id:', investor?.fund_id || 'NONE');
 
     if (investorError || !investor) {
       console.error('[create communication] Investor not found:', investorError);
@@ -97,6 +100,8 @@ export class CommunicationsController {
         error: 'Investor not found',
       });
     }
+
+    console.log('[create communication] Storing with fund_id:', investor.fund_id);
 
     let communication;
 

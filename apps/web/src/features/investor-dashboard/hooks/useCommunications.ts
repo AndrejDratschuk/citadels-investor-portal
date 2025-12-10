@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { investorsApi, InvestorCommunication as ApiCommunication } from '@/lib/api/investors';
 import { CommunicationPreviewItem, CommunicationType } from '../components/CommunicationsPreview';
 
+// Re-export the type for use in other files
 export interface InvestorCommunication {
   id: string;
   type: CommunicationType;
@@ -15,8 +17,9 @@ export interface InvestorCommunication {
   callDurationMinutes: number | null;
   source: string;
   createdAt: string;
-  isRead?: boolean;
-  tags?: string[];
+  isRead: boolean;
+  readAt?: string | null;
+  tags: string[];
   deal?: {
     id: string;
     name: string;
@@ -40,121 +43,33 @@ function transformToPreview(communication: InvestorCommunication): Communication
     from,
     date: communication.occurredAt,
     preview: communication.content?.substring(0, 100) || undefined,
-    isRead: communication.isRead ?? true,
+    isRead: communication.isRead ?? false,
     tags: communication.tags,
     dealName: communication.deal?.name,
   };
 }
 
-// Mock data for development
-function getMockCommunications(): InvestorCommunication[] {
-  const now = new Date();
-  return [
-    {
-      id: 'comm-1',
-      type: 'email',
-      title: 'Q4 2024 Fund Performance Update',
-      content: 'Dear Investor, we are pleased to share our Q4 2024 performance results. The fund achieved a 12.3% return this quarter...',
-      occurredAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      emailFrom: 'fund.manager@citadel.com',
-      emailTo: null,
-      meetingAttendees: null,
-      meetingDurationMinutes: null,
-      callDirection: null,
-      callDurationMinutes: null,
-      source: 'email_sync',
-      createdAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: false,
-      tags: ['quarterly-report', 'performance'],
-    },
-    {
-      id: 'comm-2',
-      type: 'email',
-      title: 'Capital Call Notice - Downtown Office Tower',
-      content: 'This notice is to inform you of an upcoming capital call for the Downtown Office Tower acquisition...',
-      occurredAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      emailFrom: 'capital.calls@citadel.com',
-      emailTo: null,
-      meetingAttendees: null,
-      meetingDurationMinutes: null,
-      callDirection: null,
-      callDurationMinutes: null,
-      source: 'email_sync',
-      createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: false,
-      tags: ['capital-call'],
-      deal: { id: '1', name: 'Downtown Office Tower' },
-    },
-    {
-      id: 'comm-3',
-      type: 'meeting',
-      title: 'Annual Investor Meeting Recording',
-      content: 'Thank you for attending our annual investor meeting. Please find the recording and presentation materials attached.',
-      occurredAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      emailFrom: null,
-      emailTo: null,
-      meetingAttendees: ['John Smith - Fund Manager', 'Sarah Johnson - CFO'],
-      meetingDurationMinutes: 90,
-      callDirection: null,
-      callDurationMinutes: null,
-      source: 'manual',
-      createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-      tags: ['meeting', 'annual'],
-    },
-    {
-      id: 'comm-4',
-      type: 'email',
-      title: 'Distribution Notice - Riverside Apartments',
-      content: 'We are pleased to announce a distribution from the Riverside Apartments investment...',
-      occurredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      emailFrom: 'distributions@citadel.com',
-      emailTo: null,
-      meetingAttendees: null,
-      meetingDurationMinutes: null,
-      callDirection: null,
-      callDurationMinutes: null,
-      source: 'email_sync',
-      createdAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-      tags: ['distribution'],
-      deal: { id: '3', name: 'Riverside Apartments' },
-    },
-    {
-      id: 'comm-5',
-      type: 'phone_call',
-      title: 'Follow-up call regarding investment documents',
-      content: 'Discussed the outstanding subscription agreement and answered questions about the fund structure.',
-      occurredAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      emailFrom: null,
-      emailTo: null,
-      meetingAttendees: null,
-      meetingDurationMinutes: null,
-      callDirection: 'inbound',
-      callDurationMinutes: 15,
-      source: 'manual',
-      createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-      tags: ['follow-up'],
-    },
-    {
-      id: 'comm-6',
-      type: 'email',
-      title: 'Tax Documents Available - K-1 Forms',
-      content: 'Your K-1 tax documents for the 2023 tax year are now available in your investor portal...',
-      occurredAt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-      emailFrom: 'tax@citadel.com',
-      emailTo: null,
-      meetingAttendees: null,
-      meetingDurationMinutes: null,
-      callDirection: null,
-      callDurationMinutes: null,
-      source: 'email_sync',
-      createdAt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-      tags: ['tax', 'k1'],
-    },
-  ];
+// Transform API response to internal format
+function transformApiCommunication(api: ApiCommunication): InvestorCommunication {
+  return {
+    id: api.id,
+    type: api.type,
+    title: api.title,
+    content: api.content,
+    occurredAt: api.occurredAt,
+    emailFrom: api.emailFrom,
+    emailTo: api.emailTo,
+    meetingAttendees: api.meetingAttendees,
+    meetingDurationMinutes: api.meetingDurationMinutes,
+    callDirection: api.callDirection,
+    callDurationMinutes: api.callDurationMinutes,
+    source: api.source,
+    createdAt: api.createdAt,
+    isRead: api.isRead ?? false,
+    readAt: api.readAt,
+    tags: api.tags || [],
+    deal: api.deal,
+  };
 }
 
 export interface CommunicationsData {
@@ -173,9 +88,11 @@ export function useCommunications() {
   return useQuery({
     queryKey: ['investor', 'communications'],
     queryFn: async (): Promise<CommunicationsData> => {
-      // TODO: Replace with actual API call when endpoint is ready
-      // const communications = await api.get<InvestorCommunication[]>('/investors/me/communications');
-      const communications = getMockCommunications();
+      // Fetch from real API
+      const apiCommunications = await investorsApi.getMyCommunications();
+      
+      // Transform to internal format
+      const communications = apiCommunications.map(transformApiCommunication);
 
       // Sort by date (newest first)
       communications.sort(
@@ -234,8 +151,8 @@ export function useMarkAsRead() {
 
   return useMutation({
     mutationFn: async (communicationId: string) => {
-      // TODO: Replace with actual API call
-      // await api.patch(`/communications/${communicationId}/read`);
+      // Call real API
+      await investorsApi.markCommunicationRead(communicationId);
       return communicationId;
     },
     onMutate: async (communicationId) => {
@@ -248,7 +165,7 @@ export function useMarkAsRead() {
       // Optimistically update to the new value
       if (previousData) {
         const updatedAll = previousData.all.map((c) =>
-          c.id === communicationId ? { ...c, isRead: true } : c
+          c.id === communicationId ? { ...c, isRead: true, readAt: new Date().toISOString() } : c
         );
         const updatedPreviews = previousData.previews.map((p) =>
           p.id === communicationId ? { ...p, isRead: true } : p
@@ -276,6 +193,10 @@ export function useMarkAsRead() {
         queryClient.setQueryData(['investor', 'communications'], context.previousData);
       }
     },
+    onSettled: () => {
+      // Refetch after mutation settles
+      queryClient.invalidateQueries({ queryKey: ['investor', 'communications'] });
+    },
   });
 }
 
@@ -289,8 +210,8 @@ export function useUpdateTags() {
 
   return useMutation({
     mutationFn: async ({ communicationId, tags }: UpdateTagsInput) => {
-      // TODO: Replace with actual API call
-      // await api.patch(`/communications/${communicationId}/tags`, { tags });
+      // Call real API
+      await investorsApi.updateCommunicationTags(communicationId, tags);
       return { communicationId, tags };
     },
     onMutate: async ({ communicationId, tags }) => {
@@ -334,6 +255,10 @@ export function useUpdateTags() {
       if (context?.previousData) {
         queryClient.setQueryData(['investor', 'communications'], context.previousData);
       }
+    },
+    onSettled: () => {
+      // Refetch after mutation settles
+      queryClient.invalidateQueries({ queryKey: ['investor', 'communications'] });
     },
   });
 }

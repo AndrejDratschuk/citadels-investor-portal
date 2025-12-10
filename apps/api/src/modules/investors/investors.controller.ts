@@ -160,6 +160,68 @@ export class InvestorsController {
       data: capitalCalls,
     });
   }
+
+  /**
+   * Get current investor's communications
+   */
+  async getMyCommunications(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const investor = await investorsService.getInvestorByUserId(request.user.id);
+    const communications = await investorsService.getInvestorCommunications(investor.id);
+
+    return reply.send({
+      success: true,
+      data: communications,
+    });
+  }
+
+  /**
+   * Mark a communication as read
+   */
+  async markCommunicationRead(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { id } = request.params as { id: string };
+    const investor = await investorsService.getInvestorByUserId(request.user.id);
+
+    try {
+      const communication = await investorsService.markCommunicationRead(id, investor.id);
+      return reply.send({
+        success: true,
+        data: communication,
+      });
+    } catch (error) {
+      return reply.status(404).send({ success: false, error: 'Communication not found' });
+    }
+  }
+
+  /**
+   * Update communication tags
+   */
+  async updateCommunicationTags(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { id } = request.params as { id: string };
+    const { tags } = request.body as { tags: string[] };
+    const investor = await investorsService.getInvestorByUserId(request.user.id);
+
+    try {
+      const communication = await investorsService.updateCommunicationTags(id, investor.id, tags);
+      return reply.send({
+        success: true,
+        data: communication,
+      });
+    } catch (error) {
+      return reply.status(404).send({ success: false, error: 'Communication not found' });
+    }
+  }
 }
 
 

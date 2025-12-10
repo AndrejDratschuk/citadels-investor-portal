@@ -249,6 +249,116 @@ export class InvestorsService {
     };
   }
 
+  /**
+   * Get investor's communications
+   */
+  async getInvestorCommunications(investorId: string): Promise<InvestorCommunication[]> {
+    const { data, error } = await supabaseAdmin
+      .from('investor_communications')
+      .select(`
+        *,
+        deal:deals (
+          id,
+          name
+        )
+      `)
+      .eq('investor_id', investorId)
+      .order('occurred_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching communications:', error);
+      throw new Error('Failed to fetch communications');
+    }
+
+    return data.map((comm: any) => this.formatCommunication(comm));
+  }
+
+  /**
+   * Mark a communication as read
+   */
+  async markCommunicationRead(communicationId: string, investorId: string): Promise<InvestorCommunication> {
+    const { data, error } = await supabaseAdmin
+      .from('investor_communications')
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString(),
+      })
+      .eq('id', communicationId)
+      .eq('investor_id', investorId)
+      .select(`
+        *,
+        deal:deals (
+          id,
+          name
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error marking communication as read:', error);
+      throw new Error('Failed to mark communication as read');
+    }
+
+    return this.formatCommunication(data);
+  }
+
+  /**
+   * Update communication tags
+   */
+  async updateCommunicationTags(communicationId: string, investorId: string, tags: string[]): Promise<InvestorCommunication> {
+    const { data, error } = await supabaseAdmin
+      .from('investor_communications')
+      .update({
+        tags: tags,
+      })
+      .eq('id', communicationId)
+      .eq('investor_id', investorId)
+      .select(`
+        *,
+        deal:deals (
+          id,
+          name
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error updating communication tags:', error);
+      throw new Error('Failed to update communication tags');
+    }
+
+    return this.formatCommunication(data);
+  }
+
+  private formatCommunication(data: any): InvestorCommunication {
+    return {
+      id: data.id,
+      investorId: data.investor_id,
+      fundId: data.fund_id,
+      type: data.type,
+      title: data.title,
+      content: data.content,
+      occurredAt: data.occurred_at,
+      emailFrom: data.email_from,
+      emailTo: data.email_to,
+      meetingAttendees: data.meeting_attendees,
+      meetingDurationMinutes: data.meeting_duration_minutes,
+      callDirection: data.call_direction,
+      callDurationMinutes: data.call_duration_minutes,
+      source: data.source,
+      externalId: data.external_id,
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+      isRead: data.is_read ?? false,
+      readAt: data.read_at,
+      tags: data.tags || [],
+      deal: data.deal ? {
+        id: data.deal.id,
+        name: data.deal.name,
+      } : null,
+    };
+  }
+
   private formatInvestor(data: any) {
     return {
       id: data.id,
@@ -290,6 +400,33 @@ interface InvestorUpdate {
   };
   entityType?: string;
   entityName?: string;
+}
+
+export interface InvestorCommunication {
+  id: string;
+  investorId: string;
+  fundId: string;
+  type: 'email' | 'meeting' | 'phone_call';
+  title: string;
+  content: string | null;
+  occurredAt: string;
+  emailFrom: string | null;
+  emailTo: string | null;
+  meetingAttendees: string[] | null;
+  meetingDurationMinutes: number | null;
+  callDirection: 'inbound' | 'outbound' | null;
+  callDurationMinutes: number | null;
+  source: string;
+  externalId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  isRead: boolean;
+  readAt: string | null;
+  tags: string[];
+  deal?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 

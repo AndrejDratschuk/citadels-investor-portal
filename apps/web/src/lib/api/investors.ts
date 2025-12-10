@@ -116,6 +116,35 @@ export interface UpdateProfileInput {
   entityName?: string;
 }
 
+export type CommunicationType = 'email' | 'meeting' | 'phone_call';
+
+export interface InvestorCommunication {
+  id: string;
+  investorId: string;
+  fundId: string;
+  type: CommunicationType;
+  title: string;
+  content: string | null;
+  occurredAt: string;
+  emailFrom: string | null;
+  emailTo: string | null;
+  meetingAttendees: string[] | null;
+  meetingDurationMinutes: number | null;
+  callDirection: 'inbound' | 'outbound' | null;
+  callDurationMinutes: number | null;
+  source: string;
+  externalId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  isRead: boolean;
+  readAt: string | null;
+  tags: string[];
+  deal: {
+    id: string;
+    name: string;
+  } | null;
+}
+
 export const investorsApi = {
   // ==================== Investor Self-Service ====================
   
@@ -147,6 +176,21 @@ export const investorsApi = {
   // Get capital calls
   getMyCapitalCalls: async (): Promise<CapitalCallItem[]> => {
     return api.get<CapitalCallItem[]>('/investors/me/capital-calls');
+  },
+
+  // Get communications
+  getMyCommunications: async (): Promise<InvestorCommunication[]> => {
+    return api.get<InvestorCommunication[]>('/investors/me/communications');
+  },
+
+  // Mark communication as read
+  markCommunicationRead: async (communicationId: string): Promise<InvestorCommunication> => {
+    return api.patch<InvestorCommunication>(`/investors/me/communications/${communicationId}/read`);
+  },
+
+  // Update communication tags
+  updateCommunicationTags: async (communicationId: string, tags: string[]): Promise<InvestorCommunication> => {
+    return api.patch<InvestorCommunication>(`/investors/me/communications/${communicationId}/tags`, { tags });
   },
 
   // ==================== Manager View ====================

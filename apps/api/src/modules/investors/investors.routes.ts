@@ -39,6 +39,21 @@ export async function investorsRoutes(fastify: FastifyInstance) {
     return investorsController.getMyCapitalCalls(request as any, reply);
   });
 
+  // Get communications
+  fastify.get('/me/communications', { preHandler: investorPreHandler }, async (request, reply) => {
+    return investorsController.getMyCommunications(request as any, reply);
+  });
+
+  // Mark communication as read
+  fastify.patch('/me/communications/:id/read', { preHandler: investorPreHandler }, async (request, reply) => {
+    return investorsController.markCommunicationRead(request as any, reply);
+  });
+
+  // Update communication tags
+  fastify.patch('/me/communications/:id/tags', { preHandler: investorPreHandler }, async (request, reply) => {
+    return investorsController.updateCommunicationTags(request as any, reply);
+  });
+
   // Manager routes - require manager role
   const managerPreHandler = [authenticate, requireManager];
 

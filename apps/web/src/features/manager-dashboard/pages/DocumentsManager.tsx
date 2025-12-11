@@ -453,14 +453,6 @@ export function DocumentsManager() {
       {/* Fund Documents Tab */}
       {activeTab === 'fund' && (
         <div className="space-y-4">
-          <div className="rounded-lg border bg-muted/30 p-4">
-            <h3 className="font-medium text-sm mb-1">Fund Documents</h3>
-            <p className="text-xs text-muted-foreground">
-              Documents that apply to the entire fund, not tied to a specific deal or investor. 
-              Includes PPMs, fund-wide subscription agreements, quarterly meeting reports, and announcements.
-            </p>
-          </div>
-
           {/* Filters */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1 max-w-sm">

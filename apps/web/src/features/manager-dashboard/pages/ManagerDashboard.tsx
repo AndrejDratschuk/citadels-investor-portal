@@ -103,19 +103,26 @@ const mockCapitalCalls = [
 export function ManagerDashboard() {
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Fund Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">
-            FlowVeda Growth Fund I Overview
-          </p>
+      {/* Header with Quick Actions */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Fund Dashboard</h1>
+              <p className="mt-1 text-muted-foreground">
+                FlowVeda Growth Fund I Overview
+              </p>
+            </div>
+            <div className="flex items-center gap-2 sm:hidden">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Bell className="h-4 w-4" />
+                <span>Notifications</span>
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">Notifications</span>
-          </Button>
+        <div className="hidden lg:block">
+          <QuickActions />
         </div>
       </div>
 
@@ -188,13 +195,13 @@ export function ManagerDashboard() {
         </div>
       </div>
 
-      {/* Bottom Row */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ActivityFeed activities={mockActivities} />
-        </div>
+      {/* Quick Actions - Mobile Only */}
+      <div className="lg:hidden">
         <QuickActions />
       </div>
+
+      {/* Activity Feed */}
+      <ActivityFeed activities={mockActivities} />
     </div>
   );
 }

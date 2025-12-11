@@ -34,6 +34,7 @@ export interface KYCApplicationData {
   indicativeCommitment?: number;
   timeline?: 'asap' | '30_60_days' | '60_90_days' | 'over_90_days';
   investmentGoals?: string[];
+  investmentGoalsOther?: string;
   likelihood?: 'low' | 'medium' | 'high';
   questionsForManager?: string;
   
@@ -127,6 +128,7 @@ export class KYCService {
     if (updates.indicativeCommitment !== undefined) dbUpdates.indicative_commitment = updates.indicativeCommitment;
     if (updates.timeline !== undefined) dbUpdates.timeline = updates.timeline;
     if (updates.investmentGoals !== undefined) dbUpdates.investment_goals = updates.investmentGoals;
+    if (updates.investmentGoalsOther !== undefined) dbUpdates.investment_goals_other = updates.investmentGoalsOther;
     if (updates.likelihood !== undefined) dbUpdates.likelihood = updates.likelihood;
     if (updates.questionsForManager !== undefined) dbUpdates.questions_for_manager = updates.questionsForManager;
     if (updates.preferredContact !== undefined) dbUpdates.preferred_contact = updates.preferredContact;
@@ -149,8 +151,9 @@ export class KYCService {
 
   /**
    * Submit KYC application and determine eligibility
+   * Also creates an investor record from the KYC data
    */
-  async submit(id: string): Promise<{ application: KYCApplication; eligible: boolean }> {
+  async submit(id: string): Promise<{ application: KYCApplication; eligible: boolean; investorId?: string }> {
     // Get the current application
     const application = await this.getById(id);
 
@@ -161,10 +164,21 @@ export class KYCService {
     // Update status based on eligibility
     const newStatus = eligible ? 'pre_qualified' : 'not_eligible';
 
+    // Create investor record from KYC data
+    let investorId: string | undefined;
+    try {
+      investorId = await this.createInvestorFromKYC(application);
+      console.log('[KYC Submit] Created investor:', investorId);
+    } catch (err) {
+      console.error('[KYC Submit] Error creating investor:', err);
+      // Continue even if investor creation fails - we don't want to block submission
+    }
+
     const { data, error } = await supabaseAdmin
       .from('kyc_applications')
       .update({
         status: newStatus,
+        investor_id: investorId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -179,7 +193,94 @@ export class KYCService {
     return {
       application: this.formatKYCApplication(data),
       eligible,
+      investorId,
     };
+  }
+
+  /**
+   * Create an investor record from KYC application data
+   */
+  private async createInvestorFromKYC(application: KYCApplication): Promise<string> {
+    // Map KYC data to investor fields
+    const isEntity = application.investorCategory === 'entity';
+    
+    // Determine entity type from investor type
+    let entityType: string | null = null;
+    if (isEntity) {
+      const typeMap: Record<string, string> = {
+        'corp_llc': 'llc',
+        'trust': 'trust',
+        'family_office': 'corporation',
+        'family_client': 'individual',
+        'erisa': 'corporation',
+        '501c3': 'corporation',
+        'entity_5m': 'corporation',
+        'foreign_entity': 'corporation',
+      };
+      entityType = typeMap[application.investorType] || 'corporation';
+    } else {
+      const typeMap: Record<string, string> = {
+        'hnw': 'individual',
+        'joint': 'joint',
+        'foreign_individual': 'individual',
+      };
+      entityType = typeMap[application.investorType] || 'individual';
+    }
+
+    // Build address JSONB
+    const address = isEntity
+      ? {
+          city: application.principalOfficeCity,
+          state: application.principalOfficeState,
+          country: application.principalOfficeCountry,
+          zip: application.postalCode,
+        }
+      : {
+          city: application.city,
+          state: application.state,
+          country: application.country,
+          zip: application.postalCode,
+        };
+
+    const investorData = {
+      fund_id: application.fundId,
+      first_name: isEntity ? application.authorizedSignerFirstName : application.firstName,
+      last_name: isEntity ? application.authorizedSignerLastName : application.lastName,
+      email: isEntity ? (application.workEmail || application.email) : application.email,
+      phone: isEntity ? application.workPhone : application.phone,
+      address: address,
+      entity_type: entityType,
+      entity_name: isEntity ? application.entityLegalName : null,
+      commitment_amount: application.indicativeCommitment || 0,
+      accreditation_status: 'pending',
+      accreditation_type: this.mapAccreditationType(application.accreditationBases || []),
+      status: 'prospect',
+      onboarding_step: 1,
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .insert(investorData)
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('[createInvestorFromKYC] Error:', error);
+      throw new Error(`Failed to create investor: ${error.message}`);
+    }
+
+    return data.id;
+  }
+
+  /**
+   * Map accreditation bases to a primary accreditation type
+   */
+  private mapAccreditationType(accreditationBases: string[]): string | null {
+    if (accreditationBases.includes('income_200k')) return 'income';
+    if (accreditationBases.includes('net_worth_1m')) return 'net_worth';
+    if (accreditationBases.includes('licensed_professional')) return 'professional';
+    if (accreditationBases.length > 0) return 'income'; // Default
+    return null;
   }
 
   /**
@@ -298,6 +399,7 @@ export class KYCService {
       indicativeCommitment: data.indicative_commitment ? parseFloat(data.indicative_commitment) : undefined,
       timeline: data.timeline,
       investmentGoals: data.investment_goals || [],
+      investmentGoalsOther: data.investment_goals_other,
       likelihood: data.likelihood,
       questionsForManager: data.questions_for_manager,
       preferredContact: data.preferred_contact,

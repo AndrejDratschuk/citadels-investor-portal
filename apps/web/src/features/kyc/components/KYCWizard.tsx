@@ -4,9 +4,10 @@ import { cn } from '@/lib/utils';
 interface KYCWizardProps {
   currentStep: number;
   totalSteps: number;
+  stepLabels?: string[];
 }
 
-const STEP_LABELS = [
+const DEFAULT_STEP_LABELS = [
   'Investor Type',
   'Identity',
   'Accreditation',
@@ -14,7 +15,17 @@ const STEP_LABELS = [
   'Consent',
 ];
 
-export function KYCWizard({ currentStep, totalSteps }: KYCWizardProps) {
+const PRESELECTED_TYPE_LABELS = [
+  'Identity',
+  'Accreditation',
+  'Investment Intent',
+  'Consent',
+];
+
+export function KYCWizard({ currentStep, totalSteps, stepLabels }: KYCWizardProps) {
+  // Use provided labels, or select based on total steps
+  const labels = stepLabels || (totalSteps === 4 ? PRESELECTED_TYPE_LABELS : DEFAULT_STEP_LABELS);
+
   return (
     <div className="mb-8">
       {/* Progress bar */}
@@ -50,7 +61,7 @@ export function KYCWizard({ currentStep, totalSteps }: KYCWizardProps) {
                   step <= currentStep ? 'text-primary' : 'text-gray-400'
                 )}
               >
-                {STEP_LABELS[step - 1]}
+                {labels[step - 1]}
               </span>
             </div>
           ))}

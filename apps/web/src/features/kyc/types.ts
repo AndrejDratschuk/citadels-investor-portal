@@ -154,6 +154,7 @@ export const investmentIntentSchema = z.object({
   indicativeCommitment: z.number().min(0).optional(),
   timeline: z.enum(['asap', '30_60_days', '60_90_days', 'over_90_days']).optional(),
   investmentGoals: z.array(z.string()).optional(),
+  investmentGoalsOther: z.string().optional(),
   likelihood: z.enum(['low', 'medium', 'high']).optional(),
   questionsForManager: z.string().optional(),
 });
@@ -199,6 +200,7 @@ export interface KYCApplication {
   indicativeCommitment?: number;
   timeline?: string;
   investmentGoals: string[];
+  investmentGoalsOther?: string;
   likelihood?: string;
   questionsForManager?: string;
   preferredContact?: string;

@@ -41,7 +41,7 @@ import {
   OnboardingSuccess,
   OnboardingPending,
 } from './features/onboarding/pages';
-import { KYCPage } from './features/kyc/pages';
+import { KYCPage, KYCTypeSelectorPage } from './features/kyc/pages';
 import { OnboardingQueue } from './features/manager-dashboard/pages/OnboardingQueue';
 import { USER_ROLES } from '@flowveda/shared';
 
@@ -72,9 +72,27 @@ export const router = createBrowserRouter([
     element: <OnboardingPending />,
   },
   // KYC pre-qualification form (public)
+  // Landing page with investor type selection
   {
     path: '/kyc/:fundCode',
-    element: <KYCPage />,
+    element: <KYCTypeSelectorPage />,
+  },
+  // Type-specific KYC forms
+  {
+    path: '/kyc/:fundCode/individual',
+    element: <KYCPage investorType="individual" />,
+  },
+  {
+    path: '/kyc/:fundCode/trust',
+    element: <KYCPage investorType="trust" />,
+  },
+  {
+    path: '/kyc/:fundCode/fund',
+    element: <KYCPage investorType="fund" />,
+  },
+  {
+    path: '/kyc/:fundCode/entity',
+    element: <KYCPage investorType="entity" />,
   },
   {
     path: '/investor',

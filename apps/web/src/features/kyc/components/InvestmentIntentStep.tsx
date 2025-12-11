@@ -24,16 +24,21 @@ export function InvestmentIntentStep({ data, onNext, onBack }: InvestmentIntentS
     register,
     control,
     handleSubmit,
+    watch,
   } = useForm<InvestmentIntentData>({
     resolver: zodResolver(investmentIntentSchema),
     defaultValues: {
-      indicativeCommitment: data.indicativeCommitment || undefined,
+      indicativeCommitment: data.indicativeCommitment || 5000000,
       timeline: data.timeline || undefined,
       investmentGoals: data.investmentGoals || [],
+      investmentGoalsOther: data.investmentGoalsOther || '',
       likelihood: data.likelihood || undefined,
       questionsForManager: data.questionsForManager || '',
     },
   });
+
+  const investmentGoals = watch('investmentGoals');
+  const showOtherField = investmentGoals?.includes('other');
 
   return (
     <form onSubmit={handleSubmit(onNext)} className="space-y-6">
@@ -51,7 +56,7 @@ export function InvestmentIntentStep({ data, onNext, onBack }: InvestmentIntentS
           id="indicativeCommitment"
           type="number"
           {...register('indicativeCommitment', { valueAsNumber: true })}
-          placeholder="100000"
+          placeholder="5000000"
           className="mt-1.5"
         />
         <p className="mt-1 text-xs text-muted-foreground">
@@ -123,6 +128,16 @@ export function InvestmentIntentStep({ data, onNext, onBack }: InvestmentIntentS
             </div>
           )}
         />
+        {/* Other investment goal text field */}
+        {showOtherField && (
+          <div className="mt-3">
+            <Input
+              {...register('investmentGoalsOther')}
+              placeholder="Please describe your other investment goal..."
+              className="mt-1"
+            />
+          </div>
+        )}
       </div>
 
       {/* Likelihood */}

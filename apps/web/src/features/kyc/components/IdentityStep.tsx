@@ -15,7 +15,7 @@ interface IdentityStepProps {
   data: KYCFormData;
   investorCategory: 'individual' | 'entity';
   onNext: (data: IndividualIdentityData | EntityIdentityData) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export function IdentityStep({ data, investorCategory, onNext, onBack }: IdentityStepProps) {
@@ -32,7 +32,7 @@ function IndividualIdentityForm({
 }: {
   data: KYCFormData;
   onNext: (data: IndividualIdentityData) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }) {
   const {
     register,
@@ -171,9 +171,13 @@ function IndividualIdentityForm({
       </div>
 
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack}>
-          Back
-        </Button>
+        {onBack ? (
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+        ) : (
+          <div />
+        )}
         <Button type="submit">
           Continue
         </Button>
@@ -189,7 +193,7 @@ function EntityIdentityForm({
 }: {
   data: KYCFormData;
   onNext: (data: EntityIdentityData) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }) {
   const {
     register,
@@ -386,9 +390,13 @@ function EntityIdentityForm({
       </div>
 
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack}>
-          Back
-        </Button>
+        {onBack ? (
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+        ) : (
+          <div />
+        )}
         <Button type="submit">
           Continue
         </Button>

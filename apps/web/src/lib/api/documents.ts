@@ -1,5 +1,9 @@
 import { api } from './client';
 
+export type DocumentCategory = 'fund' | 'deal' | 'investor';
+export type DocumentDepartment = 'tax' | 'finance' | 'marketing' | 'strategy' | 'operations' | 'legal' | 'compliance';
+export type DocumentStatus = 'draft' | 'review' | 'final';
+
 export interface Document {
   id: string;
   fundId: string;
@@ -15,6 +19,11 @@ export interface Document {
   createdBy: string | null;
   dealName?: string | null;
   investorName?: string | null;
+  // New fields
+  category?: DocumentCategory;
+  department?: DocumentDepartment | null;
+  status?: DocumentStatus;
+  tags?: string[];
 }
 
 export interface DocumentsByDeal {
@@ -37,17 +46,51 @@ export interface DocumentsByInvestor {
 export interface CreateDocumentInput {
   name: string;
   type: Document['type'];
+  category?: DocumentCategory;
+  department?: DocumentDepartment;
+  status?: DocumentStatus;
+  tags?: string[];
   dealId?: string;
   investorId?: string;
   filePath?: string;
   requiresSignature?: boolean;
 }
 
+export interface DocumentFilters {
+  type?: string;
+  category?: DocumentCategory;
+  department?: DocumentDepartment;
+  status?: DocumentStatus;
+  dealId?: string;
+  investorId?: string;
+  tag?: string;
+}
+
 export const documentsApi = {
-  // Get all documents
-  getAll: async (type?: string): Promise<Document[]> => {
-    const params = type && type !== 'all' ? `?type=${type}` : '';
-    return api.get<Document[]>(`/documents${params}`);
+  // Get all documents with filters
+  getAll: async (filters?: DocumentFilters | string): Promise<Document[]> => {
+    // Support legacy string (type) or new filter object
+    if (typeof filters === 'string') {
+      const params = filters && filters !== 'all' ? `?type=${filters}` : '';
+      return api.get<Document[]>(`/documents${params}`);
+    }
+    
+    const params = new URLSearchParams();
+    if (filters?.type && filters.type !== 'all') params.append('type', filters.type);
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.department) params.append('department', filters.department);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.dealId) params.append('dealId', filters.dealId);
+    if (filters?.investorId) params.append('investorId', filters.investorId);
+    if (filters?.tag) params.append('tag', filters.tag);
+    
+    const queryString = params.toString();
+    return api.get<Document[]>(`/documents${queryString ? `?${queryString}` : ''}`);
+  },
+
+  // Get fund-level documents only
+  getFundDocuments: async (): Promise<Document[]> => {
+    return api.get<Document[]>('/documents?category=fund');
   },
 
   // Get documents grouped by deal
@@ -116,6 +159,28 @@ export const typeLabels: Record<string, string> = {
   capital_call: 'Capital Call',
   kyc: 'KYC',
   other: 'Other',
+};
+
+export const categoryLabels: Record<DocumentCategory, string> = {
+  fund: 'Fund',
+  deal: 'Deal',
+  investor: 'Investor',
+};
+
+export const departmentLabels: Record<DocumentDepartment, string> = {
+  tax: 'Tax',
+  finance: 'Finance',
+  marketing: 'Marketing',
+  strategy: 'Strategy',
+  operations: 'Operations',
+  legal: 'Legal',
+  compliance: 'Compliance',
+};
+
+export const documentStatusLabels: Record<DocumentStatus, string> = {
+  draft: 'Draft',
+  review: 'Under Review',
+  final: 'Final',
 };
 
 export const statusLabels: Record<string, string> = {

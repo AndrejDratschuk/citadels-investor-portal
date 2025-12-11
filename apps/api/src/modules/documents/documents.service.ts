@@ -1,5 +1,9 @@
 import { supabaseAdmin } from '../../common/database/supabase';
 
+export type DocumentCategory = 'fund' | 'deal' | 'investor';
+export type DocumentDepartment = 'tax' | 'finance' | 'marketing' | 'strategy' | 'operations' | 'legal' | 'compliance';
+export type DocumentStatus = 'draft' | 'review' | 'final';
+
 export interface Document {
   id: string;
   fundId: string;
@@ -13,6 +17,11 @@ export interface Document {
   signedAt: string | null;
   createdAt: string;
   createdBy: string | null;
+  // New categorization fields
+  category?: DocumentCategory;
+  department?: DocumentDepartment | null;
+  status?: DocumentStatus;
+  tags?: string[];
   // Joined data
   dealName?: string | null;
   investorName?: string | null;
@@ -33,10 +42,24 @@ export interface DocumentWithRelations extends Document {
 export interface CreateDocumentInput {
   name: string;
   type: Document['type'];
+  category?: DocumentCategory;
+  department?: DocumentDepartment;
+  status?: DocumentStatus;
+  tags?: string[];
   dealId?: string;
   investorId?: string;
   filePath?: string;
   requiresSignature?: boolean;
+}
+
+export interface DocumentFilters {
+  type?: string;
+  category?: DocumentCategory;
+  department?: DocumentDepartment;
+  status?: DocumentStatus;
+  dealId?: string;
+  investorId?: string;
+  tag?: string;
 }
 
 export interface DocumentsByDeal {
@@ -58,9 +81,9 @@ export interface DocumentsByInvestor {
 
 export class DocumentsService {
   /**
-   * Get all documents for a fund
+   * Get all documents for a fund with advanced filters
    */
-  async getAllByFundId(fundId: string, filters?: { type?: string }): Promise<Document[]> {
+  async getAllByFundId(fundId: string, filters?: DocumentFilters): Promise<Document[]> {
     let query = supabaseAdmin
       .from('documents')
       .select(`
@@ -71,8 +94,27 @@ export class DocumentsService {
       .eq('fund_id', fundId)
       .order('created_at', { ascending: false });
 
+    // Apply filters
     if (filters?.type && filters.type !== 'all') {
       query = query.eq('type', filters.type);
+    }
+    if (filters?.category) {
+      query = query.eq('category', filters.category);
+    }
+    if (filters?.department) {
+      query = query.eq('department', filters.department);
+    }
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.dealId) {
+      query = query.eq('deal_id', filters.dealId);
+    }
+    if (filters?.investorId) {
+      query = query.eq('investor_id', filters.investorId);
+    }
+    if (filters?.tag) {
+      query = query.contains('tags', [filters.tag]);
     }
 
     const { data, error } = await query;
@@ -239,6 +281,18 @@ export class DocumentsService {
    * Create a new document
    */
   async create(fundId: string, userId: string, input: CreateDocumentInput): Promise<Document> {
+    // Determine category based on input or presence of deal/investor
+    let category = input.category;
+    if (!category) {
+      if (input.dealId && !input.investorId) {
+        category = 'deal';
+      } else if (input.investorId) {
+        category = 'investor';
+      } else {
+        category = 'fund';
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('documents')
       .insert({
@@ -250,6 +304,11 @@ export class DocumentsService {
         file_path: input.filePath || null,
         requires_signature: input.requiresSignature || false,
         created_by: userId,
+        // New fields
+        category,
+        department: input.department || null,
+        status: input.status || 'final',
+        tags: input.tags || [],
       })
       .select()
       .single();
@@ -326,6 +385,12 @@ export class DocumentsService {
       signedAt: data.signed_at,
       createdAt: data.created_at,
       createdBy: data.created_by,
+      // New fields
+      category: data.category || 'deal',
+      department: data.department,
+      status: data.status || 'final',
+      tags: data.tags || [],
+      // Joined data
       dealName: dealData?.name || null,
       investorName: investorData 
         ? `${investorData.first_name} ${investorData.last_name}` 

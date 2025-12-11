@@ -1,10 +1,10 @@
 import { FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
-import { documentsService, CreateDocumentInput } from './documents.service';
+import { documentsService, CreateDocumentInput, DocumentFilters, DocumentCategory, DocumentDepartment, DocumentStatus } from './documents.service';
 
 export class DocumentsController {
   /**
-   * Get all documents for the fund
+   * Get all documents for the fund with advanced filters
    */
   async getAll(request: AuthenticatedRequest, reply: FastifyReply) {
     const fundId = request.user?.fundId;
@@ -16,10 +16,28 @@ export class DocumentsController {
       });
     }
 
-    const { type } = request.query as { type?: string };
+    const { type, category, department, status, dealId, investorId, tag } = request.query as {
+      type?: string;
+      category?: DocumentCategory;
+      department?: DocumentDepartment;
+      status?: DocumentStatus;
+      dealId?: string;
+      investorId?: string;
+      tag?: string;
+    };
+
+    const filters: DocumentFilters = {
+      type,
+      category,
+      department,
+      status,
+      dealId,
+      investorId,
+      tag,
+    };
 
     try {
-      const documents = await documentsService.getAllByFundId(fundId, { type });
+      const documents = await documentsService.getAllByFundId(fundId, filters);
 
       return reply.send({
         success: true,

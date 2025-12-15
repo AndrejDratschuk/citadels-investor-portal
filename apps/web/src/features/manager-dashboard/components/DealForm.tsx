@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ interface DealFormProps {
   initialData?: Partial<DealFormData>;
   onSubmit?: (data: DealFormData) => void;
   isEdit?: boolean;
+  isSubmitting?: boolean;
 }
 
 const dealTypes = [
@@ -92,7 +93,7 @@ function Tooltip({ content }: { content: string }) {
   );
 }
 
-export function DealForm({ initialData, onSubmit, isEdit = false }: DealFormProps) {
+export function DealForm({ initialData, onSubmit, isEdit = false, isSubmitting = false }: DealFormProps) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<DealFormData>({
     name: initialData?.name || '',
@@ -138,8 +139,12 @@ export function DealForm({ initialData, onSubmit, isEdit = false }: DealFormProp
       return;
     }
 
-    onSubmit?.(formData);
-    navigate('/manager/deals');
+    if (onSubmit) {
+      onSubmit(formData);
+    } else {
+      // Fallback navigation if no onSubmit provided
+      navigate('/manager/deals');
+    }
   };
 
   const updateField = <K extends keyof DealFormData>(field: K, value: DealFormData[K]) => {
@@ -381,11 +386,19 @@ export function DealForm({ initialData, onSubmit, isEdit = false }: DealFormProp
           type="button"
           variant="outline"
           onClick={() => navigate('/manager/deals')}
+          disabled={isSubmitting}
         >
           Cancel
         </Button>
-        <Button type="submit">
-          {initialData ? 'Update Deal' : 'Create Deal'}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isEdit ? 'Updating...' : 'Creating...'}
+            </>
+          ) : (
+            isEdit ? 'Update Deal' : 'Create Deal'
+          )}
         </Button>
       </div>
     </form>

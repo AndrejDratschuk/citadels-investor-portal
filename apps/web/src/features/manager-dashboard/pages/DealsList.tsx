@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, LayoutGrid, List, Building2 } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, List, Building2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DealCard, Deal } from '../components/DealCard';
 import { PortfolioSummary } from '../components/PortfolioSummary';
+import { dealsApi } from '@/lib/api/deals';
 import { cn } from '@/lib/utils';
 
-// Mock data - will be replaced with API calls
+// Mock data - used as fallback when API is not available
 const mockDeals: Deal[] = [
   {
-    id: '1',
+    id: 'mock-1',
     name: 'Riverside Apartments',
     description: 'A 120-unit Class B multifamily property in a rapidly growing submarket with strong rent growth potential.',
     status: 'stabilized',
@@ -23,7 +24,7 @@ const mockDeals: Deal[] = [
     investorCount: 15,
   },
   {
-    id: '2',
+    id: 'mock-2',
     name: 'Downtown Office Tower',
     description: 'Class A office building in prime downtown location with long-term corporate tenants.',
     status: 'acquired',
@@ -37,7 +38,7 @@ const mockDeals: Deal[] = [
     investorCount: 22,
   },
   {
-    id: '3',
+    id: 'mock-3',
     name: 'Eastside Industrial Park',
     description: 'Modern industrial/logistics facility with excellent highway access and strong tenant demand.',
     status: 'renovating',
@@ -51,7 +52,7 @@ const mockDeals: Deal[] = [
     investorCount: 18,
   },
   {
-    id: '4',
+    id: 'mock-4',
     name: 'Lakefront Retail Center',
     description: 'Neighborhood retail center anchored by grocery store with stable cash flow.',
     status: 'stabilized',
@@ -65,7 +66,7 @@ const mockDeals: Deal[] = [
     investorCount: 12,
   },
   {
-    id: '5',
+    id: 'mock-5',
     name: 'Tech Campus Development',
     description: 'Ground-up development of modern tech campus with pre-leased anchor tenant.',
     status: 'under_contract',
@@ -87,8 +88,52 @@ export function DealsList() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<PropertyTypeFilter>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [usingMockData, setUsingMockData] = useState(false);
 
-  const filteredDeals = mockDeals.filter((deal) => {
+  // Fetch deals from API
+  useEffect(() => {
+    async function fetchDeals() {
+      try {
+        const apiDeals = await dealsApi.getAll();
+        // Map API deals to match Deal interface for DealCard
+        const mappedDeals: Deal[] = apiDeals.map(deal => ({
+          id: deal.id,
+          name: deal.name,
+          description: deal.description,
+          status: deal.status,
+          address: deal.address,
+          propertyType: deal.propertyType,
+          unitCount: deal.unitCount,
+          squareFootage: deal.squareFootage,
+          currentValue: deal.currentValue,
+          imageUrl: deal.imageUrl,
+          kpis: null, // KPIs would come from a separate field if stored
+          investorCount: deal.investorCount,
+        }));
+        
+        // If we got real deals, use them; otherwise use mock data
+        if (mappedDeals.length > 0) {
+          setDeals(mappedDeals);
+          setUsingMockData(false);
+        } else {
+          setDeals(mockDeals);
+          setUsingMockData(true);
+        }
+      } catch (error) {
+        console.log('Using mock data - API not available');
+        setDeals(mockDeals);
+        setUsingMockData(true);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchDeals();
+  }, []);
+
+  const filteredDeals = deals.filter((deal) => {
     if (statusFilter !== 'all' && deal.status !== statusFilter) return false;
     if (propertyTypeFilter !== 'all' && deal.propertyType !== propertyTypeFilter) return false;
     return true;
@@ -114,6 +159,14 @@ export function DealsList() {
     { value: 'other', label: 'Other' },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -132,8 +185,18 @@ export function DealsList() {
         </Link>
       </div>
 
+      {/* Demo Mode Banner */}
+      {usingMockData && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950">
+          <span className="font-medium text-amber-800 dark:text-amber-200">Demo Mode:</span>{' '}
+          <span className="text-amber-600 dark:text-amber-400">
+            Showing sample deals. Add a new deal to see it appear here.
+          </span>
+        </div>
+      )}
+
       {/* Portfolio Summary KPIs */}
-      <PortfolioSummary deals={mockDeals} />
+      <PortfolioSummary deals={deals} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">

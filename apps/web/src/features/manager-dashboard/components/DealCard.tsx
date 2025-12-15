@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, TrendingUp, Users } from 'lucide-react';
+import { MapPin, TrendingUp, Users, Building2, Factory, Store, Landmark, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@flowveda/shared';
 
@@ -16,6 +16,7 @@ export interface Deal {
   unitCount: number | null;
   squareFootage: number | null;
   currentValue: number | null;
+  imageUrl?: string | null;
   kpis: {
     occupancyRate?: number;
     capRate?: number;
@@ -39,15 +40,33 @@ const statusStyles: Record<string, string> = {
   sold: 'bg-gray-100 text-gray-700',
 };
 
-const propertyTypeIcons: Record<string, string> = {
-  multifamily: '🏢',
-  office: '🏛️',
-  retail: '🏪',
-  industrial: '🏭',
-  other: '🏠',
+// Property type gradients and icons for placeholder
+const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
+  multifamily: {
+    gradient: 'from-blue-600 to-indigo-700',
+    icon: <Building2 className="h-10 w-10 text-white/80" />,
+  },
+  office: {
+    gradient: 'from-slate-600 to-slate-800',
+    icon: <Landmark className="h-10 w-10 text-white/80" />,
+  },
+  retail: {
+    gradient: 'from-amber-500 to-orange-600',
+    icon: <Store className="h-10 w-10 text-white/80" />,
+  },
+  industrial: {
+    gradient: 'from-zinc-600 to-zinc-800',
+    icon: <Factory className="h-10 w-10 text-white/80" />,
+  },
+  other: {
+    gradient: 'from-purple-600 to-violet-700',
+    icon: <Home className="h-10 w-10 text-white/80" />,
+  },
 };
 
 export function DealCard({ deal, className }: DealCardProps) {
+  const config = propertyTypeConfig[deal.propertyType || 'other'] || propertyTypeConfig.other;
+
   return (
     <Link
       to={`/manager/deals/${deal.id}`}
@@ -56,17 +75,29 @@ export function DealCard({ deal, className }: DealCardProps) {
         className
       )}
     >
-      {/* Header with gradient based on property type */}
-      <div className="h-24 bg-gradient-to-br from-indigo-500 to-purple-600 p-4 relative">
-        <div className="absolute top-4 left-4">
-          <span className="text-3xl">
-            {deal.propertyType ? propertyTypeIcons[deal.propertyType] : '🏠'}
-          </span>
-        </div>
-        <div className="absolute top-4 right-4">
+      {/* Header with deal image or styled placeholder */}
+      <div className="h-32 relative">
+        {deal.imageUrl ? (
+          <img
+            src={deal.imageUrl}
+            alt={deal.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            className={cn(
+              'flex h-full w-full items-center justify-center bg-gradient-to-br',
+              config.gradient
+            )}
+          >
+            {config.icon}
+          </div>
+        )}
+        {/* Status badge overlay */}
+        <div className="absolute top-3 right-3">
           <span
             className={cn(
-              'rounded-full px-2.5 py-0.5 text-xs font-medium capitalize',
+              'rounded-full px-2.5 py-0.5 text-xs font-medium capitalize shadow-sm',
               statusStyles[deal.status]
             )}
           >
@@ -128,5 +159,3 @@ export function DealCard({ deal, className }: DealCardProps) {
     </Link>
   );
 }
-
-

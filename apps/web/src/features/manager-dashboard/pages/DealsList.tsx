@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Filter, LayoutGrid, List, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DealCard, Deal } from '../components/DealCard';
+import { PortfolioSummary } from '../components/PortfolioSummary';
 import { cn } from '@/lib/utils';
 
 // Mock data - will be replaced with API calls
@@ -17,6 +18,7 @@ const mockDeals: Deal[] = [
     unitCount: 120,
     squareFootage: 95000,
     currentValue: 14200000,
+    imageUrl: null,
     kpis: { occupancyRate: 0.94, capRate: 0.0693, noi: 985000 },
     investorCount: 15,
   },
@@ -30,6 +32,7 @@ const mockDeals: Deal[] = [
     unitCount: null,
     squareFootage: 185000,
     currentValue: 28500000,
+    imageUrl: null,
     kpis: { occupancyRate: 0.88, capRate: 0.0718, noi: 2100000 },
     investorCount: 22,
   },
@@ -43,6 +46,7 @@ const mockDeals: Deal[] = [
     unitCount: null,
     squareFootage: 250000,
     currentValue: 18500000,
+    imageUrl: null,
     kpis: { occupancyRate: 0.72, capRate: 0.0622, noi: 1250000 },
     investorCount: 18,
   },
@@ -56,6 +60,7 @@ const mockDeals: Deal[] = [
     unitCount: null,
     squareFootage: 65000,
     currentValue: 10500000,
+    imageUrl: null,
     kpis: { occupancyRate: 0.97, capRate: 0.0743, noi: 780000 },
     investorCount: 12,
   },
@@ -69,6 +74,7 @@ const mockDeals: Deal[] = [
     unitCount: null,
     squareFootage: 320000,
     currentValue: null,
+    imageUrl: null,
     kpis: null,
     investorCount: 0,
   },
@@ -125,6 +131,9 @@ export function DealsList() {
           </Button>
         </Link>
       </div>
+
+      {/* Portfolio Summary KPIs */}
+      <PortfolioSummary deals={mockDeals} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
@@ -213,5 +222,3 @@ export function DealsList() {
     </div>
   );
 }
-
-

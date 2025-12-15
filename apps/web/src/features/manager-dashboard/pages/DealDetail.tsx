@@ -8,10 +8,41 @@ import {
   FileText,
   DollarSign,
   MoreHorizontal,
+  Building2,
+  Factory,
+  Store,
+  Landmark,
+  Home,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DealImageUpload } from '../components/DealImageUpload';
+import { dealsApi } from '@/lib/api/deals';
+
+// Property type gradients and icons for placeholder
+const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
+  multifamily: {
+    gradient: 'from-blue-600 to-indigo-700',
+    icon: <Building2 className="h-8 w-8 text-white/80" />,
+  },
+  office: {
+    gradient: 'from-slate-600 to-slate-800',
+    icon: <Landmark className="h-8 w-8 text-white/80" />,
+  },
+  retail: {
+    gradient: 'from-amber-500 to-orange-600',
+    icon: <Store className="h-8 w-8 text-white/80" />,
+  },
+  industrial: {
+    gradient: 'from-zinc-600 to-zinc-800',
+    icon: <Factory className="h-8 w-8 text-white/80" />,
+  },
+  other: {
+    gradient: 'from-purple-600 to-violet-700',
+    icon: <Home className="h-8 w-8 text-white/80" />,
+  },
+};
 
 // Mock data
 const mockDeal = {
@@ -25,13 +56,14 @@ const mockDeal = {
     state: 'TX',
     zip: '78702',
   },
-  propertyType: 'multifamily',
+  propertyType: 'multifamily' as const,
   unitCount: 120,
   squareFootage: 95000,
   acquisitionPrice: 12500000,
   acquisitionDate: '2023-06-15',
   currentValue: 14200000,
   totalInvestment: 13800000,
+  imageUrl: null as string | null,
   kpis: {
     noi: 985000,
     capRate: 0.0693,
@@ -70,8 +102,10 @@ type TabType = 'overview' | 'investors' | 'documents' | 'kpis';
 export function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [deal, setDeal] = useState(mockDeal);
 
-  const deal = mockDeal;
+  const config = propertyTypeConfig[deal.propertyType || 'other'] || propertyTypeConfig.other;
+
   const appreciation = deal.acquisitionPrice
     ? ((deal.currentValue - deal.acquisitionPrice) / deal.acquisitionPrice) * 100
     : 0;
@@ -82,6 +116,28 @@ export function DealDetail() {
     { id: 'documents', label: 'Documents', count: mockDocuments.length },
     { id: 'kpis', label: 'KPIs' },
   ];
+
+  const handleImageUpload = async (file: File) => {
+    if (!id) return;
+    try {
+      const { imageUrl } = await dealsApi.uploadImage(id, file);
+      setDeal(prev => ({ ...prev, imageUrl }));
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      throw error;
+    }
+  };
+
+  const handleImageDelete = async () => {
+    if (!id) return;
+    try {
+      await dealsApi.deleteImage(id);
+      setDeal(prev => ({ ...prev, imageUrl: null }));
+    } catch (error) {
+      console.error('Failed to delete image:', error);
+      throw error;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -95,8 +151,24 @@ export function DealDetail() {
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-2xl">
-            🏢
+          {/* Deal Image or Placeholder */}
+          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl">
+            {deal.imageUrl ? (
+              <img
+                src={deal.imageUrl}
+                alt={deal.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div
+                className={cn(
+                  'flex h-full w-full items-center justify-center bg-gradient-to-br',
+                  config.gradient
+                )}
+              >
+                {config.icon}
+              </div>
+            )}
           </div>
           <div>
             <div className="flex items-center gap-3">
@@ -191,6 +263,22 @@ export function DealDetail() {
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <div className="grid gap-6 lg:grid-cols-2">
+          {/* Deal Image Section */}
+          <div className="rounded-xl border bg-card p-6">
+            <h3 className="font-semibold">Deal Image</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Upload a primary image to represent this deal
+            </p>
+            <div className="mt-4">
+              <DealImageUpload
+                imageUrl={deal.imageUrl}
+                propertyType={deal.propertyType}
+                onUpload={handleImageUpload}
+                onDelete={handleImageDelete}
+              />
+            </div>
+          </div>
+
           <div className="rounded-xl border bg-card p-6">
             <h3 className="font-semibold">Property Details</h3>
             <p className="mt-3 text-muted-foreground">{deal.description}</p>
@@ -211,7 +299,7 @@ export function DealDetail() {
           </div>
 
           {deal.kpis.renovationBudget && (
-            <div className="rounded-xl border bg-card p-6">
+            <div className="rounded-xl border bg-card p-6 lg:col-span-2">
               <h3 className="font-semibold">Renovation Progress</h3>
               <div className="mt-4">
                 <div className="mb-2 flex items-center justify-between text-sm">
@@ -323,5 +411,3 @@ export function DealDetail() {
     </div>
   );
 }
-
-

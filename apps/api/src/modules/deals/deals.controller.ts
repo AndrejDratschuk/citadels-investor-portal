@@ -163,9 +163,105 @@ export class DealsController {
       });
     }
   }
+
+  /**
+   * Upload deal image
+   */
+  async uploadImage(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const { id } = request.params as { id: string };
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    try {
+      // Get the file from multipart
+      const data = await request.file();
+
+      if (!data) {
+        return reply.status(400).send({
+          success: false,
+          error: 'No file uploaded',
+        });
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+      if (!allowedTypes.includes(data.mimetype)) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid file type. Allowed: PNG, JPEG, WebP',
+        });
+      }
+
+      // Validate file size (max 5MB for deal images)
+      const maxSize = 5 * 1024 * 1024;
+      const buffer = await data.toBuffer();
+      if (buffer.length > maxSize) {
+        return reply.status(400).send({
+          success: false,
+          error: 'File too large. Maximum size is 5MB',
+        });
+      }
+
+      const imageUrl = await dealsService.uploadImage(
+        fundId,
+        id,
+        buffer,
+        data.filename,
+        data.mimetype
+      );
+
+      return reply.send({
+        success: true,
+        data: { imageUrl },
+      });
+    } catch (error: any) {
+      console.error('Deal image upload error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to upload deal image',
+      });
+    }
+  }
+
+  /**
+   * Delete deal image
+   */
+  async deleteImage(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const { id } = request.params as { id: string };
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    try {
+      await dealsService.deleteImage(fundId, id);
+
+      return reply.send({
+        success: true,
+        data: { message: 'Deal image deleted successfully' },
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to delete deal image',
+      });
+    }
+  }
 }
 
 export const dealsController = new DealsController();
+
+
 
 
 

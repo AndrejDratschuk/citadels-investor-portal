@@ -18,6 +18,7 @@ export interface Deal {
   acquisitionPrice: number | null;
   acquisitionDate: string | null;
   currentValue: number | null;
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
   investorCount?: number;
@@ -61,6 +62,39 @@ export const dealsApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/deals/${id}`);
   },
+
+  // Upload deal image
+  uploadImage: async (dealId: string, file: File): Promise<{ imageUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Use fetch directly for multipart
+    const token = localStorage.getItem('accessToken');
+    const API_URL = import.meta.env.PROD
+      ? 'https://citadel-investor-portal-production.up.railway.app/api'
+      : (import.meta.env.VITE_API_URL || '/api');
+
+    const response = await fetch(`${API_URL}/deals/${dealId}/image`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to upload deal image');
+    }
+
+    const data = await response.json();
+    return data.data;
+  },
+
+  // Delete deal image
+  deleteImage: async (dealId: string): Promise<void> => {
+    await api.delete(`/deals/${dealId}/image`);
+  },
 };
 
 export const statusLabels: Record<string, string> = {
@@ -80,6 +114,8 @@ export const propertyTypeLabels: Record<string, string> = {
   industrial: 'Industrial',
   other: 'Other',
 };
+
+
 
 
 

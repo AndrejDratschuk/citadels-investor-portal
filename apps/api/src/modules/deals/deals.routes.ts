@@ -30,7 +30,19 @@ export async function dealsRoutes(fastify: FastifyInstance) {
   fastify.delete('/:id', { preHandler: managerPreHandler }, async (request, reply) => {
     return dealsController.delete(request as any, reply);
   });
+
+  // Upload deal image
+  fastify.post('/:id/image', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dealsController.uploadImage(request as any, reply);
+  });
+
+  // Delete deal image
+  fastify.delete('/:id/image', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dealsController.deleteImage(request as any, reply);
+  });
 }
+
+
 
 
 

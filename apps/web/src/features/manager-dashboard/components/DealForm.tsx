@@ -10,6 +10,7 @@ interface DealFormData {
   dealType: string;
   dealStage: string;
   secType: string;
+  propertyType: string;
   closeDate: string;
   owningEntityName: string;
   requireFundsBeforeCountersign: boolean;
@@ -19,6 +20,7 @@ interface DealFormData {
 interface DealFormProps {
   initialData?: Partial<DealFormData>;
   onSubmit?: (data: DealFormData) => void;
+  isEdit?: boolean;
 }
 
 const dealTypes = [
@@ -44,12 +46,21 @@ const secTypes = [
   { value: 'reg_s', label: 'Reg S (Offshore)' },
 ];
 
+const propertyTypes = [
+  { value: 'multifamily', label: 'Multifamily' },
+  { value: 'office', label: 'Office' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'industrial', label: 'Industrial' },
+  { value: 'other', label: 'Other' },
+];
+
 // Tooltip content for each field
 const tooltips = {
   name: 'Enter a unique, descriptive name for this deal. This will be visible to investors and used throughout the platform.',
   dealType: 'Select the investment structure:\n• Direct Syndication: Individual property investment\n• Fund: Pooled investment vehicle\n• Flexible Fund: Fund with varied investment strategy\n• SPE: Entity created for a single investment\n• Joint Venture: Partnership between multiple parties',
   dealStage: 'Current phase of the deal:\n• Raising Capital: Actively seeking investor commitments\n• Asset Managing: Investment made, now managing the asset\n• Liquidated: Investment has been sold/exited',
   secType: 'SEC exemption type for this offering:\n• 506(b): Up to 35 non-accredited investors, no general solicitation\n• 506(c): Accredited investors only, general solicitation allowed\n• Reg A/A+: Mini-IPO, up to $75M raise\n• Reg CF: Crowdfunding, up to $5M\n• Reg S: For non-US investors only',
+  propertyType: 'Select the type of real estate property:\n• Multifamily: Apartment buildings, residential complexes\n• Office: Commercial office buildings\n• Retail: Shopping centers, storefronts\n• Industrial: Warehouses, manufacturing facilities\n• Other: Mixed-use or specialty properties',
   closeDate: 'Optional deadline for the offering. After this date, new investments may not be accepted.',
   owningEntityName: 'The legal entity (LLC, LP, etc.) that will hold this investment. This appears on legal documents and subscription agreements.',
   requireFundsBeforeCountersign: 'When enabled, investors must transfer funds to your escrow/bank account before the GP (General Partner) will countersign their subscription agreement. This ensures committed capital before finalizing.',
@@ -81,13 +92,14 @@ function Tooltip({ content }: { content: string }) {
   );
 }
 
-export function DealForm({ initialData, onSubmit }: DealFormProps) {
+export function DealForm({ initialData, onSubmit, isEdit = false }: DealFormProps) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<DealFormData>({
     name: initialData?.name || '',
     dealType: initialData?.dealType || '',
     dealStage: initialData?.dealStage || '',
     secType: initialData?.secType || '',
+    propertyType: initialData?.propertyType || '',
     closeDate: initialData?.closeDate || '',
     owningEntityName: initialData?.owningEntityName || '',
     requireFundsBeforeCountersign: initialData?.requireFundsBeforeCountersign ?? false,
@@ -261,25 +273,59 @@ export function DealForm({ initialData, onSubmit }: DealFormProps) {
             </div>
           </div>
 
-          {/* Owning Entity Name */}
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <Label htmlFor="owningEntityName">Owning Entity Name *</Label>
-              <Tooltip content={tooltips.owningEntityName} />
+          {/* Owning Entity Name & Property Type */}
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Label htmlFor="owningEntityName">Owning Entity Name *</Label>
+                <Tooltip content={tooltips.owningEntityName} />
+              </div>
+              <Input
+                id="owningEntityName"
+                value={formData.owningEntityName}
+                onChange={(e) => updateField('owningEntityName', e.target.value)}
+                placeholder="e.g., Riverside Holdings LLC"
+                className={errors.owningEntityName ? 'border-destructive' : ''}
+              />
+              {errors.owningEntityName && (
+                <p className="text-sm text-destructive">{errors.owningEntityName}</p>
+              )}
             </div>
-            <Input
-              id="owningEntityName"
-              value={formData.owningEntityName}
-              onChange={(e) => updateField('owningEntityName', e.target.value)}
-              placeholder="e.g., Riverside Holdings LLC"
-              className={errors.owningEntityName ? 'border-destructive' : ''}
-            />
-            {errors.owningEntityName && (
-              <p className="text-sm text-destructive">{errors.owningEntityName}</p>
-            )}
+
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Label htmlFor="propertyType">Property Type</Label>
+                <Tooltip content={tooltips.propertyType} />
+              </div>
+              <select
+                id="propertyType"
+                value={formData.propertyType}
+                onChange={(e) => updateField('propertyType', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Select property type...</option>
+                {propertyTypes.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">Optional - helps categorize the deal</p>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Deal Image Note */}
+      {!isEdit && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+          <h4 className="font-medium text-blue-800 dark:text-blue-200">Deal Image</h4>
+          <p className="mt-1 text-sm text-blue-600 dark:text-blue-300">
+            After creating this deal, you can upload a primary image from the deal detail page. 
+            The image will be displayed in the deals list and represent this investment opportunity.
+          </p>
+        </div>
+      )}
 
       {/* Funding & Signing Settings */}
       <div className="rounded-xl border bg-card p-6">

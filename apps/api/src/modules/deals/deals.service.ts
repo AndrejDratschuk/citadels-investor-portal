@@ -18,6 +18,7 @@ export interface Deal {
   acquisitionPrice: number | null;
   acquisitionDate: string | null;
   currentValue: number | null;
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
   // Computed
@@ -194,6 +195,89 @@ export class DealsService {
     }
   }
 
+  /**
+   * Upload deal image to Supabase Storage
+   */
+  async uploadImage(
+    fundId: string,
+    dealId: string,
+    fileBuffer: Buffer,
+    fileName: string,
+    contentType: string
+  ): Promise<string> {
+    // Verify the deal belongs to this fund
+    const deal = await this.getById(fundId, dealId);
+    if (!deal) {
+      throw new Error('Deal not found');
+    }
+
+    // Generate unique file path
+    const fileExt = fileName.split('.').pop() || 'jpg';
+    const filePath = `deals/${dealId}/image.${fileExt}`;
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('deal-images')
+      .upload(filePath, fileBuffer, {
+        contentType,
+        upsert: true, // Overwrite if exists
+      });
+
+    if (uploadError) {
+      console.error('Error uploading deal image:', uploadError);
+      throw new Error('Failed to upload deal image');
+    }
+
+    // Get public URL
+    const { data: urlData } = supabaseAdmin.storage
+      .from('deal-images')
+      .getPublicUrl(filePath);
+
+    const imageUrl = urlData.publicUrl;
+
+    // Update deal with image URL
+    await supabaseAdmin
+      .from('deals')
+      .update({ image_url: imageUrl, updated_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .eq('fund_id', fundId);
+
+    return imageUrl;
+  }
+
+  /**
+   * Delete deal image
+   */
+  async deleteImage(fundId: string, dealId: string): Promise<void> {
+    // Verify the deal belongs to this fund
+    const deal = await this.getById(fundId, dealId);
+    if (!deal) {
+      throw new Error('Deal not found');
+    }
+
+    // Remove from storage (try common extensions)
+    const { error: deleteError } = await supabaseAdmin.storage
+      .from('deal-images')
+      .remove([
+        `deals/${dealId}/image.png`,
+        `deals/${dealId}/image.jpg`,
+        `deals/${dealId}/image.jpeg`,
+        `deals/${dealId}/image.webp`,
+      ]);
+
+    if (deleteError) {
+      console.error('Error deleting deal image:', deleteError);
+      // Don't throw, just log - file might not exist
+    }
+
+    // Update deal to remove image URL
+    await supabaseAdmin
+      .from('deals')
+      .update({ image_url: null, updated_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .eq('fund_id', fundId);
+  }
+
   private formatDeal(data: any): Deal {
     return {
       id: data.id,
@@ -208,6 +292,7 @@ export class DealsService {
       acquisitionPrice: data.acquisition_price,
       acquisitionDate: data.acquisition_date,
       currentValue: data.current_value,
+      imageUrl: data.image_url,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -215,6 +300,8 @@ export class DealsService {
 }
 
 export const dealsService = new DealsService();
+
+
 
 
 

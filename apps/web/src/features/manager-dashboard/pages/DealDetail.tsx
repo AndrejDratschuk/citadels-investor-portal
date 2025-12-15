@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -13,12 +13,13 @@ import {
   Store,
   Landmark,
   Home,
+  AlertCircle,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { DealImageUpload } from '../components/DealImageUpload';
-import { dealsApi } from '@/lib/api/deals';
+import { dealsApi, Deal } from '@/lib/api/deals';
 
 // Property type gradients and icons for placeholder
 const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
@@ -44,9 +45,10 @@ const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNo
   },
 };
 
-// Mock data
+// Mock data for display when API is not available
 const mockDeal = {
   id: '1',
+  fundId: '',
   name: 'Riverside Apartments',
   description: 'A 120-unit Class B multifamily property in a rapidly growing submarket with strong rent growth potential. The property features updated amenities including a fitness center, pool, and dog park.',
   status: 'stabilized' as const,
@@ -64,6 +66,8 @@ const mockDeal = {
   currentValue: 14200000,
   totalInvestment: 13800000,
   imageUrl: null as string | null,
+  createdAt: '',
+  updatedAt: '',
   kpis: {
     noi: 985000,
     capRate: 0.0693,
@@ -99,15 +103,57 @@ const statusStyles: Record<string, string> = {
 
 type TabType = 'overview' | 'investors' | 'documents' | 'kpis';
 
+interface DealWithKpis extends Deal {
+  kpis?: {
+    noi?: number;
+    capRate?: number;
+    cashOnCash?: number;
+    occupancyRate?: number;
+    renovationBudget?: number;
+    renovationSpent?: number;
+  };
+  totalInvestment?: number;
+}
+
 export function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [deal, setDeal] = useState(mockDeal);
+  const [deal, setDeal] = useState<DealWithKpis>(mockDeal);
+  const [isRealDeal, setIsRealDeal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real deal from API
+  useEffect(() => {
+    async function fetchDeal() {
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const realDeal = await dealsApi.getById(id);
+        setDeal({
+          ...realDeal,
+          kpis: mockDeal.kpis, // Keep mock KPIs for now since they're not in the API response
+          totalInvestment: mockDeal.totalInvestment,
+        });
+        setIsRealDeal(true);
+      } catch (error) {
+        console.log('Using mock data - deal not found in database');
+        // Keep using mock data
+        setIsRealDeal(false);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchDeal();
+  }, [id]);
 
   const config = propertyTypeConfig[deal.propertyType || 'other'] || propertyTypeConfig.other;
 
   const appreciation = deal.acquisitionPrice
-    ? ((deal.currentValue - deal.acquisitionPrice) / deal.acquisitionPrice) * 100
+    ? ((deal.currentValue! - deal.acquisitionPrice) / deal.acquisitionPrice) * 100
     : 0;
 
   const tabs: { id: TabType; label: string; count?: number }[] = [
@@ -118,7 +164,7 @@ export function DealDetail() {
   ];
 
   const handleImageUpload = async (file: File) => {
-    if (!id) return;
+    if (!id || !isRealDeal) return;
     try {
       const { imageUrl } = await dealsApi.uploadImage(id, file);
       setDeal(prev => ({ ...prev, imageUrl }));
@@ -129,7 +175,7 @@ export function DealDetail() {
   };
 
   const handleImageDelete = async () => {
-    if (!id) return;
+    if (!id || !isRealDeal) return;
     try {
       await dealsApi.deleteImage(id);
       setDeal(prev => ({ ...prev, imageUrl: null }));
@@ -138,6 +184,14 @@ export function DealDetail() {
       throw error;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-muted-foreground">Loading deal...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -215,23 +269,25 @@ export function DealDetail() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4">
           <p className="text-sm text-muted-foreground">Current Value</p>
-          <p className="mt-1 text-2xl font-bold">{formatCurrency(deal.currentValue)}</p>
-          <p className="mt-1 text-sm text-green-600">
-            +{appreciation.toFixed(1)}% since acquisition
-          </p>
+          <p className="mt-1 text-2xl font-bold">{deal.currentValue ? formatCurrency(deal.currentValue) : '—'}</p>
+          {deal.acquisitionPrice && (
+            <p className="mt-1 text-sm text-green-600">
+              +{appreciation.toFixed(1)}% since acquisition
+            </p>
+          )}
         </div>
         <div className="rounded-xl border bg-card p-4">
           <p className="text-sm text-muted-foreground">NOI</p>
-          <p className="mt-1 text-2xl font-bold">{formatCurrency(deal.kpis.noi)}</p>
+          <p className="mt-1 text-2xl font-bold">{deal.kpis?.noi ? formatCurrency(deal.kpis.noi) : '—'}</p>
           <p className="mt-1 text-sm text-muted-foreground">Annual</p>
         </div>
         <div className="rounded-xl border bg-card p-4">
           <p className="text-sm text-muted-foreground">Cap Rate</p>
-          <p className="mt-1 text-2xl font-bold">{(deal.kpis.capRate * 100).toFixed(2)}%</p>
+          <p className="mt-1 text-2xl font-bold">{deal.kpis?.capRate ? `${(deal.kpis.capRate * 100).toFixed(2)}%` : '—'}</p>
         </div>
         <div className="rounded-xl border bg-card p-4">
           <p className="text-sm text-muted-foreground">Occupancy</p>
-          <p className="mt-1 text-2xl font-bold">{(deal.kpis.occupancyRate * 100).toFixed(0)}%</p>
+          <p className="mt-1 text-2xl font-bold">{deal.kpis?.occupancyRate ? `${(deal.kpis.occupancyRate * 100).toFixed(0)}%` : '—'}</p>
         </div>
       </div>
 
@@ -270,12 +326,33 @@ export function DealDetail() {
               Upload a primary image to represent this deal
             </p>
             <div className="mt-4">
-              <DealImageUpload
-                imageUrl={deal.imageUrl}
-                propertyType={deal.propertyType}
-                onUpload={handleImageUpload}
-                onDelete={handleImageDelete}
-              />
+              {isRealDeal ? (
+                <DealImageUpload
+                  imageUrl={deal.imageUrl}
+                  propertyType={deal.propertyType}
+                  onUpload={handleImageUpload}
+                  onDelete={handleImageDelete}
+                />
+              ) : (
+                <div className="space-y-4">
+                  <DealImageUpload
+                    imageUrl={deal.imageUrl}
+                    propertyType={deal.propertyType}
+                    onUpload={async () => {}}
+                    onDelete={async () => {}}
+                  />
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
+                    <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="text-sm">
+                      <p className="font-medium text-amber-800 dark:text-amber-200">Demo Mode</p>
+                      <p className="text-amber-600 dark:text-amber-400">
+                        This is sample data. Image upload is available for deals saved in the database.
+                        Create a new deal to enable image uploads.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -285,20 +362,20 @@ export function DealDetail() {
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Acquisition Date</span>
-                <span>{formatDate(deal.acquisitionDate)}</span>
+                <span>{deal.acquisitionDate ? formatDate(deal.acquisitionDate) : '—'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Acquisition Price</span>
-                <span>{formatCurrency(deal.acquisitionPrice)}</span>
+                <span>{deal.acquisitionPrice ? formatCurrency(deal.acquisitionPrice) : '—'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Total Investment</span>
-                <span>{formatCurrency(deal.totalInvestment)}</span>
+                <span>{deal.totalInvestment ? formatCurrency(deal.totalInvestment) : '—'}</span>
               </div>
             </div>
           </div>
 
-          {deal.kpis.renovationBudget && (
+          {deal.kpis?.renovationBudget && (
             <div className="rounded-xl border bg-card p-6 lg:col-span-2">
               <h3 className="font-semibold">Renovation Progress</h3>
               <div className="mt-4">
@@ -390,7 +467,7 @@ export function DealDetail() {
         </div>
       )}
 
-      {activeTab === 'kpis' && (
+      {activeTab === 'kpis' && deal.kpis && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(deal.kpis).map(([key, value]) => (
             <div key={key} className="rounded-xl border bg-card p-4">

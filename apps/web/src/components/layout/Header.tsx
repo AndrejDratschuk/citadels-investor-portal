@@ -100,10 +100,11 @@ export function Header() {
         notificationsApi.getAll({ limit: 20 }),
         notificationsApi.getUnreadCount(),
       ]);
+      console.log('[Header] Fetched notifications:', notifs.length, 'unread:', count);
       setNotifications(notifs);
       setUnreadCount(count);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error('[Header] Failed to fetch notifications:', error);
     }
   }, [user]);
 

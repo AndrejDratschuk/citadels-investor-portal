@@ -1,5 +1,14 @@
 import { api } from './client';
 
+export interface DealKPIs {
+  noi?: number;
+  capRate?: number;
+  cashOnCash?: number;
+  occupancyRate?: number;
+  renovationBudget?: number;
+  renovationSpent?: number;
+}
+
 export interface Deal {
   id: string;
   fundId: string;
@@ -19,6 +28,7 @@ export interface Deal {
   acquisitionDate: string | null;
   currentValue: number | null;
   imageUrl: string | null;
+  kpis?: DealKPIs | null;
   createdAt: string;
   updatedAt: string;
   investorCount?: number;
@@ -35,6 +45,8 @@ export interface CreateDealInput {
   squareFootage?: number;
   acquisitionPrice?: number;
   acquisitionDate?: string;
+  currentValue?: number;
+  kpis?: DealKPIs;
 }
 
 export const dealsApi = {

@@ -1,5 +1,14 @@
 import { supabaseAdmin } from '../../common/database/supabase';
 
+export interface DealKPIs {
+  noi?: number;
+  capRate?: number;
+  cashOnCash?: number;
+  occupancyRate?: number;
+  renovationBudget?: number;
+  renovationSpent?: number;
+}
+
 export interface Deal {
   id: string;
   fundId: string;
@@ -19,6 +28,7 @@ export interface Deal {
   acquisitionDate: string | null;
   currentValue: number | null;
   imageUrl: string | null;
+  kpis?: DealKPIs | null;
   createdAt: string;
   updatedAt: string;
   // Computed
@@ -36,6 +46,8 @@ export interface CreateDealInput {
   squareFootage?: number;
   acquisitionPrice?: number;
   acquisitionDate?: string;
+  currentValue?: number;
+  kpis?: DealKPIs;
 }
 
 const statusLabels: Record<string, string> = {
@@ -160,6 +172,8 @@ export class DealsService {
     if (input.squareFootage !== undefined) updateData.square_footage = input.squareFootage;
     if (input.acquisitionPrice !== undefined) updateData.acquisition_price = input.acquisitionPrice;
     if (input.acquisitionDate !== undefined) updateData.acquisition_date = input.acquisitionDate;
+    if (input.currentValue !== undefined) updateData.current_value = input.currentValue;
+    if (input.kpis !== undefined) updateData.kpis = input.kpis;
 
     updateData.updated_at = new Date().toISOString();
 
@@ -293,6 +307,7 @@ export class DealsService {
       acquisitionDate: data.acquisition_date,
       currentValue: data.current_value,
       imageUrl: data.image_url,
+      kpis: data.kpis,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

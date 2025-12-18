@@ -31,6 +31,8 @@ class NotificationsService {
    * Get all notifications for a user
    */
   async getAll(userId: string, options?: { limit?: number; unreadOnly?: boolean }): Promise<Notification[]> {
+    console.log('[NotificationsService] Getting notifications for user:', userId, 'options:', options);
+    
     let query = supabaseAdmin
       .from('notifications')
       .select('*')
@@ -48,10 +50,13 @@ class NotificationsService {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching notifications:', error);
-      throw new Error('Failed to fetch notifications');
+      console.error('[NotificationsService] Error fetching notifications:', error);
+      console.error('[NotificationsService] Error details:', JSON.stringify(error, null, 2));
+      // Return empty array instead of throwing to prevent blocking the UI
+      return [];
     }
 
+    console.log('[NotificationsService] Found', data?.length || 0, 'notifications');
     return (data || []).map(this.formatNotification);
   }
 
@@ -59,6 +64,8 @@ class NotificationsService {
    * Get unread notification count for a user
    */
   async getUnreadCount(userId: string): Promise<number> {
+    console.log('[NotificationsService] Getting unread count for user:', userId);
+    
     const { count, error } = await supabaseAdmin
       .from('notifications')
       .select('*', { count: 'exact', head: true })
@@ -66,10 +73,13 @@ class NotificationsService {
       .eq('is_read', false);
 
     if (error) {
-      console.error('Error fetching unread count:', error);
+      console.error('[NotificationsService] Error fetching unread count:', error);
+      console.error('[NotificationsService] Error details:', JSON.stringify(error, null, 2));
+      // Don't throw, return 0 instead to prevent blocking the UI
       return 0;
     }
 
+    console.log('[NotificationsService] Unread count:', count);
     return count || 0;
   }
 

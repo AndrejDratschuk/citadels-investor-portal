@@ -9,7 +9,7 @@ class NotificationsController {
   async getAll(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user?.id;
     if (!userId) {
-      return reply.status(401).send({ error: 'Unauthorized' });
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
     const limit = request.query && typeof request.query === 'object' && 'limit' in request.query
@@ -22,10 +22,10 @@ class NotificationsController {
 
     try {
       const notifications = await notificationsService.getAll(userId, { limit, unreadOnly });
-      return reply.send(notifications);
+      return reply.send({ success: true, data: notifications });
     } catch (error: any) {
       console.error('Error fetching notifications:', error);
-      return reply.status(500).send({ error: 'Failed to fetch notifications' });
+      return reply.status(500).send({ success: false, error: 'Failed to fetch notifications' });
     }
   }
 
@@ -35,15 +35,15 @@ class NotificationsController {
   async getUnreadCount(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user?.id;
     if (!userId) {
-      return reply.status(401).send({ error: 'Unauthorized' });
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
     try {
       const count = await notificationsService.getUnreadCount(userId);
-      return reply.send({ count });
+      return reply.send({ success: true, data: count });
     } catch (error: any) {
       console.error('Error fetching unread count:', error);
-      return reply.status(500).send({ error: 'Failed to fetch unread count' });
+      return reply.status(500).send({ success: false, error: 'Failed to fetch unread count' });
     }
   }
 
@@ -53,17 +53,17 @@ class NotificationsController {
   async markAsRead(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user?.id;
     if (!userId) {
-      return reply.status(401).send({ error: 'Unauthorized' });
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
     const { id } = request.params as { id: string };
 
     try {
       const notification = await notificationsService.markAsRead(userId, id);
-      return reply.send(notification);
+      return reply.send({ success: true, data: notification });
     } catch (error: any) {
       console.error('Error marking notification as read:', error);
-      return reply.status(500).send({ error: 'Failed to mark notification as read' });
+      return reply.status(500).send({ success: false, error: 'Failed to mark notification as read' });
     }
   }
 
@@ -73,15 +73,15 @@ class NotificationsController {
   async markAllAsRead(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user?.id;
     if (!userId) {
-      return reply.status(401).send({ error: 'Unauthorized' });
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
     try {
       await notificationsService.markAllAsRead(userId);
-      return reply.send({ success: true });
+      return reply.send({ success: true, data: { message: 'All notifications marked as read' } });
     } catch (error: any) {
       console.error('Error marking all notifications as read:', error);
-      return reply.status(500).send({ error: 'Failed to mark all notifications as read' });
+      return reply.status(500).send({ success: false, error: 'Failed to mark all notifications as read' });
     }
   }
 
@@ -91,17 +91,17 @@ class NotificationsController {
   async delete(request: AuthenticatedRequest, reply: FastifyReply) {
     const userId = request.user?.id;
     if (!userId) {
-      return reply.status(401).send({ error: 'Unauthorized' });
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
     const { id } = request.params as { id: string };
 
     try {
       await notificationsService.delete(userId, id);
-      return reply.send({ success: true });
+      return reply.send({ success: true, data: { message: 'Notification deleted' } });
     } catch (error: any) {
       console.error('Error deleting notification:', error);
-      return reply.status(500).send({ error: 'Failed to delete notification' });
+      return reply.status(500).send({ success: false, error: 'Failed to delete notification' });
     }
   }
 }

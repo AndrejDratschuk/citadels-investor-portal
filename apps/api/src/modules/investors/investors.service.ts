@@ -372,6 +372,13 @@ export class InvestorsService {
    * Get fund contact info for investor
    */
   async getFundContact(fundId: string): Promise<{ fundName: string; email: string; managerName: string }> {
+    console.log('[getFundContact] Looking up fund contact for fundId:', fundId);
+    
+    if (!fundId) {
+      console.error('[getFundContact] No fundId provided');
+      throw new Error('Investor is not associated with a fund');
+    }
+
     // Get fund info
     const { data: fund, error: fundError } = await supabaseAdmin
       .from('funds')
@@ -379,8 +386,21 @@ export class InvestorsService {
       .eq('id', fundId)
       .single();
 
-    if (fundError || !fund) {
+    if (fundError) {
+      console.error('[getFundContact] Fund lookup error:', fundError);
+      throw new Error(`Fund not found: ${fundError.message}`);
+    }
+
+    if (!fund) {
+      console.error('[getFundContact] Fund not found for id:', fundId);
       throw new Error('Fund not found');
+    }
+
+    console.log('[getFundContact] Found fund:', fund.name, 'created by:', fund.created_by);
+
+    if (!fund.created_by) {
+      console.error('[getFundContact] Fund has no created_by field:', fund.id);
+      throw new Error('Fund has no manager associated');
     }
 
     // Get fund manager (creator) info
@@ -390,9 +410,17 @@ export class InvestorsService {
       .eq('id', fund.created_by)
       .single();
 
-    if (managerError || !manager) {
+    if (managerError) {
+      console.error('[getFundContact] Manager lookup error:', managerError);
+      throw new Error(`Fund manager not found: ${managerError.message}`);
+    }
+
+    if (!manager) {
+      console.error('[getFundContact] Manager not found for id:', fund.created_by);
       throw new Error('Fund manager not found');
     }
+
+    console.log('[getFundContact] Found manager:', manager.email);
 
     return {
       fundName: fund.name,

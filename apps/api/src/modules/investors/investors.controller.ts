@@ -244,7 +244,10 @@ export class InvestorsController {
     }
 
     try {
+      console.log('[getFundContact] Request from user:', request.user.email);
       const investor = await investorsService.getInvestorByUserId(request.user.id);
+      console.log('[getFundContact] Found investor:', investor.email, 'fundId:', investor.fundId);
+      
       const fundContact = await investorsService.getFundContact(investor.fundId);
 
       return reply.send({

@@ -3,11 +3,10 @@ import { SignupInput, LoginInput, USER_ROLES } from '@flowveda/shared';
 import { User } from '@flowveda/shared';
 import { webhookService } from '../../common/services/webhook.service';
 
-// Default fund ID for new investors (created by seed data)
-const DEFAULT_FUND_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
-
 export class AuthService {
   async signup(input: SignupInput) {
+    console.log('[AuthService.signup] Starting signup for:', input.email, 'role:', input.role);
+    
     // Create auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: input.email,
@@ -16,11 +15,30 @@ export class AuthService {
     });
 
     if (authError || !authData.user) {
+      console.error('[AuthService.signup] Failed to create auth user:', authError);
       throw new Error(authError?.message || 'Failed to create user');
     }
 
-    // For investors, assign to default fund if no fund specified
-    const fundId = input.fundId || (input.role === USER_ROLES.INVESTOR ? DEFAULT_FUND_ID : null);
+    console.log('[AuthService.signup] Auth user created:', authData.user.id);
+
+    // For investors, find an existing fund or use the provided one
+    let fundId = input.fundId;
+    
+    if (input.role === USER_ROLES.INVESTOR && !fundId) {
+      // Try to find an existing fund to assign the investor to
+      const { data: existingFund } = await supabaseAdmin
+        .from('funds')
+        .select('id')
+        .limit(1)
+        .single();
+      
+      if (existingFund) {
+        fundId = existingFund.id;
+        console.log('[AuthService.signup] Assigned investor to existing fund:', fundId);
+      } else {
+        console.log('[AuthService.signup] No fund found for investor - investor record will not be created');
+      }
+    }
 
     // Create user record in database
     const { data: userData, error: userError } = await supabaseAdmin
@@ -42,6 +60,8 @@ export class AuthService {
 
     // If user is an investor, create an investor record
     if (input.role === USER_ROLES.INVESTOR && fundId) {
+      console.log('[AuthService.signup] Creating investor record for fund:', fundId);
+      
       const { data: investorData, error: investorError } = await supabaseAdmin
         .from('investors')
         .insert({
@@ -60,10 +80,13 @@ export class AuthService {
         .single();
 
       if (investorError) {
-        console.error('Failed to create investor record:', investorError);
+        console.error('[AuthService.signup] Failed to create investor record:', investorError);
         // Don't rollback - user can still login, investor record can be created later
       } else if (investorData) {
+        console.log('[AuthService.signup] Investor record created:', investorData.id);
+        
         // Send webhook for new investor
+        console.log('[AuthService.signup] Sending investor.created webhook...');
         webhookService.sendWebhook('investor.created', {
           id: investorData.id,
           email: input.email,
@@ -73,6 +96,8 @@ export class AuthService {
           source: 'signup',
         });
       }
+    } else {
+      console.log('[AuthService.signup] Skipping investor record - role:', input.role, 'fundId:', fundId);
     }
 
     return {

@@ -494,6 +494,8 @@ function KPIsEditor({ deal, isRealDeal, onUpdate }: KPIsEditorProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Form state
+  const [acquisitionPrice, setAcquisitionPrice] = useState(deal.acquisitionPrice?.toString() || '');
+  const [acquisitionDate, setAcquisitionDate] = useState(deal.acquisitionDate || '');
   const [currentValue, setCurrentValue] = useState(deal.currentValue?.toString() || '');
   const [noi, setNoi] = useState(deal.kpis?.noi?.toString() || '');
   const [capRate, setCapRate] = useState(deal.kpis?.capRate ? (deal.kpis.capRate * 100).toString() : '');
@@ -525,6 +527,8 @@ function KPIsEditor({ deal, isRealDeal, onUpdate }: KPIsEditorProps) {
       if (renovationSpent) kpis.renovationSpent = parseFloat(renovationSpent);
 
       await dealsApi.update(deal.id, {
+        acquisitionPrice: acquisitionPrice ? parseFloat(acquisitionPrice) : undefined,
+        acquisitionDate: acquisitionDate || undefined,
         currentValue: currentValue ? parseFloat(currentValue) : undefined,
         kpis: Object.keys(kpis).length > 0 ? kpis : undefined,
       });
@@ -532,6 +536,8 @@ function KPIsEditor({ deal, isRealDeal, onUpdate }: KPIsEditorProps) {
       // Update local state
       onUpdate({
         ...deal,
+        acquisitionPrice: acquisitionPrice ? parseFloat(acquisitionPrice) : null,
+        acquisitionDate: acquisitionDate || null,
         currentValue: currentValue ? parseFloat(currentValue) : null,
         kpis: Object.keys(kpis).length > 0 ? kpis : deal.kpis,
       });
@@ -547,6 +553,8 @@ function KPIsEditor({ deal, isRealDeal, onUpdate }: KPIsEditorProps) {
 
   const handleCancel = () => {
     // Reset form state
+    setAcquisitionPrice(deal.acquisitionPrice?.toString() || '');
+    setAcquisitionDate(deal.acquisitionDate || '');
     setCurrentValue(deal.currentValue?.toString() || '');
     setNoi(deal.kpis?.noi?.toString() || '');
     setCapRate(deal.kpis?.capRate ? (deal.kpis.capRate * 100).toString() : '');
@@ -569,23 +577,31 @@ function KPIsEditor({ deal, isRealDeal, onUpdate }: KPIsEditorProps) {
           </Button>
         </div>
 
-        {/* Current Value - Featured */}
+        {/* Valuation Summary - Featured */}
         <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6">
-          <div className="flex items-center justify-between">
+          <div className="grid gap-6 sm:grid-cols-2">
+            {/* Acquisition Info */}
             <div>
-              <p className="text-sm font-medium text-primary/80">Current Value (AUM)</p>
-              <p className="mt-1 text-3xl font-bold">{deal.currentValue ? formatCurrency(deal.currentValue) : '—'}</p>
-              {deal.acquisitionPrice && deal.currentValue && (
-                <p className={cn(
-                  'mt-2 text-sm font-medium',
-                  appreciation >= 0 ? 'text-green-600' : 'text-red-600'
-                )}>
-                  {appreciation >= 0 ? '+' : ''}{appreciation.toFixed(1)}% since acquisition
+              <p className="text-sm font-medium text-primary/60">Acquisition Price</p>
+              <p className="mt-1 text-2xl font-bold">{deal.acquisitionPrice ? formatCurrency(deal.acquisitionPrice) : '—'}</p>
+              {deal.acquisitionDate && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {formatDate(deal.acquisitionDate)}
                 </p>
               )}
             </div>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/20">
-              <DollarSign className="h-7 w-7 text-primary" />
+            {/* Current Value */}
+            <div>
+              <p className="text-sm font-medium text-primary/80">Current Value (AUM)</p>
+              <p className="mt-1 text-2xl font-bold">{deal.currentValue ? formatCurrency(deal.currentValue) : '—'}</p>
+              {deal.acquisitionPrice && deal.currentValue && (
+                <p className={cn(
+                  'mt-1 text-sm font-medium',
+                  appreciation >= 0 ? 'text-green-600' : 'text-red-600'
+                )}>
+                  {appreciation >= 0 ? '+' : ''}{appreciation.toFixed(1)}% appreciation
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -666,20 +682,47 @@ function KPIsEditor({ deal, isRealDeal, onUpdate }: KPIsEditorProps) {
 
       <div className="rounded-xl border bg-card p-6">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Current Value - Featured */}
-          <div className="sm:col-span-2 lg:col-span-3">
+          {/* Acquisition Price */}
+          <div>
+            <Label htmlFor="acquisitionPrice" className="text-base font-medium">Acquisition Price</Label>
+            <Input
+              id="acquisitionPrice"
+              type="number"
+              value={acquisitionPrice}
+              onChange={(e) => setAcquisitionPrice(e.target.value)}
+              placeholder="e.g. 12500000"
+              className="mt-2"
+            />
+          </div>
+
+          {/* Acquisition Date */}
+          <div>
+            <Label htmlFor="acquisitionDate" className="text-base font-medium">Acquisition Date</Label>
+            <Input
+              id="acquisitionDate"
+              type="date"
+              value={acquisitionDate}
+              onChange={(e) => setAcquisitionDate(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+
+          {/* Current Value */}
+          <div>
             <Label htmlFor="currentValue" className="text-base font-medium">Current Value (AUM)</Label>
             <Input
               id="currentValue"
               type="number"
               value={currentValue}
               onChange={(e) => setCurrentValue(e.target.value)}
-              placeholder="Enter current value"
-              className="mt-2 text-lg"
+              placeholder="e.g. 14200000"
+              className="mt-2"
             />
-            <p className="mt-1 text-sm text-muted-foreground">
-              This is the primary valuation metric displayed in the portfolio summary.
-            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="sm:col-span-2 lg:col-span-3 border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground">Performance Metrics</p>
           </div>
 
           {/* NOI */}

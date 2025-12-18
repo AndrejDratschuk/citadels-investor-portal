@@ -25,6 +25,10 @@ interface DbCommunication {
   external_id: string | null;
   created_by: string | null;
   created_at: string;
+  is_read: boolean;
+  read_at: string | null;
+  manager_read: boolean;
+  manager_read_at: string | null;
 }
 
 function mapDbToCommunication(db: DbCommunication): Communication {
@@ -60,6 +64,8 @@ export interface CommunicationWithInvestor extends Communication {
     name: string;
   } | null;
   tags: string[];
+  managerRead: boolean;
+  managerReadAt: string | null;
 }
 
 export class CommunicationsService {
@@ -100,6 +106,8 @@ export class CommunicationsService {
       } : { id: '', name: 'Unknown', email: '' },
       deal: null, // Deal join removed due to missing FK relationship
       tags: item.tags || [],
+      managerRead: item.manager_read ?? true, // For manager view, use manager_read status
+      managerReadAt: item.manager_read_at || null,
     }));
   }
 
@@ -145,6 +153,8 @@ export class CommunicationsService {
         source: 'manual',
         created_by: userId,
         is_read: false, // Unread for the investor
+        manager_read: true, // Manager created this, so they already know about it
+        manager_read_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -180,6 +190,8 @@ export class CommunicationsService {
         external_id: input.externalId || null,
         created_by: userId || null,
         is_read: false, // Unread for the investor
+        manager_read: true, // Manager created this, so they already know about it
+        manager_read_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -215,6 +227,8 @@ export class CommunicationsService {
         external_id: input.externalId || null,
         created_by: userId || null,
         is_read: false, // Unread for the investor
+        manager_read: true, // Manager created this, so they already know about it
+        manager_read_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -274,6 +288,45 @@ export class CommunicationsService {
       // Don't fail the whole operation if notification fails
       console.error('[createInvestorNotification] Failed to create notification:', error);
     }
+  }
+
+  /**
+   * Mark a communication as read by the manager
+   */
+  async markAsReadForManager(communicationId: string, fundId: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('investor_communications')
+      .update({
+        manager_read: true,
+        manager_read_at: new Date().toISOString(),
+      })
+      .eq('id', communicationId)
+      .eq('fund_id', fundId); // Ensure manager can only update their fund's communications
+
+    if (error) {
+      console.error('[markAsReadForManager] Error:', error);
+      throw new Error(`Failed to mark communication as read: ${error.message}`);
+    }
+    
+    console.log('[markAsReadForManager] Marked communication as read:', communicationId);
+  }
+
+  /**
+   * Get count of unread communications for a fund (manager view)
+   */
+  async getUnreadCountForManager(fundId: string): Promise<number> {
+    const { count, error } = await supabaseAdmin
+      .from('investor_communications')
+      .select('*', { count: 'exact', head: true })
+      .eq('fund_id', fundId)
+      .eq('manager_read', false);
+
+    if (error) {
+      console.error('[getUnreadCountForManager] Error:', error);
+      return 0;
+    }
+
+    return count || 0;
   }
 
   async delete(communicationId: string): Promise<void> {

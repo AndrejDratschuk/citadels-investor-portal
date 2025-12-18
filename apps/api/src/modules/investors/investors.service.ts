@@ -443,7 +443,8 @@ export class InvestorsService {
     console.log('[sendEmailToFund] Subject:', subject);
 
     // Store the communication in the database
-    // Mark as read for the sender (investor) since they sent it
+    // is_read: true = investor has "read" their sent message
+    // manager_read: false = manager hasn't seen it yet
     const { data: communication, error: commError } = await supabaseAdmin
       .from('investor_communications')
       .insert({
@@ -456,8 +457,9 @@ export class InvestorsService {
         email_from: investor.email,
         email_to: fundContact.email,
         source: 'manual',
-        is_read: true, // Sender already knows about their own message
+        is_read: true, // Investor already knows about their own sent message
         read_at: new Date().toISOString(),
+        manager_read: false, // Manager hasn't seen this message yet
       })
       .select()
       .single();
@@ -467,19 +469,31 @@ export class InvestorsService {
       throw new Error('Failed to store communication');
     }
 
+    console.log('[sendEmailToFund] Communication stored with id:', communication.id);
+
     // Create a notification for the fund manager
     try {
       // Find the fund manager's user ID
-      const { data: manager } = await supabaseAdmin
+      console.log('[sendEmailToFund] Looking for manager with fund_id:', investor.fundId);
+      
+      const { data: manager, error: managerError } = await supabaseAdmin
         .from('users')
-        .select('id')
+        .select('id, email')
         .eq('fund_id', investor.fundId)
         .eq('role', 'manager')
         .limit(1)
         .single();
 
-      if (manager) {
-        await supabaseAdmin
+      if (managerError) {
+        console.error('[sendEmailToFund] Manager lookup failed:', managerError);
+      }
+
+      if (!manager) {
+        console.error('[sendEmailToFund] No manager found for fund:', investor.fundId);
+      } else {
+        console.log('[sendEmailToFund] Found manager:', manager.email, 'id:', manager.id);
+        
+        const { error: notifError } = await supabaseAdmin
           .from('notifications')
           .insert({
             user_id: manager.id,
@@ -495,11 +509,16 @@ export class InvestorsService {
               investor_email: investor.email,
             },
           });
-        console.log('[sendEmailToFund] Notification created for manager:', manager.id);
+        
+        if (notifError) {
+          console.error('[sendEmailToFund] Failed to insert notification:', notifError);
+        } else {
+          console.log('[sendEmailToFund] Notification created successfully for manager:', manager.id);
+        }
       }
     } catch (notifError) {
       // Don't fail the whole operation if notification fails
-      console.error('[sendEmailToFund] Failed to create notification:', notifError);
+      console.error('[sendEmailToFund] Exception creating notification:', notifError);
     }
 
     // TODO: Actually send the email via email service

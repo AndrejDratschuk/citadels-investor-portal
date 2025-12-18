@@ -65,6 +65,8 @@ interface Communication {
     id: string;
     name: string;
   } | null;
+  managerRead: boolean;
+  managerReadAt: string | null;
 }
 
 // Mock deals for filter
@@ -126,13 +128,15 @@ interface CommunicationRowProps {
 function CommunicationRow({ communication, isSelected, onClick }: CommunicationRowProps) {
   const config = typeConfig[communication.type];
   const Icon = config.icon;
+  const isUnread = !communication.managerRead;
 
   return (
     <button
       onClick={onClick}
       className={cn(
         'w-full flex items-start gap-3 p-4 text-left hover:bg-muted/50 transition-colors border-b',
-        isSelected && 'bg-primary/5 border-l-2 border-l-primary'
+        isSelected && 'bg-primary/5 border-l-2 border-l-primary',
+        isUnread && !isSelected && 'bg-blue-50/50'
       )}
     >
       <div
@@ -144,7 +148,17 @@ function CommunicationRow({ communication, isSelected, onClick }: CommunicationR
         <Icon className={cn('h-5 w-5', config.iconColor)} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{communication.title}</p>
+        <div className="flex items-center gap-2">
+          <p className={cn(
+            'text-sm truncate',
+            isUnread ? 'font-semibold' : 'font-medium'
+          )}>
+            {communication.title}
+          </p>
+          {isUnread && (
+            <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+          )}
+        </div>
         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <User className="h-3 w-3" />
@@ -583,7 +597,7 @@ export function ManagerCommunications() {
   }
 
   // Use real data or empty array
-  const communications: Communication[] = (communicationsList || []).map((c) => ({
+  const communications: Communication[] = (communicationsList || []).map((c: any) => ({
     id: c.id,
     type: c.type,
     title: c.title,
@@ -600,7 +614,12 @@ export function ManagerCommunications() {
     tags: c.tags || [],
     investor: c.investor,
     deal: c.deal,
+    managerRead: c.managerRead ?? true, // Default to read if field doesn't exist
+    managerReadAt: c.managerReadAt || null,
   }));
+
+  // Count unread communications
+  const unreadCount = communications.filter((c) => !c.managerRead).length;
 
   // Transform investors for the modal
   const investorsForModal = (investorsList || []).map((inv) => ({
@@ -664,6 +683,22 @@ export function ManagerCommunications() {
     ? communications.find((c) => c.id === selectedId)
     : null;
 
+  // Handle communication selection and mark as read
+  const handleSelectCommunication = async (communication: Communication) => {
+    setSelectedId(communication.id);
+    
+    // Mark as read if unread
+    if (!communication.managerRead) {
+      try {
+        await communicationsApi.markAsRead(communication.id);
+        // Refresh communications list to update the read status
+        queryClient.invalidateQueries({ queryKey: ['manager', 'communications'] });
+      } catch (error) {
+        console.error('Failed to mark communication as read:', error);
+      }
+    }
+  };
+
   // Get unique tags from communications
   const availableTags = Array.from(
     new Set(communications.flatMap((c) => c.tags))
@@ -699,10 +734,20 @@ export function ManagerCommunications() {
             View and manage all investor communications
           </p>
         </div>
-        <Button onClick={() => setShowComposeModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Communication
-        </Button>
+        <div className="flex items-center gap-3">
+          {unreadCount > 0 && (
+            <div className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5">
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              <span className="text-sm font-medium text-blue-700">
+                {unreadCount} unread
+              </span>
+            </div>
+          )}
+          <Button onClick={() => setShowComposeModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Communication
+          </Button>
+        </div>
       </div>
 
       {/* Compose Email Modal */}
@@ -925,7 +970,7 @@ export function ManagerCommunications() {
                   key={communication.id}
                   communication={communication}
                   isSelected={selectedId === communication.id}
-                  onClick={() => setSelectedId(communication.id)}
+                  onClick={() => handleSelectCommunication(communication)}
                 />
               ))}
             </div>

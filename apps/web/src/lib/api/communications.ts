@@ -14,6 +14,8 @@ export interface CommunicationWithInvestor extends Communication {
     name: string;
   } | null;
   tags: string[];
+  managerRead: boolean;
+  managerReadAt: string | null;
 }
 
 export interface CreateCommunicationInput {
@@ -47,6 +49,16 @@ export const communicationsApi = {
   // Create a communication log
   create: async (investorId: string, input: CreateCommunicationInput): Promise<Communication> => {
     return api.post<Communication>(`/investors/${investorId}/communications`, input);
+  },
+
+  // Mark a communication as read (manager)
+  markAsRead: async (communicationId: string): Promise<void> => {
+    await api.patch(`/communications/${communicationId}/read`, {});
+  },
+
+  // Get unread communication count (manager)
+  getUnreadCount: async (): Promise<number> => {
+    return api.get<number>('/communications/unread-count');
   },
 
   // Delete a communication

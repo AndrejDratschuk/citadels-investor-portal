@@ -178,6 +178,91 @@ export class CommunicationsController {
     });
   }
 
+  /**
+   * Mark a communication as read by the manager
+   */
+  async markAsRead(request: AuthenticatedRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    let fundId = request.user?.fundId;
+    const userId = request.user?.id;
+
+    // If no fund_id on user, try to find the fund they manage
+    if (!fundId && userId) {
+      const { data: userRecord } = await supabaseAdmin
+        .from('users')
+        .select('fund_id')
+        .eq('id', userId)
+        .single();
+      
+      if (userRecord?.fund_id) {
+        fundId = userRecord.fund_id;
+      }
+    }
+
+    if (!fundId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized - no fund associated with user',
+      });
+    }
+
+    try {
+      await communicationsService.markAsReadForManager(id, fundId);
+      return reply.send({
+        success: true,
+        message: 'Communication marked as read',
+      });
+    } catch (error: any) {
+      console.error('[markAsRead] Error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to mark communication as read',
+      });
+    }
+  }
+
+  /**
+   * Get unread communication count for manager
+   */
+  async getUnreadCount(request: AuthenticatedRequest, reply: FastifyReply) {
+    let fundId = request.user?.fundId;
+    const userId = request.user?.id;
+
+    // If no fund_id on user, try to find the fund they manage
+    if (!fundId && userId) {
+      const { data: userRecord } = await supabaseAdmin
+        .from('users')
+        .select('fund_id')
+        .eq('id', userId)
+        .single();
+      
+      if (userRecord?.fund_id) {
+        fundId = userRecord.fund_id;
+      }
+    }
+
+    if (!fundId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized - no fund associated with user',
+      });
+    }
+
+    try {
+      const count = await communicationsService.getUnreadCountForManager(fundId);
+      return reply.send({
+        success: true,
+        data: count,
+      });
+    } catch (error: any) {
+      console.error('[getUnreadCount] Error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to get unread count',
+      });
+    }
+  }
+
   async delete(request: AuthenticatedRequest, reply: FastifyReply) {
     const { communicationId } = request.params as { communicationId: string };
 

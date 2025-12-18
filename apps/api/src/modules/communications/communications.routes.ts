@@ -33,6 +33,24 @@ export async function communicationsRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Get unread communication count (manager) - must come before :id routes
+  fastify.get(
+    '/communications/unread-count',
+    { preHandler: [authenticate, requireManager] },
+    async (request, reply) => {
+      return communicationsController.getUnreadCount(request as any, reply);
+    }
+  );
+
+  // Mark a communication as read (manager)
+  fastify.patch(
+    '/communications/:id/read',
+    { preHandler: [authenticate, requireManager] },
+    async (request, reply) => {
+      return communicationsController.markAsRead(request as any, reply);
+    }
+  );
+
   // Delete a communication
   fastify.delete(
     '/communications/:communicationId',

@@ -395,9 +395,10 @@ export class InvestorsService {
     console.log('[getFundContact] Found fund:', fundName);
 
     // Get fund manager (user with role='manager' and fund_id matching)
+    // Note: users table only has id, email, role, fund_id, created_at
     const { data: manager, error: managerError } = await supabaseAdmin
       .from('users')
-      .select('id, email, first_name, last_name')
+      .select('id, email')
       .eq('fund_id', fundId)
       .eq('role', 'manager')
       .limit(1)
@@ -416,10 +417,14 @@ export class InvestorsService {
 
     console.log('[getFundContact] Found manager:', manager.email);
 
+    // Extract name from email (before @) as fallback
+    const emailName = manager.email.split('@')[0].replace(/[._]/g, ' ');
+    const managerName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+
     return {
       fundName: fundName,
       email: manager.email,
-      managerName: `${manager.first_name || ''} ${manager.last_name || ''}`.trim() || 'Fund Manager',
+      managerName: managerName || 'Fund Manager',
     };
   }
 

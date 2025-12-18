@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../common/database/supabase';
 import { USER_ROLES } from '@flowveda/shared';
+import { webhookService } from '../../common/services/webhook.service';
 
 export interface OnboardingSubmissionData {
   // Personal info
@@ -130,6 +131,17 @@ export class OnboardingService {
       if (investorError) {
         throw new Error(investorError.message);
       }
+
+      // Send webhook for new investor
+      webhookService.sendWebhook('investor.created', {
+        id: investor.id,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        fundId: fundId,
+        commitmentAmount: data.commitmentAmount,
+        source: 'onboarding',
+      });
 
       // 4. Create onboarding application record
       const { error: applicationError } = await supabaseAdmin

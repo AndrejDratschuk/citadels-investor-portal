@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../../common/database/supabase';
 import { SignupInput, LoginInput, USER_ROLES } from '@flowveda/shared';
 import { User } from '@flowveda/shared';
+import { webhookService } from '../../common/services/webhook.service';
 
 // Default fund ID for new investors (created by seed data)
 const DEFAULT_FUND_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
@@ -41,7 +42,7 @@ export class AuthService {
 
     // If user is an investor, create an investor record
     if (input.role === USER_ROLES.INVESTOR && fundId) {
-      const { error: investorError } = await supabaseAdmin
+      const { data: investorData, error: investorError } = await supabaseAdmin
         .from('investors')
         .insert({
           user_id: authData.user.id,
@@ -54,11 +55,23 @@ export class AuthService {
           total_invested: 0,
           accreditation_status: 'pending',
           status: 'onboarding',
-        });
+        })
+        .select()
+        .single();
 
       if (investorError) {
         console.error('Failed to create investor record:', investorError);
         // Don't rollback - user can still login, investor record can be created later
+      } else if (investorData) {
+        // Send webhook for new investor
+        webhookService.sendWebhook('investor.created', {
+          id: investorData.id,
+          email: input.email,
+          firstName: input.firstName || 'New',
+          lastName: input.lastName || 'Investor',
+          fundId: fundId,
+          source: 'signup',
+        });
       }
     }
 

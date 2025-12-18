@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../common/database/supabase';
+import { webhookService } from '../../common/services/webhook.service';
 
 export interface KYCApplicationData {
   investorCategory: 'individual' | 'entity';
@@ -190,6 +191,19 @@ export class KYCService {
       throw new Error('Failed to submit KYC application');
     }
 
+    // Send webhook for KYC status change
+    webhookService.sendWebhook('kyc.status_changed', {
+      id: application.id,
+      email: application.email,
+      firstName: application.firstName,
+      lastName: application.lastName,
+      fundId: application.fundId,
+      oldStatus: application.status,
+      newStatus: newStatus,
+      eligible,
+      investorId,
+    });
+
     return {
       application: this.formatKYCApplication(data),
       eligible,
@@ -261,13 +275,25 @@ export class KYCService {
     const { data, error } = await supabaseAdmin
       .from('investors')
       .insert(investorData)
-      .select('id')
+      .select('*')
       .single();
 
     if (error) {
       console.error('[createInvestorFromKYC] Error:', error);
       throw new Error(`Failed to create investor: ${error.message}`);
     }
+
+    // Send webhook for new investor
+    webhookService.sendWebhook('investor.created', {
+      id: data.id,
+      email: investorData.email,
+      firstName: investorData.first_name,
+      lastName: investorData.last_name,
+      fundId: application.fundId,
+      entityName: investorData.entity_name,
+      commitmentAmount: investorData.commitment_amount,
+      source: 'kyc',
+    });
 
     return data.id;
   }
@@ -330,6 +356,9 @@ export class KYCService {
    * Approve a KYC application (manager only)
    */
   async approve(id: string): Promise<KYCApplication> {
+    // Get current application to capture old status
+    const current = await this.getById(id);
+
     const { data, error } = await supabaseAdmin
       .from('kyc_applications')
       .update({
@@ -345,6 +374,17 @@ export class KYCService {
       throw new Error('Failed to approve KYC application');
     }
 
+    // Send webhook for KYC status change
+    webhookService.sendWebhook('kyc.status_changed', {
+      id: current.id,
+      email: current.email,
+      firstName: current.firstName,
+      lastName: current.lastName,
+      fundId: current.fundId,
+      oldStatus: current.status,
+      newStatus: 'pre_qualified',
+    });
+
     return this.formatKYCApplication(data);
   }
 
@@ -352,6 +392,9 @@ export class KYCService {
    * Reject a KYC application (manager only)
    */
   async reject(id: string, reason?: string): Promise<KYCApplication> {
+    // Get current application to capture old status
+    const current = await this.getById(id);
+
     const { data, error } = await supabaseAdmin
       .from('kyc_applications')
       .update({
@@ -366,6 +409,18 @@ export class KYCService {
       console.error('Error rejecting KYC application:', error);
       throw new Error('Failed to reject KYC application');
     }
+
+    // Send webhook for KYC status change
+    webhookService.sendWebhook('kyc.status_changed', {
+      id: current.id,
+      email: current.email,
+      firstName: current.firstName,
+      lastName: current.lastName,
+      fundId: current.fundId,
+      oldStatus: current.status,
+      newStatus: 'not_eligible',
+      rejectionReason: reason,
+    });
 
     return this.formatKYCApplication(data);
   }

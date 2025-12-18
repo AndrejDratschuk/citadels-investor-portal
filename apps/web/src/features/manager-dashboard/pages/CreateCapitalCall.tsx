@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, DollarSign, Users, ChevronRight } from 'lucide-react';
+import { ArrowLeft, DollarSign, Users, ChevronRight, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { dealsApi } from '@/lib/api/deals';
+import { capitalCallsApi } from '@/lib/api/capital-calls';
 
 // Mock investors for preview
 const mockInvestorBreakdown = [
@@ -99,10 +100,27 @@ export function CreateCapitalCall() {
     if (step === 'preview') setStep('amount');
   };
 
-  const handleSubmit = () => {
-    // Submit logic here
-    console.log({ dealId: selectedDealId, amount, deadline });
-    navigate('/manager/capital-calls');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (!selectedDealId || !amount || !deadline) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await capitalCallsApi.create({
+        dealId: selectedDealId,
+        totalAmount: parseFloat(amount),
+        deadline: deadline,
+      });
+      navigate('/manager/capital-calls');
+    } catch (error: any) {
+      console.error('Failed to create capital call:', error);
+      setSubmitError(error.message || 'Failed to create capital call');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -285,9 +303,16 @@ export function CreateCapitalCall() {
         </div>
       )}
 
+      {/* Error Message */}
+      {submitError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {submitError}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={handleBack} disabled={step === 'deal'}>
+        <Button variant="outline" onClick={handleBack} disabled={step === 'deal' || isSubmitting}>
           Back
         </Button>
         {step !== 'preview' ? (
@@ -301,8 +326,15 @@ export function CreateCapitalCall() {
             Continue
           </Button>
         ) : (
-          <Button onClick={handleSubmit}>
-            Create & Send Capital Call
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create & Send Capital Call'
+            )}
           </Button>
         )}
       </div>

@@ -10,6 +10,7 @@ import { fundsRoutes } from './modules/funds/funds.routes';
 import { documentsRoutes } from './modules/documents/documents.routes';
 import { dealsRoutes } from './modules/deals/deals.routes';
 import { notificationsRoutes } from './modules/notifications/notifications.routes';
+import { capitalCallsRoutes } from './modules/capital-calls/capital-calls.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -24,6 +25,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(documentsRoutes, { prefix: '/documents' });
   await fastify.register(dealsRoutes, { prefix: '/deals' });
   await fastify.register(notificationsRoutes, { prefix: '/notifications' });
+  await fastify.register(capitalCallsRoutes, { prefix: '/capital-calls' });
 
   // Health check
   fastify.get('/health', async () => {

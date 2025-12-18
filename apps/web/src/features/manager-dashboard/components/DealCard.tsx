@@ -91,7 +91,7 @@ export function DealCard({ deal, className }: DealCardProps) {
             )}
           >
             {config.icon}
-          </div>
+        </div>
         )}
         {/* Status badge overlay */}
         <div className="absolute top-3 right-3">

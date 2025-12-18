@@ -39,3 +39,5 @@ USING (bucket_id = 'deal-images');
 
 
 
+
+

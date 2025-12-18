@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../../lib/supabase';
+import { supabaseAdmin } from '../../common/database/supabase';
 
 export interface Notification {
   id: string;
@@ -196,4 +196,6 @@ class NotificationsService {
 }
 
 export const notificationsService = new NotificationsService();
+
+
 

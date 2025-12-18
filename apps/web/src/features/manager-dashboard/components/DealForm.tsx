@@ -143,7 +143,7 @@ export function DealForm({ initialData, onSubmit, isEdit = false, isSubmitting =
       onSubmit(formData);
     } else {
       // Fallback navigation if no onSubmit provided
-      navigate('/manager/deals');
+    navigate('/manager/deals');
     }
   };
 
@@ -280,21 +280,21 @@ export function DealForm({ initialData, onSubmit, isEdit = false, isSubmitting =
 
           {/* Owning Entity Name & Property Type */}
           <div className="grid gap-6 sm:grid-cols-2">
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <Label htmlFor="owningEntityName">Owning Entity Name *</Label>
-                <Tooltip content={tooltips.owningEntityName} />
-              </div>
-              <Input
-                id="owningEntityName"
-                value={formData.owningEntityName}
-                onChange={(e) => updateField('owningEntityName', e.target.value)}
-                placeholder="e.g., Riverside Holdings LLC"
-                className={errors.owningEntityName ? 'border-destructive' : ''}
-              />
-              {errors.owningEntityName && (
-                <p className="text-sm text-destructive">{errors.owningEntityName}</p>
-              )}
+          <div className="space-y-2">
+            <div className="flex items-center">
+              <Label htmlFor="owningEntityName">Owning Entity Name *</Label>
+              <Tooltip content={tooltips.owningEntityName} />
+            </div>
+            <Input
+              id="owningEntityName"
+              value={formData.owningEntityName}
+              onChange={(e) => updateField('owningEntityName', e.target.value)}
+              placeholder="e.g., Riverside Holdings LLC"
+              className={errors.owningEntityName ? 'border-destructive' : ''}
+            />
+            {errors.owningEntityName && (
+              <p className="text-sm text-destructive">{errors.owningEntityName}</p>
+            )}
             </div>
 
             <div className="space-y-2">

@@ -74,7 +74,7 @@ export function EditDeal() {
       // Map form data to API input
       const updateInput: Partial<CreateDealInput> = {
         name: formData.name,
-        description: formData.owningEntityName ? `${formData.dealType} - ${formData.owningEntityName}` : deal?.description,
+        description: formData.owningEntityName ? `${formData.dealType} - ${formData.owningEntityName}` : (deal?.description ?? undefined),
         status: mapDealStageToStatus(formData.dealStage),
         propertyType: formData.propertyType || undefined,
       };

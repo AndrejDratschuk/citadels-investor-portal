@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { dealsApi, Deal } from '@/lib/api/deals';
+import { dealsApi } from '@/lib/api/deals';
 
 // Mock investors for preview
 const mockInvestorBreakdown = [

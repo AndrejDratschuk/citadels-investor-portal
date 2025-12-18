@@ -1,5 +1,5 @@
 import { FastifyReply } from 'fastify';
-import { AuthenticatedRequest } from '../../middleware/auth';
+import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { notificationsService } from './notifications.service';
 
 class NotificationsController {

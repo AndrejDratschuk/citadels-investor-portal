@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import { notificationsController } from './notifications.controller';
-import { authMiddleware, AuthenticatedRequest } from '../../middleware/auth';
+import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 
 export async function notificationsRoutes(fastify: FastifyInstance) {
   // All routes require authentication
-  const authPreHandler = { preHandler: authMiddleware };
+  const authPreHandler = { preHandler: authenticate };
 
   // Get all notifications
   fastify.get('/', authPreHandler, async (request, reply) => {

@@ -388,19 +388,20 @@ export class InvestorsService {
 
     if (fundError) {
       console.error('[getFundContact] Fund lookup error:', fundError);
-      throw new Error(`Fund not found: ${fundError.message}`);
+      // Try to get any fund manager from fund_managers table
+      return this.getFundContactFallback(fundId);
     }
 
     if (!fund) {
       console.error('[getFundContact] Fund not found for id:', fundId);
-      throw new Error('Fund not found');
+      return this.getFundContactFallback(fundId);
     }
 
     console.log('[getFundContact] Found fund:', fund.name, 'created by:', fund.created_by);
 
     if (!fund.created_by) {
-      console.error('[getFundContact] Fund has no created_by field:', fund.id);
-      throw new Error('Fund has no manager associated');
+      console.log('[getFundContact] Fund has no created_by, trying fallback');
+      return this.getFundContactFallback(fundId, fund.name);
     }
 
     // Get fund manager (creator) info
@@ -410,14 +411,9 @@ export class InvestorsService {
       .eq('id', fund.created_by)
       .single();
 
-    if (managerError) {
+    if (managerError || !manager) {
       console.error('[getFundContact] Manager lookup error:', managerError);
-      throw new Error(`Fund manager not found: ${managerError.message}`);
-    }
-
-    if (!manager) {
-      console.error('[getFundContact] Manager not found for id:', fund.created_by);
-      throw new Error('Fund manager not found');
+      return this.getFundContactFallback(fundId, fund.name);
     }
 
     console.log('[getFundContact] Found manager:', manager.email);
@@ -427,6 +423,49 @@ export class InvestorsService {
       email: manager.email,
       managerName: `${manager.first_name || ''} ${manager.last_name || ''}`.trim() || 'Fund Manager',
     };
+  }
+
+  /**
+   * Fallback method to get fund contact via fund_managers table
+   */
+  private async getFundContactFallback(fundId: string, fundName?: string): Promise<{ fundName: string; email: string; managerName: string }> {
+    console.log('[getFundContact] Trying fallback via fund_managers table');
+    
+    // Try to get fund manager via fund_managers join table
+    const { data: fundManager, error: fmError } = await supabaseAdmin
+      .from('fund_managers')
+      .select(`
+        user_id,
+        users!inner(email, first_name, last_name)
+      `)
+      .eq('fund_id', fundId)
+      .limit(1)
+      .single();
+
+    if (!fmError && fundManager && fundManager.users) {
+      const user = fundManager.users as any;
+      console.log('[getFundContact] Found manager via fund_managers:', user.email);
+      
+      // Get fund name if not provided
+      let resolvedFundName = fundName;
+      if (!resolvedFundName) {
+        const { data: fundData } = await supabaseAdmin
+          .from('funds')
+          .select('name')
+          .eq('id', fundId)
+          .single();
+        resolvedFundName = fundData?.name || 'Your Fund';
+      }
+      
+      return {
+        fundName: resolvedFundName,
+        email: user.email,
+        managerName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Fund Manager',
+      };
+    }
+
+    console.error('[getFundContact] Fallback also failed:', fmError);
+    throw new Error('Could not find fund contact information');
   }
 
   /**

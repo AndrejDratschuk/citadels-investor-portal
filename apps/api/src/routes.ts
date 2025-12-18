@@ -9,6 +9,7 @@ import { emailRoutes } from './modules/email/email.routes';
 import { fundsRoutes } from './modules/funds/funds.routes';
 import { documentsRoutes } from './modules/documents/documents.routes';
 import { dealsRoutes } from './modules/deals/deals.routes';
+import { notificationsRoutes } from './modules/notifications/notifications.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -22,6 +23,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(fundsRoutes, { prefix: '/funds' });
   await fastify.register(documentsRoutes, { prefix: '/documents' });
   await fastify.register(dealsRoutes, { prefix: '/deals' });
+  await fastify.register(notificationsRoutes, { prefix: '/notifications' });
 
   // Health check
   fastify.get('/health', async () => {

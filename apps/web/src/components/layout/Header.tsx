@@ -1,8 +1,21 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Zap, UserPlus, DollarSign, Building2, FileUp } from 'lucide-react';
+import { 
+  LogOut, 
+  User, 
+  Zap, 
+  UserPlus, 
+  DollarSign, 
+  Building2, 
+  FileUp, 
+  Bell,
+  UserCheck,
+  FileText,
+  MessageSquare,
+  CheckCircle,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +29,16 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { notificationsApi, Notification, getNotificationLink, getNotificationIconType } from '@/lib/api/notifications';
+import { formatDistanceToNow } from 'date-fns';
 
 const quickActions = [
   {
@@ -45,15 +67,95 @@ const quickActions = [
   },
 ];
 
+// Map notification icon types to actual icons
+const notificationIcons = {
+  user: UserPlus,
+  building: Building2,
+  dollar: DollarSign,
+  file: FileText,
+  message: MessageSquare,
+  check: UserCheck,
+};
+
 export function Header() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   const getInitials = (email: string) => {
     return email.substring(0, 2).toUpperCase();
   };
 
   const isManager = user?.role === 'manager';
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const [notifs, count] = await Promise.all([
+        notificationsApi.getAll({ limit: 20 }),
+        notificationsApi.getUnreadCount(),
+      ]);
+      setNotifications(notifs);
+      setUnreadCount(count);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  }, [user]);
+
+  // Initial fetch and polling
+  useEffect(() => {
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // Handle notification click
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if unread
+    if (!notification.isRead) {
+      try {
+        await notificationsApi.markAsRead(notification.id);
+        setNotifications(prev => 
+          prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error);
+      }
+    }
+
+    // Navigate to related entity
+    const link = getNotificationLink(notification);
+    if (link) {
+      setNotificationsOpen(false);
+      navigate(link);
+    }
+  };
+
+  // Mark all as read
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationsApi.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
+
+  // Get icon for notification
+  const getNotificationIcon = (type: string) => {
+    const iconType = getNotificationIconType(type);
+    return notificationIcons[iconType] || MessageSquare;
+  };
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
@@ -98,6 +200,101 @@ export function Header() {
               </div>
             </HoverCardContent>
           </HoverCard>
+        )}
+
+        {/* Notifications Bell */}
+        {user && (
+          <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-10 w-10 rounded-full"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute bottom-1.5 right-1.5 flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-96 p-0" sideOffset={8}>
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <div>
+                  <p className="font-semibold">Notifications</p>
+                  {unreadCount > 0 && (
+                    <p className="text-xs text-muted-foreground">{unreadCount} unread</p>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs"
+                  >
+                    <CheckCircle className="mr-1 h-3 w-3" />
+                    Mark all read
+                  </Button>
+                )}
+              </div>
+              <ScrollArea className="h-[400px]">
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Bell className="h-10 w-10 text-muted-foreground/50" />
+                    <p className="mt-2 text-sm font-medium text-muted-foreground">No notifications</p>
+                    <p className="text-xs text-muted-foreground">You're all caught up!</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {notifications.map((notification) => {
+                      const Icon = getNotificationIcon(notification.type);
+                      const link = getNotificationLink(notification);
+                      
+                      return (
+                        <button
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={cn(
+                            'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted',
+                            !notification.isRead && 'bg-primary/5'
+                          )}
+                        >
+                          <div className={cn(
+                            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full',
+                            !notification.isRead ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                          )}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={cn(
+                                'text-sm',
+                                !notification.isRead && 'font-medium'
+                              )}>
+                                {notification.title}
+                              </p>
+                              {!notification.isRead && (
+                                <span className="flex h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground/70">
+                              {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Profile Menu */}

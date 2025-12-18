@@ -87,10 +87,11 @@ function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeModalProps) {
   const [success, setSuccess] = useState(false);
 
   // Get fund contact info
-  const { data: fundContact, isLoading: loadingContact } = useQuery({
+  const { data: fundContact, isLoading: loadingContact, error: contactError } = useQuery({
     queryKey: ['fund-contact'],
     queryFn: investorsApi.getFundContact,
     enabled: isOpen,
+    retry: 2,
   });
 
   const handleSend = async () => {
@@ -132,7 +133,7 @@ function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
@@ -157,6 +158,13 @@ function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeModalProps) {
           <div className="mx-4 mt-4 p-3 rounded-lg bg-muted flex items-center gap-2 text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading fund contact...
+          </div>
+        ) : contactError ? (
+          <div className="mx-4 mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-2 text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>
+              Could not load fund contact info. Message will still be sent to your fund manager.
+            </span>
           </div>
         ) : fundContact ? (
           <div className="mx-4 mt-4 p-3 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2 text-sm text-green-800">
@@ -217,7 +225,7 @@ function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeModalProps) {
           </Button>
           <Button
             onClick={handleSend}
-            disabled={sending || !subject.trim() || !body.trim() || !fundContact}
+            disabled={sending || !subject.trim() || !body.trim() || loadingContact}
           >
             {sending ? (
               <>

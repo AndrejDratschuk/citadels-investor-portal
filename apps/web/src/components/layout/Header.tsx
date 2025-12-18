@@ -84,7 +84,6 @@ export function Header() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
 
   const getInitials = (email: string) => {
     return email.substring(0, 2).toUpperCase();
@@ -251,7 +250,6 @@ export function Header() {
                   <div className="divide-y">
                     {notifications.map((notification) => {
                       const Icon = getNotificationIcon(notification.type);
-                      const link = getNotificationLink(notification);
                       
                       return (
                         <button

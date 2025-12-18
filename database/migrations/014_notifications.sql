@@ -255,7 +255,7 @@ CREATE TRIGGER trigger_notify_deal_status_changed
   WHEN (OLD.status IS DISTINCT FROM NEW.status)
   EXECUTE FUNCTION notify_on_deal_status_changed();
 
--- Trigger function for new communication
+-- Trigger function for new communication (created even if table doesn't exist yet)
 CREATE OR REPLACE FUNCTION notify_on_communication_created()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -281,12 +281,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger for new communication
-DROP TRIGGER IF EXISTS trigger_notify_communication_created ON communications;
-CREATE TRIGGER trigger_notify_communication_created
-  AFTER INSERT ON communications
-  FOR EACH ROW
-  EXECUTE FUNCTION notify_on_communication_created();
+-- Trigger for new communication (only if communications table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'communications') THEN
+    DROP TRIGGER IF EXISTS trigger_notify_communication_created ON communications;
+    CREATE TRIGGER trigger_notify_communication_created
+      AFTER INSERT ON communications
+      FOR EACH ROW
+      EXECUTE FUNCTION notify_on_communication_created();
+  END IF;
+END;
+$$;
 
 COMMENT ON TABLE notifications IS 'Real-time notifications for users about various events';
 

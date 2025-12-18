@@ -439,12 +439,11 @@ export class InvestorsService {
     // Get fund contact
     const fundContact = await this.getFundContact(investor.fundId);
 
-    // For now, we'll use a simple email service
-    // In production, you'd use a real email service
     console.log('[sendEmailToFund] Sending email from', investor.email, 'to', fundContact.email);
     console.log('[sendEmailToFund] Subject:', subject);
 
     // Store the communication in the database
+    // Mark as read for the sender (investor) since they sent it
     const { data: communication, error: commError } = await supabaseAdmin
       .from('investor_communications')
       .insert({
@@ -457,6 +456,8 @@ export class InvestorsService {
         email_from: investor.email,
         email_to: fundContact.email,
         source: 'manual',
+        is_read: true, // Sender already knows about their own message
+        read_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -464,6 +465,41 @@ export class InvestorsService {
     if (commError) {
       console.error('[sendEmailToFund] Error storing communication:', commError);
       throw new Error('Failed to store communication');
+    }
+
+    // Create a notification for the fund manager
+    try {
+      // Find the fund manager's user ID
+      const { data: manager } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('fund_id', investor.fundId)
+        .eq('role', 'manager')
+        .limit(1)
+        .single();
+
+      if (manager) {
+        await supabaseAdmin
+          .from('notifications')
+          .insert({
+            user_id: manager.id,
+            fund_id: investor.fundId,
+            type: 'investor_message',
+            title: `New message from ${investor.firstName} ${investor.lastName}`,
+            message: subject,
+            related_entity_type: 'communication',
+            related_entity_id: communication.id,
+            metadata: {
+              investor_id: investor.id,
+              investor_name: `${investor.firstName} ${investor.lastName}`,
+              investor_email: investor.email,
+            },
+          });
+        console.log('[sendEmailToFund] Notification created for manager:', manager.id);
+      }
+    } catch (notifError) {
+      // Don't fail the whole operation if notification fails
+      console.error('[sendEmailToFund] Failed to create notification:', notifError);
     }
 
     // TODO: Actually send the email via email service

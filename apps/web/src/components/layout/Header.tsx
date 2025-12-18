@@ -132,7 +132,7 @@ export function Header() {
     }
 
     // Navigate to related entity
-    const link = getNotificationLink(notification);
+    const link = getNotificationLink(notification, user?.role);
     if (link) {
       setNotificationsOpen(false);
       navigate(link);

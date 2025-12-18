@@ -144,6 +144,7 @@ export class CommunicationsService {
         call_duration_minutes: input.callDurationMinutes || null,
         source: 'manual',
         created_by: userId,
+        is_read: false, // Unread for the investor
       })
       .select()
       .single();
@@ -151,6 +152,9 @@ export class CommunicationsService {
     if (error) {
       throw new Error(`Failed to create phone call log: ${error.message}`);
     }
+
+    // Create notification for investor
+    await this.createInvestorNotification(input.investorId, fundId, 'phone_call', input.title, data.id);
 
     return mapDbToCommunication(data as DbCommunication);
   }
@@ -175,6 +179,7 @@ export class CommunicationsService {
         source: source,
         external_id: input.externalId || null,
         created_by: userId || null,
+        is_read: false, // Unread for the investor
       })
       .select()
       .single();
@@ -182,6 +187,9 @@ export class CommunicationsService {
     if (error) {
       throw new Error(`Failed to create email log: ${error.message}`);
     }
+
+    // Create notification for investor
+    await this.createInvestorNotification(input.investorId, fundId, 'email', input.title, data.id);
 
     return mapDbToCommunication(data as DbCommunication);
   }
@@ -206,6 +214,7 @@ export class CommunicationsService {
         source: source,
         external_id: input.externalId || null,
         created_by: userId || null,
+        is_read: false, // Unread for the investor
       })
       .select()
       .single();
@@ -214,7 +223,57 @@ export class CommunicationsService {
       throw new Error(`Failed to create meeting log: ${error.message}`);
     }
 
+    // Create notification for investor
+    await this.createInvestorNotification(input.investorId, fundId, 'meeting', input.title, data.id);
+
     return mapDbToCommunication(data as DbCommunication);
+  }
+
+  /**
+   * Create a notification for an investor when a new communication is logged
+   */
+  private async createInvestorNotification(
+    investorId: string,
+    fundId: string,
+    type: CommunicationType,
+    title: string,
+    communicationId: string
+  ): Promise<void> {
+    try {
+      // Get investor's user_id
+      const { data: investor } = await supabaseAdmin
+        .from('investors')
+        .select('user_id')
+        .eq('id', investorId)
+        .single();
+
+      if (!investor?.user_id) {
+        console.log('[createInvestorNotification] Investor has no user_id, skipping notification');
+        return;
+      }
+
+      const typeLabel = type === 'phone_call' ? 'Phone Call' : type === 'email' ? 'Email' : 'Meeting';
+      
+      await supabaseAdmin
+        .from('notifications')
+        .insert({
+          user_id: investor.user_id,
+          fund_id: fundId,
+          type: 'new_communication',
+          title: `New ${typeLabel} from Fund Manager`,
+          message: title,
+          related_entity_type: 'communication',
+          related_entity_id: communicationId,
+          metadata: {
+            communication_type: type,
+          },
+        });
+      
+      console.log('[createInvestorNotification] Notification created for investor user:', investor.user_id);
+    } catch (error) {
+      // Don't fail the whole operation if notification fails
+      console.error('[createInvestorNotification] Failed to create notification:', error);
+    }
   }
 
   async delete(communicationId: string): Promise<void> {

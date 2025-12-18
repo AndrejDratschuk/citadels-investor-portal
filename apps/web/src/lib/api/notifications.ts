@@ -63,7 +63,20 @@ export const notificationsApi = {
 /**
  * Get the link for a notification based on its type and related entity
  */
-export function getNotificationLink(notification: Notification): string | null {
+export function getNotificationLink(notification: Notification, userRole?: string): string | null {
+  // For investor-specific notifications, link to investor pages
+  if (notification.type === 'new_communication') {
+    return '/investor/communications';
+  }
+  
+  // For manager-specific notifications
+  if (notification.type === 'investor_message') {
+    // Link to the investor who sent the message
+    return notification.metadata?.investor_id 
+      ? `/manager/investors/${notification.metadata.investor_id}`
+      : '/manager/communications';
+  }
+
   if (!notification.relatedEntityType || !notification.relatedEntityId) {
     return null;
   }
@@ -74,11 +87,17 @@ export function getNotificationLink(notification: Notification): string | null {
     case 'deal':
       return `/manager/deals/${notification.relatedEntityId}`;
     case 'capital_call':
-      return `/manager/capital-calls/${notification.relatedEntityId}`;
+      return userRole === 'investor' 
+        ? '/investor/dashboard'
+        : `/manager/capital-calls/${notification.relatedEntityId}`;
     case 'document':
-      return `/manager/documents`;
+      return userRole === 'investor'
+        ? '/investor/documents'
+        : '/manager/documents';
     case 'communication':
-      return `/manager/communications`;
+      return userRole === 'investor'
+        ? '/investor/communications'
+        : '/manager/communications';
     case 'kyc_application':
       // KYC applications link to the investor or the onboarding queue
       return notification.metadata?.investor_id 
@@ -96,6 +115,7 @@ export function getNotificationIconType(type: string): 'user' | 'building' | 'do
   switch (type) {
     case 'investor_added':
     case 'investor_updated':
+    case 'investor_onboarded':
       return 'user';
     case 'kyc_submitted':
     case 'kyc_approved':
@@ -110,6 +130,8 @@ export function getNotificationIconType(type: string): 'user' | 'building' | 'do
     case 'deal_status_changed':
       return 'building';
     case 'communication_received':
+    case 'investor_message':
+    case 'new_communication':
       return 'message';
     case 'document_uploaded':
     case 'document_signed':

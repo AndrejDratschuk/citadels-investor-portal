@@ -72,10 +72,8 @@ export function getNotificationLink(notification: Notification, userRole?: strin
   
   // For manager-specific notifications
   if (notification.type === 'investor_message') {
-    // Link to the investor who sent the message
-    return notification.metadata?.investor_id 
-      ? `/manager/investors/${notification.metadata.investor_id}`
-      : '/manager/communications';
+    // Link to communications tab to see the message
+    return '/manager/communications';
   }
 
   if (!notification.relatedEntityType || !notification.relatedEntityId) {

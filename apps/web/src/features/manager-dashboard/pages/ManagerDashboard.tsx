@@ -5,15 +5,12 @@ import {
   Building2,
   TrendingUp,
   ArrowRight,
-  Bell,
 } from 'lucide-react';
 import { formatCurrency } from '@flowveda/shared';
 import { StatsCard } from '../components/StatsCard';
 import { ActivityFeed, ActivityItem } from '../components/ActivityFeed';
-import { QuickActions } from '../components/QuickActions';
 import { FundChart } from '../components/FundChart';
 import { CapitalCallProgress } from '../components/CapitalCallProgress';
-import { Button } from '@/components/ui/button';
 
 // Mock data - will be replaced with real API calls
 const mockStats = {
@@ -103,27 +100,12 @@ const mockCapitalCalls = [
 export function ManagerDashboard() {
   return (
     <div className="space-y-8">
-      {/* Header with Quick Actions */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Fund Dashboard</h1>
-              <p className="mt-1 text-muted-foreground">
-                FlowVeda Growth Fund I Overview
-              </p>
-            </div>
-            <div className="flex items-center gap-2 sm:hidden">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Bell className="h-4 w-4" />
-                <span>Notifications</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-        <div className="hidden lg:block">
-          <QuickActions />
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">Fund Dashboard</h1>
+        <p className="mt-1 text-muted-foreground">
+          FlowVeda Growth Fund I Overview
+        </p>
       </div>
 
       {/* Stats Grid */}
@@ -193,11 +175,6 @@ export function ManagerDashboard() {
             />
           ))}
         </div>
-      </div>
-
-      {/* Quick Actions - Mobile Only */}
-      <div className="lg:hidden">
-        <QuickActions />
       </div>
 
       {/* Activity Feed */}

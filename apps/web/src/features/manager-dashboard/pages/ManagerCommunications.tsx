@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -199,6 +199,8 @@ function CommunicationRow({ communication, isSelected, onClick }: CommunicationR
 interface CommunicationDetailProps {
   communication: Communication;
   onBack: () => void;
+  onReply: (communication: Communication) => void;
+  onForward: (communication: Communication) => void;
 }
 
 // Compose Email Modal
@@ -207,9 +209,11 @@ interface ComposeModalProps {
   onClose: () => void;
   investors: { id: string; name: string; email: string }[];
   onSuccess: () => void;
+  replyTo?: Communication | null;
+  forwardFrom?: Communication | null;
 }
 
-function ComposeEmailModal({ isOpen, onClose, investors, onSuccess }: ComposeModalProps) {
+function ComposeEmailModal({ isOpen, onClose, investors, onSuccess, replyTo, forwardFrom }: ComposeModalProps) {
   const [selectedInvestorId, setSelectedInvestorId] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -217,11 +221,38 @@ function ComposeEmailModal({ isOpen, onClose, investors, onSuccess }: ComposeMod
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Determine mode
+  const isReply = !!replyTo;
+  const isForward = !!forwardFrom;
+  const originalCommunication = replyTo || forwardFrom;
+
   // Get email connection status
   const { data: emailStatus } = useQuery({
     queryKey: ['email', 'status'],
     queryFn: emailApi.getStatus,
   });
+
+  // Pre-fill fields when opening in reply/forward mode
+  useEffect(() => {
+    if (isOpen && originalCommunication) {
+      const originalSubject = originalCommunication.title;
+      const originalContent = originalCommunication.content || '';
+      const originalDate = formatDate(originalCommunication.occurredAt);
+      const originalFrom = originalCommunication.emailFrom || originalCommunication.investor.email;
+      
+      if (isReply) {
+        // Reply mode: pre-select investor and set Re: subject
+        setSelectedInvestorId(originalCommunication.investor.id);
+        setSubject(originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`);
+        setBody(`\n\n---\nOn ${originalDate}, ${originalFrom} wrote:\n\n${originalContent}`);
+      } else if (isForward) {
+        // Forward mode: just set Fwd: subject and include original message
+        setSelectedInvestorId('');
+        setSubject(originalSubject.startsWith('Fwd:') ? originalSubject : `Fwd: ${originalSubject}`);
+        setBody(`\n\n---\nForwarded message:\nFrom: ${originalFrom}\nDate: ${originalDate}\nSubject: ${originalSubject}\n\n${originalContent}`);
+      }
+    }
+  }, [isOpen, originalCommunication, isReply, isForward]);
 
   const selectedInvestor = investors.find((i) => i.id === selectedInvestorId);
 
@@ -283,6 +314,9 @@ function ComposeEmailModal({ isOpen, onClose, investors, onSuccess }: ComposeMod
     onClose();
   };
 
+  // Get modal title based on mode
+  const modalTitle = isReply ? 'Reply to Email' : isForward ? 'Forward Email' : 'Compose Email';
+
   if (!isOpen) return null;
 
   return (
@@ -296,7 +330,7 @@ function ComposeEmailModal({ isOpen, onClose, investors, onSuccess }: ComposeMod
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Mail className="h-5 w-5 text-primary" />
-            Compose Email
+            {modalTitle}
           </h2>
           <button
             onClick={handleClose}
@@ -334,18 +368,25 @@ function ComposeEmailModal({ isOpen, onClose, investors, onSuccess }: ComposeMod
           {/* Recipient */}
           <div>
             <label className="block text-sm font-medium mb-1.5">To:</label>
-            <select
-              value={selectedInvestorId}
-              onChange={(e) => setSelectedInvestorId(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">Select an investor...</option>
-              {investors.map((investor) => (
-                <option key={investor.id} value={investor.id}>
-                  {investor.name} ({investor.email})
-                </option>
-              ))}
-            </select>
+            {isReply && selectedInvestor ? (
+              // In reply mode, show the investor as read-only
+              <div className="w-full rounded-lg border bg-muted px-3 py-2 text-sm">
+                {selectedInvestor.name} ({selectedInvestor.email})
+              </div>
+            ) : (
+              <select
+                value={selectedInvestorId}
+                onChange={(e) => setSelectedInvestorId(e.target.value)}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Select an investor...</option>
+                {investors.map((investor) => (
+                  <option key={investor.id} value={investor.id}>
+                    {investor.name} ({investor.email})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Subject */}
@@ -416,9 +457,10 @@ function ComposeEmailModal({ isOpen, onClose, investors, onSuccess }: ComposeMod
   );
 }
 
-function CommunicationDetail({ communication, onBack }: CommunicationDetailProps) {
+function CommunicationDetail({ communication, onBack, onReply, onForward }: CommunicationDetailProps) {
   const config = typeConfig[communication.type];
   const Icon = config.icon;
+  const isEmail = communication.type === 'email';
 
   return (
     <div className="h-full flex flex-col">
@@ -533,17 +575,29 @@ function CommunicationDetail({ communication, onBack }: CommunicationDetailProps
         )}
       </div>
 
-      {/* Actions */}
-      <div className="border-t p-4 flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1">
-          <Mail className="h-4 w-4 mr-2" />
-          Reply
-        </Button>
-        <Button variant="outline" size="sm" className="flex-1">
-          <Send className="h-4 w-4 mr-2" />
-          Forward
-        </Button>
-      </div>
+      {/* Actions - only show for emails */}
+      {isEmail && (
+        <div className="border-t p-4 flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onReply(communication)}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Reply
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onForward(communication)}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Forward
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -565,6 +619,8 @@ export function ManagerCommunications() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showComposeModal, setShowComposeModal] = useState(false);
+  const [replyToCommunication, setReplyToCommunication] = useState<Communication | null>(null);
+  const [forwardCommunication, setForwardCommunication] = useState<Communication | null>(null);
 
   // Fetch real investors from API
   const { data: investorsList } = useQuery({
@@ -752,13 +808,19 @@ export function ManagerCommunications() {
 
       {/* Compose Email Modal */}
       <ComposeEmailModal
-        isOpen={showComposeModal}
-        onClose={() => setShowComposeModal(false)}
+        isOpen={showComposeModal || !!replyToCommunication || !!forwardCommunication}
+        onClose={() => {
+          setShowComposeModal(false);
+          setReplyToCommunication(null);
+          setForwardCommunication(null);
+        }}
         investors={displayInvestors}
         onSuccess={() => {
           // Refresh communications list
           queryClient.invalidateQueries({ queryKey: ['manager', 'communications'] });
         }}
+        replyTo={replyToCommunication}
+        forwardFrom={forwardCommunication}
       />
 
       {/* Direction Tabs (Sent/Received) */}
@@ -988,6 +1050,8 @@ export function ManagerCommunications() {
             <CommunicationDetail
               communication={selectedCommunication}
               onBack={() => setSelectedId(null)}
+              onReply={(comm) => setReplyToCommunication(comm)}
+              onForward={(comm) => setForwardCommunication(comm)}
             />
           ) : (
             <div className="p-8 text-center">

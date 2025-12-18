@@ -19,6 +19,7 @@ import {
   DealsList,
   DealDetail,
   CreateDeal,
+  EditDeal,
   CapitalCallsList,
   CapitalCallDetail,
   CreateCapitalCall,
@@ -171,6 +172,10 @@ export const router = createBrowserRouter([
       {
         path: 'deals/:id',
         element: <DealDetail />,
+      },
+      {
+        path: 'deals/:id/edit',
+        element: <EditDeal />,
       },
       {
         path: 'capital-calls',

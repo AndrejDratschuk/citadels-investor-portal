@@ -1,19 +1,12 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, Users, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-
-// Mock deals data
-const mockDeals = [
-  { id: '1', name: 'Riverside Apartments', totalCommitment: 14000000 },
-  { id: '2', name: 'Downtown Office Tower', totalCommitment: 29000000 },
-  { id: '3', name: 'Eastside Industrial Park', totalCommitment: 20000000 },
-  { id: '4', name: 'Lakefront Retail Center', totalCommitment: 10000000 },
-];
+import { dealsApi, Deal } from '@/lib/api/deals';
 
 // Mock investors for preview
 const mockInvestorBreakdown = [
@@ -26,14 +19,67 @@ const mockInvestorBreakdown = [
 
 type Step = 'deal' | 'amount' | 'preview';
 
+interface DealOption {
+  id: string;
+  name: string;
+  totalCommitment: number;
+}
+
+// Fallback mock deals if API fails
+const fallbackDeals: DealOption[] = [
+  { id: 'mock-1', name: 'Riverside Apartments', totalCommitment: 14000000 },
+  { id: 'mock-2', name: 'Downtown Office Tower', totalCommitment: 29000000 },
+  { id: 'mock-3', name: 'Eastside Industrial Park', totalCommitment: 20000000 },
+  { id: 'mock-4', name: 'Lakefront Retail Center', totalCommitment: 10000000 },
+];
+
 export function CreateCapitalCall() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>('deal');
-  const [selectedDealId, setSelectedDealId] = useState<string>('');
+  const [searchParams] = useSearchParams();
+  const dealIdFromUrl = searchParams.get('dealId');
+
+  const [deals, setDeals] = useState<DealOption[]>(fallbackDeals);
+  const [step, setStep] = useState<Step>(dealIdFromUrl ? 'amount' : 'deal');
+  const [selectedDealId, setSelectedDealId] = useState<string>(dealIdFromUrl || '');
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
 
-  const selectedDeal = mockDeals.find((d) => d.id === selectedDealId);
+  // Fetch deals from API
+  useEffect(() => {
+    async function fetchDeals() {
+      try {
+        const apiDeals = await dealsApi.getAll();
+        if (apiDeals.length > 0) {
+          const mappedDeals: DealOption[] = apiDeals.map(deal => ({
+            id: deal.id,
+            name: deal.name,
+            totalCommitment: deal.currentValue || 0,
+          }));
+          setDeals(mappedDeals);
+          
+          // If dealId from URL is not in the list, add it via API fetch
+          if (dealIdFromUrl && !mappedDeals.some(d => d.id === dealIdFromUrl)) {
+            try {
+              const specificDeal = await dealsApi.getById(dealIdFromUrl);
+              setDeals(prev => [...prev, {
+                id: specificDeal.id,
+                name: specificDeal.name,
+                totalCommitment: specificDeal.currentValue || 0,
+              }]);
+            } catch {
+              // Deal not found, will use what we have
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Using fallback deals');
+      }
+    }
+
+    fetchDeals();
+  }, [dealIdFromUrl]);
+
+  const selectedDeal = deals.find((d) => d.id === selectedDealId);
 
   const investorBreakdown = mockInvestorBreakdown.map((investor) => ({
     ...investor,
@@ -113,7 +159,7 @@ export function CreateCapitalCall() {
             Choose the deal you want to create a capital call for.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
-            {mockDeals.map((deal) => (
+            {deals.map((deal) => (
               <button
                 key={deal.id}
                 onClick={() => setSelectedDealId(deal.id)}

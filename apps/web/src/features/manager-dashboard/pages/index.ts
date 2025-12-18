@@ -4,6 +4,7 @@ export * from './InvestorDetail';
 export * from './DealsList';
 export * from './DealDetail';
 export * from './CreateDeal';
+export * from './EditDeal';
 export * from './CapitalCallsList';
 export * from './CapitalCallDetail';
 export * from './CreateCapitalCall';

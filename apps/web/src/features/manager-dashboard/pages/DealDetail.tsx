@@ -252,10 +252,12 @@ export function DealDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <DollarSign className="mr-2 h-4 w-4" />
-            Create Capital Call
-          </Button>
+          <Link to={`/manager/capital-calls/new?dealId=${id}`}>
+            <Button variant="outline" size="sm">
+              <DollarSign className="mr-2 h-4 w-4" />
+              Create Capital Call
+            </Button>
+          </Link>
           <Link to={`/manager/deals/${id}/edit`}>
             <Button size="sm">
               <Edit className="mr-2 h-4 w-4" />

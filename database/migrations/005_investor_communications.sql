@@ -45,3 +45,6 @@ CREATE INDEX idx_communications_occurred_at ON investor_communications(occurred_
 
 
 
+
+
+

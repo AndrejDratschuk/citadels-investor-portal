@@ -22,3 +22,6 @@ export async function onboardingRoutes(fastify: FastifyInstance) {
 
 
 
+
+
+

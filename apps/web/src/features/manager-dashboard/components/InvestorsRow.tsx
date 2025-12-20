@@ -50,7 +50,7 @@ function StatusDonut({ counts, isLoading }: { counts: InvestorStatusCounts | nul
       {/* Donut */}
       <div className="relative h-28 w-28 shrink-0">
         <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
-          {data.map((item, index) => {
+          {data.map((item) => {
             const percent = (item.value / total) * 100;
             const dashArray = `${percent} ${100 - percent}`;
             const dashOffset = -cumulativePercent;

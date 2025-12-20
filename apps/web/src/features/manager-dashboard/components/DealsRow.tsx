@@ -28,7 +28,7 @@ const monthlyData = [
   { month: 'Oct', value: 47.5, year: 2024 },
 ];
 
-export function DealsRow({ deals, isLoading }: DealsRowProps): JSX.Element {
+export function DealsRow({ isLoading }: DealsRowProps): JSX.Element {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   
   // SVG chart dimensions

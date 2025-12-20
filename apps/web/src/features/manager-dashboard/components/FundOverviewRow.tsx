@@ -15,7 +15,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
 import type { FundKpis } from '@/lib/api/dashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FundChart } from './FundChart';
@@ -128,14 +127,14 @@ export function FundOverviewRow({ kpis, isLoading }: FundOverviewRowProps): JSX.
     },
     {
       title: 'ROI',
-      value: kpis?.fundRoiPercent !== null ? `${kpis.fundRoiPercent.toFixed(1)}%` : '—',
+      value: kpis && kpis.fundRoiPercent != null ? `${kpis.fundRoiPercent.toFixed(1)}%` : '—',
       icon: <BarChart3 className="h-3.5 w-3.5" />,
       trend: 3.2,
       accent: 'green' as const,
     },
     {
       title: 'IRR',
-      value: kpis?.irrPercent !== null ? `${kpis.irrPercent.toFixed(1)}%` : '—',
+      value: kpis && kpis.irrPercent != null ? `${kpis.irrPercent.toFixed(1)}%` : '—',
       icon: <Percent className="h-3.5 w-3.5" />,
     },
   ];

@@ -82,7 +82,7 @@ function TopInvestorsList({ investors, isLoading }: { investors: TopInvestor[]; 
 
   return (
     <div className="space-y-1">
-      {investors.map((investor, idx) => {
+      {investors.map((investor) => {
         const callPercent = investor.capitalCommitted > 0 
           ? (investor.capitalCalled / investor.capitalCommitted) * 100 
           : 0;

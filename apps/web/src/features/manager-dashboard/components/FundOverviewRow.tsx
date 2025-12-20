@@ -1,23 +1,20 @@
 /**
  * Fund Overview Row
- * Displays primary fund KPIs in a clean, compact grid with trend chart
+ * Displays 8 primary KPI cards in two rows
  */
 
 import {
   DollarSign,
   TrendingUp,
   Wallet,
+  BarChart3,
   Landmark,
   PiggyBank,
   CreditCard,
-  BarChart3,
   Percent,
-  ArrowUpRight,
-  ArrowDownRight,
 } from 'lucide-react';
 import type { FundKpis } from '@/lib/api/dashboard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FundChart } from './FundChart';
 
 interface FundOverviewRowProps {
   kpis: FundKpis | null;
@@ -35,142 +32,113 @@ interface KpiCardProps {
   title: string;
   value: string;
   icon: React.ReactNode;
+  iconBg: string;
   isLoading: boolean;
-  trend?: number;
-  accent?: 'green' | 'blue' | 'amber' | 'default';
+  change?: number;
+  changeLabel?: string;
 }
 
-function KpiCard({ title, value, icon, isLoading, trend, accent = 'default' }: KpiCardProps): JSX.Element {
-  const accentStyles = {
-    green: 'border-l-emerald-500 bg-emerald-500/5',
-    blue: 'border-l-blue-500 bg-blue-500/5',
-    amber: 'border-l-amber-500 bg-amber-500/5',
-    default: 'border-l-transparent',
-  };
-
+function KpiCard({ title, value, icon, iconBg, isLoading, change, changeLabel = 'vs Last Month' }: KpiCardProps): JSX.Element {
   return (
-    <div className={`rounded-lg border border-l-4 bg-card px-4 py-3 ${accentStyles[accent]}`}>
-      <div className="flex items-start justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
-          {isLoading ? (
-            <Skeleton className="mt-1.5 h-6 w-16" />
-          ) : (
-            <p className="mt-0.5 text-xl font-semibold tracking-tight">{value}</p>
-          )}
+    <div className="rounded-xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconBg}`}>
+          {icon}
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
-            {icon}
-          </div>
-          {trend !== undefined && !isLoading && (
-            <span className={`flex items-center text-[10px] font-medium ${
-              trend >= 0 ? 'text-emerald-600' : 'text-red-500'
-            }`}>
-              {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-              {Math.abs(trend).toFixed(1)}%
-            </span>
-          )}
-        </div>
+        <span className="text-xs font-medium text-muted-foreground">{title}</span>
       </div>
+      
+      {isLoading ? (
+        <Skeleton className="h-8 w-20 mb-1.5" />
+      ) : (
+        <p className="text-2xl font-bold tracking-tight mb-1">{value}</p>
+      )}
+      
+      {change !== undefined && !isLoading && (
+        <div className="flex items-center gap-1 text-xs">
+          <span className={`font-semibold ${change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {change >= 0 ? '+' : ''}{change.toFixed(0)}%
+          </span>
+          <span className="text-muted-foreground">{changeLabel}</span>
+        </div>
+      )}
     </div>
   );
 }
-
-// Performance trend data (6 months)
-const performanceTrend = [
-  { label: 'Jul', value: 42.1 },
-  { label: 'Aug', value: 43.8 },
-  { label: 'Sep', value: 44.2 },
-  { label: 'Oct', value: 45.5 },
-  { label: 'Nov', value: 46.2 },
-  { label: 'Dec', value: 47.5 },
-];
 
 export function FundOverviewRow({ kpis, isLoading }: FundOverviewRowProps): JSX.Element {
   const items = [
     {
       title: 'Total AUM',
       value: formatCompact(kpis?.totalAum ?? null),
-      icon: <DollarSign className="h-3.5 w-3.5" />,
-      trend: 2.8,
-      accent: 'green' as const,
+      icon: <DollarSign className="h-4 w-4 text-emerald-600" />,
+      iconBg: 'bg-emerald-100',
+      change: 20,
     },
     {
-      title: 'Committed',
+      title: 'Committed Capital',
       value: formatCompact(kpis?.committedCapital ?? null),
-      icon: <Wallet className="h-3.5 w-3.5" />,
+      icon: <Wallet className="h-4 w-4 text-blue-600" />,
+      iconBg: 'bg-blue-100',
+      change: 15,
     },
     {
-      title: 'Called',
+      title: 'Capital Called',
       value: formatCompact(kpis?.capitalCalled ?? null),
-      icon: <TrendingUp className="h-3.5 w-3.5" />,
-      trend: 1.2,
+      icon: <TrendingUp className="h-4 w-4 text-cyan-600" />,
+      iconBg: 'bg-cyan-100',
+      change: 12,
     },
     {
-      title: 'Deployed',
+      title: 'Capital Deployed',
       value: formatCompact(kpis?.capitalDeployed ?? null),
-      icon: <Landmark className="h-3.5 w-3.5" />,
+      icon: <Landmark className="h-4 w-4 text-purple-600" />,
+      iconBg: 'bg-purple-100',
+      change: 10,
     },
     {
-      title: 'Cash',
+      title: 'Cash on Hand',
       value: formatCompact(kpis?.cashOnHand ?? null),
-      icon: <PiggyBank className="h-3.5 w-3.5" />,
-      accent: 'blue' as const,
+      icon: <PiggyBank className="h-4 w-4 text-green-600" />,
+      iconBg: 'bg-green-100',
+      change: 5,
     },
     {
-      title: 'Debt',
+      title: 'Debt Outstanding',
       value: formatCompact(kpis?.debtOutstanding ?? null),
-      icon: <CreditCard className="h-3.5 w-3.5" />,
-      trend: -0.5,
-      accent: 'amber' as const,
+      icon: <CreditCard className="h-4 w-4 text-orange-600" />,
+      iconBg: 'bg-orange-100',
+      change: -3,
     },
     {
-      title: 'ROI',
+      title: 'Fund ROI',
       value: kpis && kpis.fundRoiPercent != null ? `${kpis.fundRoiPercent.toFixed(1)}%` : '—',
-      icon: <BarChart3 className="h-3.5 w-3.5" />,
-      trend: 3.2,
-      accent: 'green' as const,
+      icon: <BarChart3 className="h-4 w-4 text-indigo-600" />,
+      iconBg: 'bg-indigo-100',
+      change: 8,
     },
     {
       title: 'IRR',
       value: kpis && kpis.irrPercent != null ? `${kpis.irrPercent.toFixed(1)}%` : '—',
-      icon: <Percent className="h-3.5 w-3.5" />,
+      icon: <Percent className="h-4 w-4 text-pink-600" />,
+      iconBg: 'bg-pink-100',
+      change: 6,
     },
   ];
 
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      {/* KPI Grid - 2 cols on xl */}
-      <div className="xl:col-span-2">
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-          {items.map((item) => (
-            <KpiCard
-              key={item.title}
-              title={item.title}
-              value={item.value}
-              icon={item.icon}
-              isLoading={isLoading}
-              trend={item.trend}
-              accent={item.accent}
-            />
-          ))}
-        </div>
-      </div>
-      
-      {/* Trend Chart - 1 col */}
-      <div>
-        {isLoading ? (
-          <Skeleton className="h-full min-h-[180px] rounded-xl" />
-        ) : (
-          <FundChart 
-            title="AUM Trend" 
-            data={performanceTrend} 
-            type="area"
-            height={180}
-          />
-        )}
-      </div>
+    <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+      {items.map((item) => (
+        <KpiCard
+          key={item.title}
+          title={item.title}
+          value={item.value}
+          icon={item.icon}
+          iconBg={item.iconBg}
+          isLoading={isLoading}
+          change={item.change}
+        />
+      ))}
     </div>
   );
 }

@@ -1,118 +1,230 @@
 /**
  * Deals Row
- * Compact view of top deals with portfolio chart
+ * Interactive portfolio performance chart with hover tooltips
  */
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Building2, TrendingUp, TrendingDown } from 'lucide-react';
-import type { DealsMetrics, TopDeal, PortfolioAllocation } from '@/lib/api/dashboard';
+import { TrendingUp, MoreHorizontal } from 'lucide-react';
+import type { DealsMetrics } from '@/lib/api/dashboard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FundChart } from './FundChart';
 
 interface DealsRowProps {
   deals: DealsMetrics | null;
   isLoading: boolean;
 }
 
-function formatCompact(value: number | null): string {
-  if (value === null) return '—';
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
-}
-
-function TopDealsTable({ deals, isLoading }: { deals: TopDeal[]; isLoading: boolean }): JSX.Element {
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="h-9 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  if (deals.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-        <Building2 className="mb-2 h-6 w-6" />
-        <p className="text-xs">No deals yet</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-1">
-      {deals.map((deal, idx) => (
-        <Link
-          key={deal.id}
-          to={`/manager/deals/${deal.id}`}
-          className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors group"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="flex h-5 w-5 items-center justify-center rounded bg-muted text-[10px] font-medium text-muted-foreground">
-              {idx + 1}
-            </span>
-            <span className="text-sm font-medium truncate group-hover:text-primary">{deal.name}</span>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <span className="text-xs text-muted-foreground">{formatCompact(deal.capitalInvested)}</span>
-            {deal.roiPercent !== null && (
-              <span className={`flex items-center gap-0.5 text-xs font-medium ${
-                deal.roiPercent >= 0 ? 'text-emerald-600' : 'text-red-500'
-              }`}>
-                {deal.roiPercent >= 0 ? (
-                  <TrendingUp className="h-3 w-3" />
-                ) : (
-                  <TrendingDown className="h-3 w-3" />
-                )}
-                {Math.abs(deal.roiPercent).toFixed(1)}%
-              </span>
-            )}
-          </div>
-        </Link>
-      ))}
-    </div>
-  );
-}
+// Monthly portfolio value data
+const monthlyData = [
+  { month: 'Jan', value: 38.2, year: 2024 },
+  { month: 'Feb', value: 39.5, year: 2024 },
+  { month: 'Mar', value: 41.0, year: 2024 },
+  { month: 'Apr', value: 42.8, year: 2024 },
+  { month: 'May', value: 44.5, year: 2024 },
+  { month: 'Jun', value: 43.2, year: 2024 },
+  { month: 'Jul', value: 45.0, year: 2024 },
+  { month: 'Aug', value: 46.5, year: 2024 },
+  { month: 'Sep', value: 45.8, year: 2024 },
+  { month: 'Oct', value: 47.5, year: 2024 },
+];
 
 export function DealsRow({ deals, isLoading }: DealsRowProps): JSX.Element {
-  const chartData: Array<{ label: string; value: number }> = (deals?.portfolioByDeal ?? [])
-    .slice(0, 5)
-    .map((p: PortfolioAllocation) => ({
-      label: p.dealName.length > 12 ? p.dealName.substring(0, 12) + '…' : p.dealName,
-      value: p.value,
-    }));
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  
+  // SVG chart dimensions
+  const width = 600;
+  const height = 200;
+  const padding = { top: 30, right: 30, bottom: 35, left: 45 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  
+  const minValue = Math.min(...monthlyData.map(d => d.value)) * 0.9;
+  const maxValue = Math.max(...monthlyData.map(d => d.value)) * 1.05;
+  const range = maxValue - minValue;
+  
+  const points = monthlyData.map((d, i) => ({
+    x: padding.left + (i / (monthlyData.length - 1)) * chartWidth,
+    y: padding.top + chartHeight - ((d.value - minValue) / range) * chartHeight,
+    ...d,
+    index: i,
+  }));
+  
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1].x} ${padding.top + chartHeight} L ${padding.left} ${padding.top + chartHeight} Z`;
+
+  const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
+  const prevValue = hoveredIndex !== null && hoveredIndex > 0 ? monthlyData[hoveredIndex - 1].value : null;
+  const changePercent = hoveredPoint && prevValue 
+    ? ((hoveredPoint.value - prevValue) / prevValue * 100).toFixed(1)
+    : null;
 
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold">Deals</h2>
-        <Link
-          to="/manager/deals"
-          className="flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          View all <ArrowRight className="h-3 w-3" />
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-muted-foreground" />
+          <h2 className="font-semibold">Monthly Portfolio Growth</h2>
+        </div>
+        <Link to="/manager/deals" className="p-1.5 hover:bg-muted rounded-lg transition-colors">
+          <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
         </Link>
       </div>
 
-      <div className="space-y-4">
-        {/* Top Deals List */}
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-2">Top Performers</p>
-          <TopDealsTable deals={deals?.top5 ?? []} isLoading={isLoading} />
+      {isLoading ? (
+        <Skeleton className="h-[200px] w-full" />
+      ) : (
+        <div className="relative">
+          <svg 
+            width="100%" 
+            height={height} 
+            viewBox={`0 0 ${width} ${height}`} 
+            preserveAspectRatio="xMidYMid meet"
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
+            {/* Grid lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
+              <line
+                key={pct}
+                x1={padding.left}
+                y1={padding.top + chartHeight * (1 - pct)}
+                x2={width - padding.right}
+                y2={padding.top + chartHeight * (1 - pct)}
+                stroke="currentColor"
+                strokeOpacity={0.06}
+                strokeDasharray="4 4"
+              />
+            ))}
+            
+            {/* Y-axis labels */}
+            {[0, 0.5, 1].map((pct) => (
+              <text
+                key={pct}
+                x={padding.left - 10}
+                y={padding.top + chartHeight * (1 - pct) + 4}
+                textAnchor="end"
+                className="fill-muted-foreground text-[11px]"
+              >
+                ${(minValue + range * pct).toFixed(0)}M
+              </text>
+            ))}
+            
+            {/* Area gradient */}
+            <defs>
+              <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            
+            {/* Area fill */}
+            <path d={areaPath} fill="url(#portfolioGradient)" />
+            
+            {/* Line */}
+            <path
+              d={linePath}
+              fill="none"
+              stroke="#6366f1"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            
+            {/* Vertical hover line */}
+            {hoveredPoint && (
+              <line
+                x1={hoveredPoint.x}
+                y1={padding.top}
+                x2={hoveredPoint.x}
+                y2={padding.top + chartHeight}
+                stroke="#6366f1"
+                strokeOpacity={0.3}
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+            )}
+            
+            {/* Data points - always visible but smaller, larger on hover */}
+            {points.map((p, i) => (
+              <g key={i}>
+                {/* Invisible larger hit area */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={20}
+                  fill="transparent"
+                  onMouseEnter={() => setHoveredIndex(i)}
+                  style={{ cursor: 'pointer' }}
+                />
+                {/* Visible point */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={hoveredIndex === i ? 6 : 4}
+                  fill={hoveredIndex === i ? '#6366f1' : 'white'}
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  className="transition-all duration-150"
+                />
+              </g>
+            ))}
+            
+            {/* X-axis labels */}
+            {points.map((p, i) => (
+              <text
+                key={i}
+                x={p.x}
+                y={height - 10}
+                textAnchor="middle"
+                className={`text-[11px] transition-colors ${
+                  hoveredIndex === i ? 'fill-foreground font-medium' : 'fill-muted-foreground'
+                }`}
+              >
+                {p.month}
+              </text>
+            ))}
+            
+            {/* Hover tooltip */}
+            {hoveredPoint && (
+              <g 
+                transform={`translate(${
+                  hoveredPoint.x > width - 120 ? hoveredPoint.x - 115 : hoveredPoint.x + 15
+                }, ${
+                  hoveredPoint.y < 60 ? hoveredPoint.y + 10 : hoveredPoint.y - 55
+                })`}
+              >
+                <rect 
+                  x="0" 
+                  y="0" 
+                  width="100" 
+                  height="45" 
+                  rx="8" 
+                  fill="white" 
+                  stroke="#e5e7eb"
+                  strokeWidth="1"
+                  filter="drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))"
+                />
+                <text x="10" y="18" className="fill-muted-foreground text-[10px]">
+                  {hoveredPoint.month}, {hoveredPoint.year}
+                </text>
+                <text x="10" y="35" className="fill-foreground text-sm font-bold">
+                  ${hoveredPoint.value}M
+                </text>
+                {changePercent && (
+                  <text 
+                    x="60" 
+                    y="35" 
+                    className={`text-[10px] font-semibold ${
+                      parseFloat(changePercent) >= 0 ? 'fill-emerald-600' : 'fill-red-500'
+                    }`}
+                  >
+                    {parseFloat(changePercent) >= 0 ? '↗' : '↘'} {Math.abs(parseFloat(changePercent))}%
+                  </text>
+                )}
+              </g>
+            )}
+          </svg>
         </div>
-
-        {/* Portfolio Chart */}
-        {chartData.length > 0 && !isLoading && (
-          <FundChart 
-            title="Portfolio Allocation" 
-            data={chartData} 
-            type="bar"
-            showValues={true}
-          />
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -4,15 +4,92 @@
  */
 
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, TrendingUp, TrendingDown, Building2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
-import { dashboardApi, DashboardMetrics } from '@/lib/api/dashboard';
+import { dashboardApi, DashboardMetrics, TopDeal } from '@/lib/api/dashboard';
 import { FundOverviewRow } from '../components/FundOverviewRow';
 import { DealsRow } from '../components/DealsRow';
 import { InvestorsRow } from '../components/InvestorsRow';
 import { ActivityFeed, ActivityItem } from '../components/ActivityFeed';
 import { CapitalCallProgress } from '../components/CapitalCallProgress';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function formatCompact(value: number | null): string {
+  if (value === null) return '—';
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+  return `$${value.toFixed(0)}`;
+}
+
+function DealsTable({ deals, isLoading }: { deals: TopDeal[]; isLoading: boolean }): JSX.Element {
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (deals.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+        <Building2 className="mb-2 h-8 w-8" />
+        <p className="text-sm">No deals yet</p>
+        <Link to="/manager/deals/new" className="mt-2 text-sm text-primary hover:underline">
+          Create your first deal
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">Deal Name</th>
+            <th className="px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">Invested</th>
+            <th className="px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">Current Value</th>
+            <th className="px-3 py-2.5 text-right text-xs font-medium text-muted-foreground">ROI</th>
+          </tr>
+        </thead>
+        <tbody>
+          {deals.map((deal, idx) => (
+            <tr key={deal.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
+              <td className="px-3 py-3">
+                <Link
+                  to={`/manager/deals/${deal.id}`}
+                  className="font-medium hover:text-primary hover:underline"
+                >
+                  {deal.name}
+                </Link>
+              </td>
+              <td className="px-3 py-3 text-right">{formatCompact(deal.capitalInvested)}</td>
+              <td className="px-3 py-3 text-right">{formatCompact(deal.currentValue)}</td>
+              <td className="px-3 py-3 text-right">
+                {deal.roiPercent !== null ? (
+                  <span className={`inline-flex items-center gap-1 font-medium ${
+                    deal.roiPercent >= 0 ? 'text-emerald-600' : 'text-red-500'
+                  }`}>
+                    {deal.roiPercent >= 0 ? (
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <TrendingDown className="h-3.5 w-3.5" />
+                    )}
+                    {Math.abs(deal.roiPercent).toFixed(1)}%
+                  </span>
+                ) : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 // Mock/fallback data for when API returns empty or fails
 const mockDashboardData: DashboardMetrics = {
@@ -189,36 +266,50 @@ export function ManagerDashboard(): JSX.Element {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Fund Dashboard</h1>
-          <p className="text-sm text-muted-foreground">FlowVeda Growth Fund I</p>
-        </div>
-        <p className="text-xs text-muted-foreground">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Fund Dashboard</h1>
+        <span className="text-xs text-muted-foreground">
           Last updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
+        </span>
       </div>
 
-      {/* Fund Overview KPIs */}
+      {/* Row 1: KPI Cards (8 metrics) */}
       <FundOverviewRow kpis={displayData?.fundKpis ?? null} isLoading={isLoading} />
 
-      {/* Two-column layout: Deals & Investors */}
-      <div className="grid gap-6 xl:grid-cols-2">
-        <DealsRow deals={displayData?.deals ?? null} isLoading={isLoading} />
+      {/* Row 2: Performance Chart (full width) */}
+      <DealsRow deals={displayData?.deals ?? null} isLoading={isLoading} />
+
+      {/* Row 3: Deals Table + Investors (side by side) */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Deals Table */}
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold">Top Deals</h2>
+            <Link
+              to="/manager/deals"
+              className="flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              View all <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <DealsTable deals={displayData?.deals?.top5 ?? []} isLoading={isLoading} />
+        </div>
+
+        {/* Investors */}
         <InvestorsRow investors={displayData?.investors ?? null} isLoading={isLoading} />
       </div>
 
-      {/* Bottom row: Capital Calls & Activity */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Capital Calls - 3 cols */}
-        <div className="lg:col-span-3 rounded-xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
+      {/* Row 4: Capital Calls + Activity Feed */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Capital Calls */}
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Active Capital Calls</h2>
             <Link
               to="/manager/capital-calls"
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              className="flex items-center gap-1 text-sm text-primary hover:underline"
             >
-              View all <ArrowRight className="h-3 w-3" />
+              View all <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="space-y-3">
@@ -235,10 +326,8 @@ export function ManagerDashboard(): JSX.Element {
           </div>
         </div>
 
-        {/* Activity Feed - 2 cols */}
-        <div className="lg:col-span-2">
-          <ActivityFeed activities={mockActivities} />
-        </div>
+        {/* Activity Feed */}
+        <ActivityFeed activities={mockActivities} />
       </div>
     </div>
   );

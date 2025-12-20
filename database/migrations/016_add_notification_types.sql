@@ -27,3 +27,5 @@ ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN
 
 COMMENT ON COLUMN notifications.type IS 'Type of notification - includes investor_message (investor->manager) and new_communication (manager->investor)';
 
+
+

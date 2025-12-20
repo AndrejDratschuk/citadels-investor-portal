@@ -13,4 +13,7 @@ export * from './CommunicationsList';
 export * from './LogPhoneCallModal';
 export { LogCommunicationModal } from './LogPhoneCallModal';
 export * from './EmailComposeModal';
+export * from './FundOverviewRow';
+export * from './DealsRow';
+export * from './InvestorsRow';
 

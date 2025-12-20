@@ -21,3 +21,5 @@ ON investor_communications(fund_id, manager_read) WHERE manager_read = false;
 COMMENT ON COLUMN investor_communications.manager_read IS 'Whether the fund manager has read this communication';
 COMMENT ON COLUMN investor_communications.manager_read_at IS 'Timestamp when the fund manager marked this communication as read';
 
+
+

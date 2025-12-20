@@ -1,27 +1,20 @@
+/**
+ * Manager Dashboard
+ * Row-themed layout: Fund Overview → Deals → Investors → Capital Calls → Activity
+ */
+
 import { Link } from 'react-router-dom';
-import {
-  DollarSign,
-  Users,
-  Building2,
-  TrendingUp,
-  ArrowRight,
-} from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
-import { StatsCard } from '../components/StatsCard';
+import { ArrowRight } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+
+import { dashboardApi } from '@/lib/api/dashboard';
+import { FundOverviewRow } from '../components/FundOverviewRow';
+import { DealsRow } from '../components/DealsRow';
+import { InvestorsRow } from '../components/InvestorsRow';
 import { ActivityFeed, ActivityItem } from '../components/ActivityFeed';
-import { FundChart } from '../components/FundChart';
 import { CapitalCallProgress } from '../components/CapitalCallProgress';
 
-// Mock data - will be replaced with real API calls
-const mockStats = {
-  totalAUM: 68500000,
-  totalInvestors: 47,
-  activeDeals: 4,
-  pendingCapitalCalls: 2,
-  capitalDeployed: 52300000,
-  uncommittedCapital: 16200000,
-};
-
+// Mock data for sections not yet API-connected
 const mockActivities: ActivityItem[] = [
   {
     id: '1',
@@ -65,19 +58,6 @@ const mockActivities: ActivityItem[] = [
   },
 ];
 
-const mockDealData = [
-  { label: 'Riverside Apartments', value: 14200000 },
-  { label: 'Downtown Office Tower', value: 28500000 },
-  { label: 'Eastside Industrial', value: 18500000 },
-  { label: 'Lakefront Retail', value: 10500000 },
-];
-
-const mockInvestorStatus = [
-  { label: 'Active', value: 38, color: 'bg-green-500' },
-  { label: 'Onboarding', value: 5, color: 'bg-blue-500' },
-  { label: 'Prospect', value: 4, color: 'bg-gray-400' },
-];
-
 const mockCapitalCalls = [
   {
     id: '1',
@@ -97,62 +77,32 @@ const mockCapitalCalls = [
   },
 ];
 
-export function ManagerDashboard() {
+export function ManagerDashboard(): JSX.Element {
+  const { data: metrics, isLoading } = useQuery({
+    queryKey: ['dashboard', 'metrics'],
+    queryFn: dashboardApi.getMetrics,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: true,
+  });
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Fund Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">
-          FlowVeda Growth Fund I Overview
-        </p>
+        <p className="mt-1 text-muted-foreground">Real-time fund performance overview</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total AUM"
-          value={formatCurrency(mockStats.totalAUM)}
-          icon={DollarSign}
-          trend={{ value: 12.5, isPositive: true }}
-          description="Assets under management"
-        />
-        <StatsCard
-          title="Total Investors"
-          value={mockStats.totalInvestors}
-          icon={Users}
-          trend={{ value: 8, isPositive: true }}
-          description="Active fund investors"
-        />
-        <StatsCard
-          title="Active Deals"
-          value={mockStats.activeDeals}
-          icon={Building2}
-          description="Properties in portfolio"
-        />
-        <StatsCard
-          title="Pending Capital Calls"
-          value={mockStats.pendingCapitalCalls}
-          icon={TrendingUp}
-          description="Awaiting wire transfers"
-        />
-      </div>
+      {/* Row 1: Fund Overview KPIs */}
+      <FundOverviewRow kpis={metrics?.fundKpis ?? null} isLoading={isLoading} />
 
-      {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <FundChart
-          title="Portfolio by Deal"
-          data={mockDealData}
-          type="bar"
-        />
-        <FundChart
-          title="Investor Status"
-          data={mockInvestorStatus}
-          type="donut"
-        />
-      </div>
+      {/* Row 2: Deals */}
+      <DealsRow deals={metrics?.deals ?? null} isLoading={isLoading} />
 
-      {/* Capital Calls Section */}
+      {/* Row 3: Investors */}
+      <InvestorsRow investors={metrics?.investors ?? null} isLoading={isLoading} />
+
+      {/* Row 4: Capital Calls (existing section) */}
       <div>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Active Capital Calls</h2>
@@ -177,7 +127,7 @@ export function ManagerDashboard() {
         </div>
       </div>
 
-      {/* Activity Feed */}
+      {/* Row 5: Activity Feed */}
       <ActivityFeed activities={mockActivities} />
     </div>
   );

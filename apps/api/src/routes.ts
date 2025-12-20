@@ -11,6 +11,7 @@ import { documentsRoutes } from './modules/documents/documents.routes';
 import { dealsRoutes } from './modules/deals/deals.routes';
 import { notificationsRoutes } from './modules/notifications/notifications.routes';
 import { capitalCallsRoutes } from './modules/capital-calls/capital-calls.routes';
+import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -26,6 +27,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(dealsRoutes, { prefix: '/deals' });
   await fastify.register(notificationsRoutes, { prefix: '/notifications' });
   await fastify.register(capitalCallsRoutes, { prefix: '/capital-calls' });
+  await fastify.register(dashboardRoutes, { prefix: '/dashboard' });
 
   // Health check
   fastify.get('/health', async () => {

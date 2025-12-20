@@ -4,12 +4,12 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { authMiddleware } from '../../common/middleware/auth.middleware.js';
+import { authenticate } from '../../common/middleware/auth.middleware.js';
 import { dashboardController } from './dashboard.controller.js';
 
 export async function dashboardRoutes(fastify: FastifyInstance): Promise<void> {
   // All routes require authentication
-  fastify.addHook('preHandler', authMiddleware);
+  fastify.addHook('preHandler', authenticate);
 
   // GET /dashboard/metrics - Get all dashboard KPIs
   fastify.get('/metrics', dashboardController.getMetrics.bind(dashboardController));

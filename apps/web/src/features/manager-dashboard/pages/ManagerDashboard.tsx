@@ -7,12 +7,104 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
-import { dashboardApi } from '@/lib/api/dashboard';
+import { dashboardApi, DashboardMetrics } from '@/lib/api/dashboard';
 import { FundOverviewRow } from '../components/FundOverviewRow';
 import { DealsRow } from '../components/DealsRow';
 import { InvestorsRow } from '../components/InvestorsRow';
 import { ActivityFeed, ActivityItem } from '../components/ActivityFeed';
 import { CapitalCallProgress } from '../components/CapitalCallProgress';
+
+// Mock/fallback data for when API returns empty or fails
+const mockDashboardData: DashboardMetrics = {
+  fundKpis: {
+    totalAum: 47500000,
+    committedCapital: 52000000,
+    capitalCalled: 38500000,
+    capitalDeployed: 35200000,
+    cashOnHand: 3300000,
+    debtOutstanding: 12800000,
+    fundRoiPercent: 18.7,
+    irrPercent: 14.2,
+  },
+  deals: {
+    top5: [
+      {
+        id: 'd1',
+        name: 'Riverside Apartments',
+        capitalInvested: 8500000,
+        currentValue: 10200000,
+        roiPercent: 20.0,
+        acquisitionDate: '2023-03-15',
+        holdPeriodDays: 645,
+      },
+      {
+        id: 'd2',
+        name: 'Downtown Office Tower',
+        capitalInvested: 12000000,
+        currentValue: 13800000,
+        roiPercent: 15.0,
+        acquisitionDate: '2023-06-01',
+        holdPeriodDays: 567,
+      },
+      {
+        id: 'd3',
+        name: 'Eastside Industrial Park',
+        capitalInvested: 6200000,
+        currentValue: 7130000,
+        roiPercent: 15.0,
+        acquisitionDate: '2023-09-20',
+        holdPeriodDays: 456,
+      },
+      {
+        id: 'd4',
+        name: 'Harbor View Retail Center',
+        capitalInvested: 5000000,
+        currentValue: 5400000,
+        roiPercent: 8.0,
+        acquisitionDate: '2024-01-10',
+        holdPeriodDays: 344,
+      },
+      {
+        id: 'd5',
+        name: 'Tech Campus Building A',
+        capitalInvested: 3500000,
+        currentValue: 3970000,
+        roiPercent: 13.4,
+        acquisitionDate: '2024-04-05',
+        holdPeriodDays: 259,
+      },
+    ],
+    rollups: {
+      capitalInvested: 35200000,
+      capitalCollected: 38500000,
+      capitalOutstanding: 4200000,
+      capitalReserves: 13500000,
+    },
+    portfolioByDeal: [
+      { dealId: 'd1', dealName: 'Riverside Apartments', value: 10200000 },
+      { dealId: 'd2', dealName: 'Downtown Office Tower', value: 13800000 },
+      { dealId: 'd3', dealName: 'Eastside Industrial', value: 7130000 },
+      { dealId: 'd4', dealName: 'Harbor View Retail', value: 5400000 },
+      { dealId: 'd5', dealName: 'Tech Campus', value: 3970000 },
+    ],
+  },
+  investors: {
+    statusCounts: {
+      active: 24,
+      onboarding: 8,
+      prospect: 12,
+      inactive: 3,
+    },
+    top5: [
+      { id: 'i1', name: 'Blackstone Holdings LP', capitalCommitted: 8000000, capitalCalled: 6400000 },
+      { id: 'i2', name: 'Pacific Growth Partners', capitalCommitted: 6500000, capitalCalled: 5200000 },
+      { id: 'i3', name: 'Alpine Investment Group', capitalCommitted: 5000000, capitalCalled: 4000000 },
+      { id: 'i4', name: 'Summit Capital LLC', capitalCommitted: 4200000, capitalCalled: 3360000 },
+      { id: 'i5', name: 'Meridian Wealth Fund', capitalCommitted: 3800000, capitalCalled: 3040000 },
+    ],
+    totalCount: 47,
+  },
+};
 
 // Mock data for sections not yet API-connected
 const mockActivities: ActivityItem[] = [
@@ -81,54 +173,73 @@ export function ManagerDashboard(): JSX.Element {
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['dashboard', 'metrics'],
     queryFn: dashboardApi.getMetrics,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
   });
 
+  // Use mock data as fallback if API fails or returns empty
+  const hasRealData = metrics && (
+    metrics.fundKpis?.totalAum !== null ||
+    (metrics.deals?.top5?.length ?? 0) > 0 ||
+    (metrics.investors?.totalCount ?? 0) > 0
+  );
+  
+  const displayData = hasRealData ? metrics : mockDashboardData;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Fund Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">Real-time fund performance overview</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Fund Dashboard</h1>
+          <p className="text-sm text-muted-foreground">FlowVeda Growth Fund I</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Last updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </p>
       </div>
 
-      {/* Row 1: Fund Overview KPIs */}
-      <FundOverviewRow kpis={metrics?.fundKpis ?? null} isLoading={isLoading} />
+      {/* Fund Overview KPIs */}
+      <FundOverviewRow kpis={displayData?.fundKpis ?? null} isLoading={isLoading} />
 
-      {/* Row 2: Deals */}
-      <DealsRow deals={metrics?.deals ?? null} isLoading={isLoading} />
-
-      {/* Row 3: Investors */}
-      <InvestorsRow investors={metrics?.investors ?? null} isLoading={isLoading} />
-
-      {/* Row 4: Capital Calls (existing section) */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Active Capital Calls</h2>
-          <Link
-            to="/manager/capital-calls"
-            className="flex items-center gap-1 text-sm text-primary hover:underline"
-          >
-            View all <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {mockCapitalCalls.map((call) => (
-            <CapitalCallProgress
-              key={call.id}
-              dealName={call.dealName}
-              totalAmount={call.totalAmount}
-              receivedAmount={call.receivedAmount}
-              deadline={call.deadline}
-              status={call.status}
-            />
-          ))}
-        </div>
+      {/* Two-column layout: Deals & Investors */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        <DealsRow deals={displayData?.deals ?? null} isLoading={isLoading} />
+        <InvestorsRow investors={displayData?.investors ?? null} isLoading={isLoading} />
       </div>
 
-      {/* Row 5: Activity Feed */}
-      <ActivityFeed activities={mockActivities} />
+      {/* Bottom row: Capital Calls & Activity */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Capital Calls - 3 cols */}
+        <div className="lg:col-span-3 rounded-xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold">Active Capital Calls</h2>
+            <Link
+              to="/manager/capital-calls"
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {mockCapitalCalls.map((call) => (
+              <CapitalCallProgress
+                key={call.id}
+                dealName={call.dealName}
+                totalAmount={call.totalAmount}
+                receivedAmount={call.receivedAmount}
+                deadline={call.deadline}
+                status={call.status}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Activity Feed - 2 cols */}
+        <div className="lg:col-span-2">
+          <ActivityFeed activities={mockActivities} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -34,12 +34,12 @@ const activityIcons = {
 };
 
 const activityColors = {
-  investor_signup: 'bg-blue-100 text-blue-600',
-  document_signed: 'bg-green-100 text-green-600',
-  wire_received: 'bg-emerald-100 text-emerald-600',
-  document_sent: 'bg-purple-100 text-purple-600',
-  deal_created: 'bg-indigo-100 text-indigo-600',
-  capital_call_sent: 'bg-orange-100 text-orange-600',
+  investor_signup: 'text-blue-500',
+  document_signed: 'text-emerald-500',
+  wire_received: 'text-green-500',
+  document_sent: 'text-purple-500',
+  deal_created: 'text-indigo-500',
+  capital_call_sent: 'text-amber-500',
 };
 
 const statusIcons = {
@@ -49,8 +49,8 @@ const statusIcons = {
 };
 
 const statusColors = {
-  success: 'text-green-500',
-  pending: 'text-yellow-500',
+  success: 'text-emerald-500',
+  pending: 'text-amber-500',
   warning: 'text-red-500',
 };
 
@@ -62,65 +62,51 @@ function formatTimeAgo(timestamp: string): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+  if (diffMins < 1) return 'now';
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export function ActivityFeed({ activities, className }: ActivityFeedProps) {
   if (activities.length === 0) {
     return (
-      <div className={cn('rounded-xl border bg-card p-6', className)}>
-        <h3 className="font-semibold">Recent Activity</h3>
-        <div className="mt-6 flex flex-col items-center justify-center py-8 text-center">
-          <Clock className="h-12 w-12 text-muted-foreground/30" />
-          <p className="mt-4 text-muted-foreground">No recent activity</p>
+      <div className={cn('rounded-xl border bg-card p-5', className)}>
+        <h3 className="font-semibold">Activity</h3>
+        <div className="mt-4 flex flex-col items-center justify-center py-6 text-center">
+          <Clock className="h-8 w-8 text-muted-foreground/30" />
+          <p className="mt-2 text-xs text-muted-foreground">No recent activity</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={cn('rounded-xl border bg-card p-6', className)}>
-      <h3 className="font-semibold">Recent Activity</h3>
-      <div className="mt-4 space-y-4">
-        {activities.map((activity, index) => {
+    <div className={cn('rounded-xl border bg-card p-5', className)}>
+      <h3 className="font-semibold mb-3">Activity</h3>
+      <div className="space-y-1">
+        {activities.map((activity) => {
           const Icon = activityIcons[activity.type];
           const StatusIcon = activity.status ? statusIcons[activity.status] : null;
 
           return (
             <div
               key={activity.id}
-              className={cn(
-                'flex items-start gap-4',
-                index !== activities.length - 1 && 'pb-4 border-b'
-              )}
+              className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50 transition-colors"
             >
-              <div
-                className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-                  activityColors[activity.type]
-                )}
-              >
-                <Icon className="h-5 w-5" />
+              <div className={cn('shrink-0', activityColors[activity.type])}>
+                <Icon className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium truncate">{activity.title}</p>
-                  {StatusIcon && (
-                    <StatusIcon
-                      className={cn('h-4 w-4 shrink-0', statusColors[activity.status!])}
-                    />
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground truncate">
-                  {activity.description}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {formatTimeAgo(activity.timestamp)}
-                </p>
+                <p className="text-sm font-medium truncate">{activity.title}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{activity.description}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {StatusIcon && (
+                  <StatusIcon className={cn('h-3 w-3', statusColors[activity.status!])} />
+                )}
+                <span className="text-[10px] text-muted-foreground">{formatTimeAgo(activity.timestamp)}</span>
               </div>
             </div>
           );

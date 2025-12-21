@@ -1,6 +1,9 @@
 -- Migration: Create transactional function for KYC approval
 -- This ensures investor creation and KYC status update happen atomically
 
+-- Drop existing function if it exists (to handle parameter changes)
+DROP FUNCTION IF EXISTS approve_kyc_application(UUID, UUID, TEXT, TEXT, TEXT, TEXT, JSONB, TEXT, TEXT, NUMERIC, TEXT);
+
 CREATE OR REPLACE FUNCTION approve_kyc_application(
   p_kyc_id UUID,
   p_fund_id UUID,
@@ -14,7 +17,7 @@ CREATE OR REPLACE FUNCTION approve_kyc_application(
   p_commitment_amount NUMERIC DEFAULT 0,
   p_accreditation_type TEXT DEFAULT NULL
 )
-RETURNS TABLE(investor_id UUID, kyc_status TEXT)
+RETURNS TABLE(new_investor_id UUID, new_kyc_status TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
@@ -22,11 +25,13 @@ DECLARE
   v_investor_id UUID;
   v_kyc_status TEXT;
   v_current_status TEXT;
+  v_existing_investor_id UUID;
 BEGIN
-  -- Check current KYC status
-  SELECT status INTO v_current_status
+  -- Check current KYC status and get existing investor_id if any
+  SELECT status, kyc_applications.investor_id 
+  INTO v_current_status, v_existing_investor_id
   FROM kyc_applications
-  WHERE id = p_kyc_id;
+  WHERE kyc_applications.id = p_kyc_id;
 
   IF v_current_status IS NULL THEN
     RAISE EXCEPTION 'KYC application not found: %', p_kyc_id;
@@ -36,13 +41,11 @@ BEGIN
     RAISE EXCEPTION 'Cannot approve application with status: %', v_current_status;
   END IF;
 
-  -- Check if investor already exists for this KYC
-  SELECT investor_id INTO v_investor_id
-  FROM kyc_applications
-  WHERE id = p_kyc_id;
-
-  -- Create investor if not exists
-  IF v_investor_id IS NULL THEN
+  -- Use existing investor or create new one
+  IF v_existing_investor_id IS NOT NULL THEN
+    v_investor_id := v_existing_investor_id;
+  ELSE
+    -- Create new investor
     INSERT INTO investors (
       fund_id,
       first_name,
@@ -72,7 +75,7 @@ BEGIN
       'prospect',
       1
     )
-    RETURNING id INTO v_investor_id;
+    RETURNING investors.id INTO v_investor_id;
   END IF;
 
   -- Update KYC application status
@@ -81,8 +84,9 @@ BEGIN
     status = 'pre_qualified',
     investor_id = v_investor_id,
     updated_at = NOW()
-  WHERE id = p_kyc_id
-  RETURNING status INTO v_kyc_status;
+  WHERE kyc_applications.id = p_kyc_id;
+
+  v_kyc_status := 'pre_qualified';
 
   RETURN QUERY SELECT v_investor_id, v_kyc_status;
 END;
@@ -94,4 +98,3 @@ GRANT EXECUTE ON FUNCTION approve_kyc_application TO authenticated;
 COMMENT ON FUNCTION approve_kyc_application IS 
 'Atomically creates an investor record and approves a KYC application. 
 If either operation fails, both are rolled back to prevent orphan records.';
-

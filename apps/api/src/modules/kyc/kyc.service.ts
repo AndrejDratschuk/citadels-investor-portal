@@ -405,9 +405,9 @@ export class KYCService {
       throw new Error(`Failed to approve KYC application: ${rpcError.message}`);
     }
 
-    // RPC returns array with single row containing investor_id and kyc_status
+    // RPC returns array with single row containing new_investor_id and new_kyc_status
     const result = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
-    const investorId = result?.investor_id;
+    const investorId = result?.new_investor_id;
     console.log('[KYC Approve] Transaction complete. Investor ID:', investorId);
 
     // Fetch the updated application

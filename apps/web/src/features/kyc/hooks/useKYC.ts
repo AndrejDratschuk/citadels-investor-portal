@@ -13,7 +13,7 @@ interface UseKYCReturn {
   eligible: boolean | null;
   startApplication: (fundCode: string, email: string) => Promise<KYCApplication>;
   loadApplication: (id: string) => Promise<void>;
-  updateFormData: (data: Partial<KYCFormData>) => Promise<void>;
+  updateFormData: (data: Partial<KYCFormData>, appId?: string) => Promise<void>;
   submitApplication: () => Promise<void>;
   nextStep: () => void;
   prevStep: () => void;
@@ -107,13 +107,15 @@ export function useKYC(): UseKYCReturn {
   }, []);
 
   // Update form data and autosave
-  const updateFormData = useCallback(async (data: Partial<KYCFormData>) => {
+  // Optional appId parameter allows immediate updates after app creation (before state updates)
+  const updateFormData = useCallback(async (data: Partial<KYCFormData>, appId?: string) => {
     setFormData((prev) => ({ ...prev, ...data }));
     
-    if (application?.id) {
+    const idToUse = appId || application?.id;
+    if (idToUse) {
       setIsSaving(true);
       try {
-        const updated = await kycApi.update(application.id, data);
+        const updated = await kycApi.update(idToUse, data);
         setApplication(updated);
       } catch (err: any) {
         console.error('Autosave failed:', err);

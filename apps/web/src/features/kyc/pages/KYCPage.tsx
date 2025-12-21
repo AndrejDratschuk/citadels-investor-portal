@@ -106,11 +106,12 @@ export function KYCPage({ investorType }: KYCPageProps) {
       setShowEmailForm(false);
       
       // If we have a pre-selected investor type, set it immediately and skip to step 2
+      // IMPORTANT: Pass app.id explicitly because React state hasn't updated yet
       if (hasPreselectedType && typeConfig && app?.id) {
         await updateFormData({
           investorCategory: typeConfig.category,
           investorType: typeConfig.type,
-        });
+        }, app.id);  // Pass app ID to ensure the update is saved
         nextStep(); // Move to step 2 (Identity)
       }
       

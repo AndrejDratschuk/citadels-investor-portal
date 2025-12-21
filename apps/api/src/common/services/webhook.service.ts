@@ -7,6 +7,7 @@
  * - WEBHOOK_URL: Default URL for all events (fallback)
  * - WEBHOOK_URL_INVESTOR_CREATED: URL for investor.created events
  * - WEBHOOK_URL_KYC_STATUS_CHANGED: URL for kyc.status_changed events
+ * - WEBHOOK_URL_KYC_ACKNOWLEDGED: URL for kyc.acknowledged events (manager approve/reject)
  * - WEBHOOK_URL_CAPITAL_CALL_CREATED: URL for capital_call.created events
  * - WEBHOOK_URL_DEAL_CREATED: URL for deal.created events
  * - WEBHOOK_URL_DEAL_UPDATED: URL for deal.updated events
@@ -17,6 +18,7 @@ export type WebhookEvent =
   | 'investor.created'
   | 'investor.updated'
   | 'kyc.status_changed'
+  | 'kyc.acknowledged'
   | 'capital_call.created'
   | 'deal.created'
   | 'deal.updated'
@@ -33,6 +35,7 @@ const eventToEnvVar: Record<WebhookEvent, string> = {
   'investor.created': 'WEBHOOK_URL_INVESTOR_CREATED',
   'investor.updated': 'WEBHOOK_URL_INVESTOR_UPDATED',
   'kyc.status_changed': 'WEBHOOK_URL_KYC_STATUS_CHANGED',
+  'kyc.acknowledged': 'WEBHOOK_URL_KYC_ACKNOWLEDGED',
   'capital_call.created': 'WEBHOOK_URL_CAPITAL_CALL_CREATED',
   'deal.created': 'WEBHOOK_URL_DEAL_CREATED',
   'deal.updated': 'WEBHOOK_URL_DEAL_UPDATED',

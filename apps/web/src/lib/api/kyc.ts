@@ -20,9 +20,9 @@ export const kycApi = {
   },
 
   // Submit KYC application
-  submit: async (id: string): Promise<{ application: KYCApplication; eligible: boolean; message: string }> => {
-    // The API returns { application, eligible, message } inside data
-    return api.post<{ application: KYCApplication; eligible: boolean; message: string }>(`/kyc/${id}/submit`, {});
+  submit: async (id: string): Promise<{ application: KYCApplication; message: string }> => {
+    // The API returns { application, message } inside data - status is 'submitted' (pending review)
+    return api.post<{ application: KYCApplication; message: string }>(`/kyc/${id}/submit`, {});
   },
 
   // Update Calendly event

@@ -27,7 +27,14 @@ import { Input } from '@/components/ui/input';
 import { formatCurrency } from '@flowveda/shared';
 import { cn } from '@/lib/utils';
 import { kycApi } from '@/lib/api/kyc';
-import { KYCApplication } from '@/features/kyc/types';
+import { 
+  KYCApplication, 
+  ACCREDITATION_OPTIONS,
+  INVESTMENT_GOALS,
+  LIKELIHOOD_OPTIONS,
+  CONTACT_PREFERENCES,
+  TIMELINE_OPTIONS,
+} from '@/features/kyc/types';
 import { useAuthStore } from '@/stores/authStore';
 import { EmailComposeModal } from '../components/EmailComposeModal';
 
@@ -78,26 +85,34 @@ const mockInvestorApplications: InvestorApplication[] = [
   },
 ];
 
-const accreditationLabels: Record<string, string> = {
-  income: 'Income ($200k+ individual / $300k+ joint)',
-  net_worth: 'Net Worth ($1M+ excluding primary residence)',
-  professional: 'Licensed Professional',
-  entity: 'Qualified Entity ($5M+ assets)',
-  hnw: 'High Net Worth Individual',
-  qp: 'Qualified Purchaser',
-  ia: 'Institutional Investor',
-  ria: 'Registered Investment Advisor',
-  knowledgeable_employee: 'Knowledgeable Employee',
-  family_office: 'Family Office',
-  qualified_institutional_buyer: 'Qualified Institutional Buyer',
-  bank_trust: 'Bank/Trust Company',
-  insurance_company: 'Insurance Company',
-  employee_benefit_plan: 'Employee Benefit Plan',
-  private_business_development: 'Private Business Development Company',
-  small_business_investment: 'Small Business Investment Company',
-  investment_adviser: 'SEC/State Registered Investment Adviser',
-  rural_business_investment: 'Rural Business Investment Company',
-  native_american_tribe: 'Native American Tribe',
+// Helper to get accreditation label from ACCREDITATION_OPTIONS
+const getAccreditationLabel = (id: string): string => {
+  const option = ACCREDITATION_OPTIONS.find(opt => opt.id === id);
+  return option?.label || id;
+};
+
+// Helper to get investment goal label
+const getInvestmentGoalLabel = (value: string): string => {
+  const goal = INVESTMENT_GOALS.find(g => g.value === value);
+  return goal?.label || value;
+};
+
+// Helper to get likelihood label
+const getLikelihoodLabel = (value: string): string => {
+  const option = LIKELIHOOD_OPTIONS.find(o => o.value === value);
+  return option?.label || value;
+};
+
+// Helper to get contact preference label
+const getContactPreferenceLabel = (value: string): string => {
+  const option = CONTACT_PREFERENCES.find(o => o.value === value);
+  return option?.label || value;
+};
+
+// Helper to get timeline label
+const getTimelineLabel = (value: string): string => {
+  const option = TIMELINE_OPTIONS.find(o => o.value === value);
+  return option?.label || value.replace(/_/g, ' ');
 };
 
 const entityLabels: Record<string, string> = {
@@ -117,6 +132,14 @@ const investorTypeLabels: Record<string, string> = {
   qp: 'Qualified Purchaser',
   ia: 'Institutional Investor',
   ria: 'RIA',
+};
+
+// Simple labels for Form 2 investor applications accreditation types
+const accreditationLabels: Record<string, string> = {
+  income: 'Income ($200k+ individual / $300k+ joint)',
+  net_worth: 'Net Worth ($1M+ excluding primary residence)',
+  professional: 'Licensed Professional',
+  entity: 'Qualified Entity ($5M+ assets)',
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -562,16 +585,16 @@ The Investment Team`;
                           </div>
 
                           {/* Accreditation */}
-                          <div>
+                          <div className="lg:col-span-2">
                             <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
                               Accreditation Basis
                             </h4>
-                            <div className="space-y-1 text-sm">
+                            <div className="space-y-2 text-sm">
                               {app.accreditationBases && app.accreditationBases.length > 0 ? (
                                 app.accreditationBases.map((basis) => (
                                   <div key={basis} className="flex items-start gap-2">
                                     <Shield className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                                    <span>{accreditationLabels[basis] || basis}</span>
+                                    <span className="text-xs">{getAccreditationLabel(basis)}</span>
                                   </div>
                                 ))
                               ) : (
@@ -581,21 +604,92 @@ The Investment Team`;
                           </div>
 
                           {/* Investment Intent */}
-                          {app.indicativeCommitment && (
-                            <div>
-                              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
-                                Investment Intent
-                              </h4>
-                              <div className="space-y-2 text-sm">
+                          <div>
+                            <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                              Investment Intent
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              {app.indicativeCommitment ? (
                                 <div className="flex items-center gap-2">
                                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                                   {formatCurrency(app.indicativeCommitment)} indicative
                                 </div>
-                                {app.timeline && (
-                                  <p className="text-muted-foreground">
-                                    Timeline: {app.timeline.replace(/_/g, ' ')}
-                                  </p>
+                              ) : (
+                                <p className="text-muted-foreground">Not specified</p>
+                              )}
+                              {app.timeline && (
+                                <p>
+                                  <span className="text-muted-foreground">Timeline:</span> {getTimelineLabel(app.timeline)}
+                                </p>
+                              )}
+                              {app.likelihood && (
+                                <p>
+                                  <span className="text-muted-foreground">Likelihood:</span> {getLikelihoodLabel(app.likelihood)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Investment Goals */}
+                          {app.investmentGoals && app.investmentGoals.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                                Investment Goals
+                              </h4>
+                              <div className="space-y-1 text-sm">
+                                {app.investmentGoals.map((goal) => (
+                                  <p key={goal}>• {getInvestmentGoalLabel(goal)}</p>
+                                ))}
+                                {app.investmentGoalsOther && (
+                                  <p className="text-muted-foreground italic">Other: {app.investmentGoalsOther}</p>
                                 )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Questions for Manager */}
+                          {app.questionsForManager && (
+                            <div className="lg:col-span-2">
+                              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                                Questions for Manager
+                              </h4>
+                              <p className="text-sm bg-gray-50 rounded-lg p-3 italic">
+                                "{app.questionsForManager}"
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Contact Preferences */}
+                          <div>
+                            <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                              Contact Preferences
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              {app.preferredContact && (
+                                <p>
+                                  <span className="text-muted-foreground">Preferred:</span> {getContactPreferenceLabel(app.preferredContact)}
+                                </p>
+                              )}
+                              <p>
+                                <span className="text-muted-foreground">Consent:</span>{' '}
+                                {app.consentGiven ? (
+                                  <span className="text-green-600">Given ✓</span>
+                                ) : (
+                                  <span className="text-red-600">Not given</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Entity Authorized Signer (if entity) */}
+                          {app.investorCategory === 'entity' && app.authorizedSignerTitle && (
+                            <div>
+                              <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                                Authorized Signer
+                              </h4>
+                              <div className="space-y-1 text-sm">
+                                <p>{app.authorizedSignerFirstName} {app.authorizedSignerLastName}</p>
+                                <p className="text-muted-foreground">{app.authorizedSignerTitle}</p>
                               </div>
                             </div>
                           )}

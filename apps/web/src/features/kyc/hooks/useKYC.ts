@@ -136,7 +136,7 @@ export function useKYC(): UseKYCReturn {
     try {
       const result = await kycApi.submit(application.id);
       setApplication(result.application);
-      setEligible(result.eligible);
+      // Status is now 'submitted' (pending review) - don't set eligible until manager approves
     } catch (err: any) {
       setError(err.message || 'Failed to submit application');
       throw err;

@@ -122,15 +122,11 @@ export class KYCController {
     try {
       const result = await kycService.submit(id);
 
-      // Include eligible and message inside data so they're not stripped by the API client
       return reply.send({
         success: true,
         data: {
           application: result.application,
-          eligible: result.eligible,
-          message: result.eligible
-            ? 'Congratulations! You are pre-qualified as an accredited investor.'
-            : 'Unfortunately, you do not meet the accreditation requirements at this time.',
+          message: result.message,
         },
       });
     } catch (error: any) {

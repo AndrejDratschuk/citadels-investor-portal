@@ -151,35 +151,21 @@ export class KYCService {
   }
 
   /**
-   * Submit KYC application and determine eligibility
-   * Also creates an investor record from the KYC data
+   * Submit KYC application for manager review
+   * Status becomes 'submitted' (pending) - manager must approve/reject manually
+   * Investor record is NOT created until approval
    */
-  async submit(id: string): Promise<{ application: KYCApplication; eligible: boolean; investorId?: string }> {
+  async submit(id: string): Promise<{ application: KYCApplication; message: string }> {
     // Get the current application
     const application = await this.getById(id);
 
-    // Check if at least one accreditation basis is selected
-    const accreditationBases = application.accreditationBases || [];
-    const eligible = accreditationBases.length > 0;
-
-    // Update status based on eligibility
-    const newStatus = eligible ? 'pre_qualified' : 'not_eligible';
-
-    // Create investor record from KYC data
-    let investorId: string | undefined;
-    try {
-      investorId = await this.createInvestorFromKYC(application);
-      console.log('[KYC Submit] Created investor:', investorId);
-    } catch (err) {
-      console.error('[KYC Submit] Error creating investor:', err);
-      // Continue even if investor creation fails - we don't want to block submission
-    }
+    // Always set to 'submitted' for manual manager review
+    const newStatus = 'submitted';
 
     const { data, error } = await supabaseAdmin
       .from('kyc_applications')
       .update({
         status: newStatus,
-        investor_id: investorId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -200,14 +186,11 @@ export class KYCService {
       fundId: application.fundId,
       oldStatus: application.status,
       newStatus: newStatus,
-      eligible,
-      investorId,
     });
 
     return {
       application: this.formatKYCApplication(data),
-      eligible,
-      investorId,
+      message: 'Your application has been submitted and is pending review.',
     };
   }
 
@@ -354,15 +337,33 @@ export class KYCService {
 
   /**
    * Approve a KYC application (manager only)
+   * Creates the investor record and updates the KYC status
    */
   async approve(id: string): Promise<KYCApplication> {
     // Get current application to capture old status
     const current = await this.getById(id);
 
+    // Guard: only allow approval from submitted/meeting statuses
+    const allowedStatuses = ['submitted', 'meeting_scheduled', 'meeting_complete'];
+    if (!allowedStatuses.includes(current.status)) {
+      throw new Error(`Cannot approve application with status: ${current.status}`);
+    }
+
+    // Create investor record from KYC data (if not already created)
+    let investorId: string | undefined;
+    try {
+      investorId = await this.createInvestorFromKYC(current);
+      console.log('[KYC Approve] Created investor:', investorId);
+    } catch (err) {
+      console.error('[KYC Approve] Error creating investor:', err);
+      throw new Error('Failed to create investor record during approval');
+    }
+
     const { data, error } = await supabaseAdmin
       .from('kyc_applications')
       .update({
         status: 'pre_qualified',
+        investor_id: investorId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -383,6 +384,7 @@ export class KYCService {
       fundId: current.fundId,
       oldStatus: current.status,
       newStatus: 'pre_qualified',
+      investorId,
     });
 
     // Send webhook for manager decision (acknowledged)
@@ -394,6 +396,7 @@ export class KYCService {
       fundId: current.fundId,
       decision: 'approved',
       reason: null,
+      investorId,
     });
 
     return this.formatKYCApplication(data);
@@ -405,6 +408,12 @@ export class KYCService {
   async reject(id: string, reason?: string): Promise<KYCApplication> {
     // Get current application to capture old status
     const current = await this.getById(id);
+
+    // Guard: only allow rejection from submitted/meeting statuses
+    const allowedStatuses = ['submitted', 'meeting_scheduled', 'meeting_complete'];
+    if (!allowedStatuses.includes(current.status)) {
+      throw new Error(`Cannot reject application with status: ${current.status}`);
+    }
 
     const { data, error } = await supabaseAdmin
       .from('kyc_applications')

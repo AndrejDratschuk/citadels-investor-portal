@@ -367,11 +367,12 @@ export class KYCService {
 
   /**
    * Approve a KYC application (manager only)
-   * Creates the investor record and updates the KYC status
+   * Creates the investor record and updates the KYC status atomically using a DB transaction
    */
   async approve(id: string): Promise<KYCApplication> {
-    // Get current application to capture old status
+    // Get current application to capture old status and prepare investor data
     const current = await this.getById(id);
+    console.log('[KYC Approve] Starting approval for:', id, 'Current status:', current.status);
 
     // Guard: only allow approval from submitted/meeting statuses
     const allowedStatuses = ['submitted', 'meeting_scheduled', 'meeting_complete'];
@@ -379,39 +380,57 @@ export class KYCService {
       throw new Error(`Cannot approve application with status: ${current.status}`);
     }
 
-    // Create investor record from KYC data (if not already created)
-    let investorId: string | undefined;
-    try {
-      investorId = await this.createInvestorFromKYC(current);
-      console.log('[KYC Approve] Created investor:', investorId);
-    } catch (err: any) {
-      console.error('[KYC Approve] Error creating investor:', err);
-      // Pass through the actual error message for debugging
-      throw new Error(`Failed to create investor: ${err.message}`);
+    // Prepare investor data from KYC application
+    const investorData = this.prepareInvestorDataFromKYC(current);
+    console.log('[KYC Approve] Prepared investor data:', JSON.stringify(investorData, null, 2));
+
+    // Use RPC function for atomic transaction (creates investor + updates KYC in one transaction)
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin
+      .rpc('approve_kyc_application', {
+        p_kyc_id: id,
+        p_fund_id: current.fundId,
+        p_first_name: investorData.firstName,
+        p_last_name: investorData.lastName,
+        p_email: investorData.email,
+        p_phone: investorData.phone,
+        p_address: investorData.address,
+        p_entity_type: investorData.entityType,
+        p_entity_name: investorData.entityName,
+        p_commitment_amount: investorData.commitmentAmount,
+        p_accreditation_type: investorData.accreditationType,
+      });
+
+    if (rpcError) {
+      console.error('[KYC Approve] RPC error:', JSON.stringify(rpcError, null, 2));
+      throw new Error(`Failed to approve KYC application: ${rpcError.message}`);
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('kyc_applications')
-      .update({
-        status: 'pre_qualified',
-        investor_id: investorId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    // RPC returns array with single row containing investor_id and kyc_status
+    const result = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+    const investorId = result?.investor_id;
+    console.log('[KYC Approve] Transaction complete. Investor ID:', investorId);
 
-    if (error) {
-      console.error('Error approving KYC application:', error);
-      throw new Error('Failed to approve KYC application');
+    // Fetch the updated application
+    const updatedApp = await this.getById(id);
+
+    // Send webhook for investor creation (if new investor was created)
+    if (investorId && !current.investorId) {
+      webhookService.sendWebhook('investor.created', {
+        id: investorId,
+        email: investorData.email,
+        firstName: investorData.firstName,
+        lastName: investorData.lastName,
+        fundId: current.fundId,
+        source: 'kyc_approval',
+      });
     }
 
     // Send webhook for KYC status change
     webhookService.sendWebhook('kyc.status_changed', {
       id: current.id,
       email: current.email,
-      firstName: current.firstName,
-      lastName: current.lastName,
+      firstName: investorData.firstName,
+      lastName: investorData.lastName,
       fundId: current.fundId,
       oldStatus: current.status,
       newStatus: 'pre_qualified',
@@ -422,15 +441,93 @@ export class KYCService {
     webhookService.sendWebhook('kyc.acknowledged', {
       id: current.id,
       email: current.email,
-      firstName: current.firstName,
-      lastName: current.lastName,
+      firstName: investorData.firstName,
+      lastName: investorData.lastName,
       fundId: current.fundId,
       decision: 'approved',
       reason: null,
       investorId,
     });
 
-    return this.formatKYCApplication(data);
+    return updatedApp;
+  }
+
+  /**
+   * Prepare investor data from KYC application (used by approve transaction)
+   */
+  private prepareInvestorDataFromKYC(application: KYCApplication): {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string | null;
+    address: Record<string, any>;
+    entityType: string;
+    entityName: string | null;
+    commitmentAmount: number;
+    accreditationType: string | null;
+  } {
+    const isEntity = application.investorCategory === 'entity';
+    
+    // Determine entity type
+    let entityType: string = 'individual';
+    if (isEntity) {
+      const typeMap: Record<string, string> = {
+        'corp_llc': 'llc',
+        'trust': 'trust',
+        'family_office': 'corporation',
+        'family_client': 'individual',
+        'erisa': 'corporation',
+        '501c3': 'corporation',
+        'entity_5m': 'corporation',
+        'foreign_entity': 'corporation',
+      };
+      entityType = typeMap[application.investorType] || 'corporation';
+    } else {
+      const typeMap: Record<string, string> = {
+        'hnw': 'individual',
+        'joint': 'joint',
+        'foreign_individual': 'individual',
+      };
+      entityType = typeMap[application.investorType] || 'individual';
+    }
+
+    // Build address
+    const address = isEntity
+      ? {
+          city: application.principalOfficeCity,
+          state: application.principalOfficeState,
+          country: application.principalOfficeCountry,
+          zip: application.postalCode,
+        }
+      : {
+          city: application.city,
+          state: application.state,
+          country: application.country,
+          zip: application.postalCode,
+        };
+
+    // Get name fields
+    const firstName = isEntity 
+      ? (application.authorizedSignerFirstName || 'Unknown')
+      : (application.firstName || 'Unknown');
+    const lastName = isEntity 
+      ? (application.authorizedSignerLastName || 'Unknown')
+      : (application.lastName || 'Unknown');
+    const email = isEntity 
+      ? (application.workEmail || application.email || 'unknown@unknown.com')
+      : (application.email || 'unknown@unknown.com');
+
+    return {
+      firstName,
+      lastName,
+      email,
+      phone: isEntity ? application.workPhone || null : application.phone || null,
+      address,
+      entityType,
+      entityName: isEntity ? application.entityLegalName || null : null,
+      commitmentAmount: application.indicativeCommitment || 0,
+      accreditationType: this.mapAccreditationType(application.accreditationBases || []),
+    };
   }
 
   /**

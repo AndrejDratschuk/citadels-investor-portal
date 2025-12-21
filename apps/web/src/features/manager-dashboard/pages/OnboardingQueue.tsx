@@ -184,6 +184,11 @@ export function OnboardingQueue() {
     mutationFn: (id: string) => kycApi.approve(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kyc-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['investors'] });
+    },
+    onError: (error: Error) => {
+      console.error('[Approve KYC] Error:', error);
+      alert(`Failed to approve: ${error.message}`);
     },
   });
 

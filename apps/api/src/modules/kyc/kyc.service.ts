@@ -198,6 +198,9 @@ export class KYCService {
    * Create an investor record from KYC application data
    */
   private async createInvestorFromKYC(application: KYCApplication): Promise<string> {
+    console.log('[createInvestorFromKYC] Starting for application:', application.id);
+    console.log('[createInvestorFromKYC] Category:', application.investorCategory, 'Type:', application.investorType);
+    
     // Map KYC data to investor fields
     const isEntity = application.investorCategory === 'entity';
     
@@ -255,6 +258,8 @@ export class KYCService {
       onboarding_step: 1,
     };
 
+    console.log('[createInvestorFromKYC] Inserting investor data:', JSON.stringify(investorData, null, 2));
+
     const { data, error } = await supabaseAdmin
       .from('investors')
       .insert(investorData)
@@ -262,7 +267,9 @@ export class KYCService {
       .single();
 
     if (error) {
-      console.error('[createInvestorFromKYC] Error:', error);
+      console.error('[createInvestorFromKYC] Supabase error:', error);
+      console.error('[createInvestorFromKYC] Error code:', error.code);
+      console.error('[createInvestorFromKYC] Error details:', error.details);
       throw new Error(`Failed to create investor: ${error.message}`);
     }
 

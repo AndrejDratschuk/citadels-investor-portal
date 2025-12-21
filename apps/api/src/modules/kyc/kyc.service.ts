@@ -99,6 +99,9 @@ export class KYCService {
    * Update KYC application (autosave)
    */
   async update(id: string, updates: Partial<KYCApplicationData>): Promise<KYCApplication> {
+    console.log('[KYC Update] ID:', id);
+    console.log('[KYC Update] Received updates:', JSON.stringify(updates, null, 2));
+    
     const dbUpdates: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
@@ -134,6 +137,8 @@ export class KYCService {
     if (updates.questionsForManager !== undefined) dbUpdates.questions_for_manager = updates.questionsForManager;
     if (updates.preferredContact !== undefined) dbUpdates.preferred_contact = updates.preferredContact;
     if (updates.consentGiven !== undefined) dbUpdates.consent_given = updates.consentGiven;
+
+    console.log('[KYC Update] DB updates to apply:', JSON.stringify(dbUpdates, null, 2));
 
     const { data, error } = await supabaseAdmin
       .from('kyc_applications')
@@ -242,11 +247,30 @@ export class KYCService {
           zip: application.postalCode,
         };
 
+    // Get name fields with fallbacks for missing data
+    const firstName = isEntity 
+      ? (application.authorizedSignerFirstName || 'Unknown')
+      : (application.firstName || 'Unknown');
+    const lastName = isEntity 
+      ? (application.authorizedSignerLastName || 'Unknown')
+      : (application.lastName || 'Unknown');
+    const email = isEntity 
+      ? (application.workEmail || application.email)
+      : application.email;
+
+    // Validate required fields
+    if (!application.fundId) {
+      throw new Error('Missing required field: fund_id');
+    }
+    if (!email) {
+      throw new Error('Missing required field: email');
+    }
+
     const investorData = {
       fund_id: application.fundId,
-      first_name: isEntity ? application.authorizedSignerFirstName : application.firstName,
-      last_name: isEntity ? application.authorizedSignerLastName : application.lastName,
-      email: isEntity ? (application.workEmail || application.email) : application.email,
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
       phone: isEntity ? application.workPhone : application.phone,
       address: address,
       entity_type: entityType,
@@ -267,10 +291,9 @@ export class KYCService {
       .single();
 
     if (error) {
-      console.error('[createInvestorFromKYC] Supabase error:', error);
-      console.error('[createInvestorFromKYC] Error code:', error.code);
-      console.error('[createInvestorFromKYC] Error details:', error.details);
-      throw new Error(`Failed to create investor: ${error.message}`);
+      console.error('[createInvestorFromKYC] Supabase error:', JSON.stringify(error, null, 2));
+      // Pass the actual database error through for debugging
+      throw new Error(`Database error: ${error.message} (code: ${error.code}, hint: ${error.hint || 'none'})`);
     }
 
     // Send webhook for new investor
@@ -361,9 +384,10 @@ export class KYCService {
     try {
       investorId = await this.createInvestorFromKYC(current);
       console.log('[KYC Approve] Created investor:', investorId);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[KYC Approve] Error creating investor:', err);
-      throw new Error('Failed to create investor record during approval');
+      // Pass through the actual error message for debugging
+      throw new Error(`Failed to create investor: ${err.message}`);
     }
 
     const { data, error } = await supabaseAdmin

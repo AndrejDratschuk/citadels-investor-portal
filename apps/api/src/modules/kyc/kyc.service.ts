@@ -385,6 +385,17 @@ export class KYCService {
       newStatus: 'pre_qualified',
     });
 
+    // Send webhook for manager decision (acknowledged)
+    webhookService.sendWebhook('kyc.acknowledged', {
+      id: current.id,
+      email: current.email,
+      firstName: current.firstName,
+      lastName: current.lastName,
+      fundId: current.fundId,
+      decision: 'approved',
+      reason: null,
+    });
+
     return this.formatKYCApplication(data);
   }
 
@@ -420,6 +431,17 @@ export class KYCService {
       oldStatus: current.status,
       newStatus: 'not_eligible',
       rejectionReason: reason,
+    });
+
+    // Send webhook for manager decision (acknowledged)
+    webhookService.sendWebhook('kyc.acknowledged', {
+      id: current.id,
+      email: current.email,
+      firstName: current.firstName,
+      lastName: current.lastName,
+      fundId: current.fundId,
+      decision: 'rejected',
+      reason: reason || null,
     });
 
     return this.formatKYCApplication(data);

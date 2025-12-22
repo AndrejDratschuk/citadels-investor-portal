@@ -70,7 +70,7 @@ export class DocuSignService {
 
   /**
    * Connect DocuSign for a fund (save credentials)
-   * Validates credentials by attempting to get an access token
+   * Credentials are validated when actually using DocuSign features
    */
   async connectForFund(
     fundId: string,
@@ -100,24 +100,7 @@ export class DocuSignService {
       .replace(/\\n/g, '\n')
       .trim();
 
-    // Build test config
-    const testConfig: DocuSignConfig = {
-      integrationKey: credentials.integrationKey,
-      accountId: credentials.accountId,
-      userId: credentials.userId,
-      rsaPrivateKey: normalizedPrivateKey,
-      baseUrl: DOCUSIGN_BASE_URL,
-    };
-
-    // Validate by attempting to get an access token
-    try {
-      await this.getAccessTokenWithConfig(testConfig);
-    } catch (error) {
-      console.error('[DocuSign] Credential validation failed:', error);
-      throw new Error('Invalid DocuSign credentials. Please verify your Integration Key, User ID, and RSA Private Key. Make sure you have granted consent for JWT authentication.');
-    }
-
-    // Save credentials
+    // Save credentials (validation happens when using DocuSign features)
     const { error } = await supabaseAdmin
       .from('fund_docusign_credentials')
       .upsert({

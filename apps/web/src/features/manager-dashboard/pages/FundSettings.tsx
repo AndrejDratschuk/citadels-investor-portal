@@ -106,7 +106,7 @@ function DocuSignCard() {
         userId: userId.trim(),
         rsaPrivateKey: rsaPrivateKey.trim(),
       });
-      setMessage({ type: 'success', text: 'DocuSign connected successfully!' });
+      setMessage({ type: 'success', text: 'DocuSign credentials saved. They will be verified when you send a document.' });
       setIntegrationKey('');
       setAccountId('');
       setUserId('');
@@ -192,11 +192,11 @@ function DocuSignCard() {
           <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Connected</span>
+              <span className="text-sm font-medium text-green-900">Credentials Saved</span>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            You can now send documents for signature from investor profiles.
+            Send documents from investor profiles. Connection verified on first use.
           </p>
           <Button
             variant="outline"

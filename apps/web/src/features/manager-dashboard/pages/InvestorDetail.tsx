@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   User,
@@ -17,12 +18,17 @@ import {
   MessageSquare,
   Plus,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { formatCurrency, formatDate, Communication } from '@flowveda/shared';
+import { investorsApi } from '@/lib/api/investors';
 import { Button } from '@/components/ui/button';
 import { InvestorStatusBadge } from '../components/InvestorStatusBadge';
 import { CommunicationsList } from '../components/CommunicationsList';
 import { LogCommunicationModal, LogCommunicationData } from '../components/LogPhoneCallModal';
+import { EmailComposeModal } from '../components/EmailComposeModal';
+import { EditInvestorModal } from '../components/EditInvestorModal';
+import { DocuSignModal } from '../components/DocuSignModal';
 import { useCommunications, useCreateCommunication } from '../hooks/useCommunications';
 import { useInvestor } from '../hooks/useInvestors';
 import { cn } from '@/lib/utils';
@@ -187,11 +193,39 @@ type TabType = 'overview' | 'documents' | 'capital-calls' | 'communications' | '
 
 export function InvestorDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showCommunicationModal, setShowCommunicationModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDocuSignModal, setShowDocuSignModal] = useState(false);
 
   // Fetch real investor data from API
   const { data: investor, isLoading: investorLoading, error: investorError } = useInvestor(id);
+
+  const handleEditSuccess = () => {
+    // Refresh investor data
+    queryClient.invalidateQueries({ queryKey: ['investor', id] });
+    queryClient.invalidateQueries({ queryKey: ['investors'] });
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    setIsDeleting(true);
+    try {
+      await investorsApi.delete(id);
+      queryClient.invalidateQueries({ queryKey: ['investors'] });
+      navigate('/manager/investors');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to delete investor';
+      alert(message);
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
   const investorId = id || '';
 
   // Communications - use API data if available, fallback to mock
@@ -287,17 +321,25 @@ export function InvestorDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => setShowEmailModal(true)}>
             <Mail className="mr-2 h-4 w-4" />
             Send Email
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => setShowDocuSignModal(true)}>
             <Send className="mr-2 h-4 w-4" />
             Send Document
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => setShowEditModal(true)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -548,6 +590,85 @@ export function InvestorDetail() {
         isLoading={createCommunication.isPending}
         investorEmail={investor.email}
       />
+
+      {/* Email Compose Modal */}
+      <EmailComposeModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        recipientEmail={investor.email}
+        defaultSubject=""
+        defaultBody=""
+      />
+
+      {/* Edit Investor Modal */}
+      <EditInvestorModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        investor={investor}
+        onSuccess={handleEditSuccess}
+      />
+
+      {/* DocuSign Modal */}
+      <DocuSignModal
+        isOpen={showDocuSignModal}
+        onClose={() => setShowDocuSignModal(false)}
+        investorId={investor.id}
+        investorName={`${investor.firstName} ${investor.lastName}`}
+        investorEmail={investor.email}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !isDeleting && setShowDeleteConfirm(false)}
+          />
+          <div className="relative z-10 w-full max-w-md mx-4 bg-white rounded-xl shadow-2xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <AlertCircle className="h-6 w-6 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Delete Investor</h3>
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-foreground">
+                {investor.firstName} {investor.lastName}
+              </span>
+              ? All associated data including communications and capital call records will be permanently removed.
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Investor'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../../common/database/supabase';
 import { webhookService } from '../../common/services/webhook.service';
 import type { CreateInvestorDto } from './dtos/createInvestor.dto';
+import type { UpdateInvestorDto } from './dtos/updateInvestor.dto';
 
 /** Database row shape for investors table */
 interface InvestorDbRow {
@@ -153,7 +154,7 @@ export class InvestorsService {
   }
 
   /**
-   * Update investor profile
+   * Update investor profile (investor self-service)
    */
   async updateInvestor(investorId: string, updates: Partial<InvestorUpdate>) {
     const { data, error } = await supabaseAdmin
@@ -177,6 +178,62 @@ export class InvestorsService {
     }
 
     return this.formatInvestor(data);
+  }
+
+  /**
+   * Update investor by ID (manager action)
+   * Validates investor belongs to the manager's fund
+   */
+  async updateInvestorById(investorId: string, fundId: string, updates: UpdateInvestorDto) {
+    // Build update object only with provided fields
+    const updateRow: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (updates.firstName !== undefined) updateRow.first_name = updates.firstName;
+    if (updates.lastName !== undefined) updateRow.last_name = updates.lastName;
+    if (updates.email !== undefined) updateRow.email = updates.email;
+    if (updates.phone !== undefined) updateRow.phone = updates.phone;
+    if (updates.address !== undefined) updateRow.address = updates.address;
+    if (updates.entityType !== undefined) updateRow.entity_type = updates.entityType;
+    if (updates.entityName !== undefined) updateRow.entity_name = updates.entityName;
+    if (updates.commitmentAmount !== undefined) updateRow.commitment_amount = updates.commitmentAmount;
+    if (updates.status !== undefined) updateRow.status = updates.status;
+
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .update(updateRow)
+      .eq('id', investorId)
+      .eq('fund_id', fundId)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error updating investor:', error);
+      if (error.code === 'PGRST116') {
+        throw new Error('Investor not found or you do not have permission to update them.');
+      }
+      throw new Error('Failed to update investor');
+    }
+
+    return this.formatInvestor(data as InvestorDbRow);
+  }
+
+  /**
+   * Delete investor by ID (manager action)
+   * Validates investor belongs to the manager's fund
+   */
+  async deleteInvestorById(investorId: string, fundId: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('investors')
+      .delete()
+      .eq('id', investorId)
+      .eq('fund_id', fundId);
+
+    if (error) {
+      console.error('Error deleting investor:', error);
+      throw new Error('Failed to delete investor');
+    }
   }
 
   /**

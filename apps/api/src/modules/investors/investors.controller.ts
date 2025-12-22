@@ -3,6 +3,7 @@ import { InvestorsService } from './investors.service';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { createInvestorSchema } from './dtos/createInvestor.dto';
+import { updateInvestorSchema } from './dtos/updateInvestor.dto';
 
 const investorsService = new InvestorsService();
 
@@ -83,6 +84,75 @@ export class InvestorsController {
       });
     } catch (error) {
       return reply.status(404).send({ success: false, error: 'Investor not found' });
+    }
+  }
+
+  /**
+   * Update an investor by ID (manager view)
+   */
+  async update(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { id } = request.params as { id: string };
+
+    // Get the manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    try {
+      const input = updateInvestorSchema.parse(request.body);
+      const updated = await investorsService.updateInvestorById(id, manager.fund_id, input);
+
+      return reply.send({
+        success: true,
+        data: updated,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to update investor';
+      return reply.status(400).send({ success: false, error: message });
+    }
+  }
+
+  /**
+   * Delete an investor by ID (manager view)
+   */
+  async delete(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { id } = request.params as { id: string };
+
+    // Get the manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    try {
+      await investorsService.deleteInvestorById(id, manager.fund_id);
+
+      return reply.send({
+        success: true,
+        message: 'Investor deleted successfully',
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to delete investor';
+      return reply.status(400).send({ success: false, error: message });
     }
   }
 

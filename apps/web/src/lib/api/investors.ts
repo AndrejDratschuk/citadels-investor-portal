@@ -124,6 +124,18 @@ export interface CreateInvestorInput {
   commitmentAmount?: number;
 }
 
+export interface UpdateInvestorInput {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string | null;
+  address?: Address | null;
+  entityType?: string | null;
+  entityName?: string | null;
+  commitmentAmount?: number;
+  status?: 'pending' | 'active' | 'inactive';
+}
+
 export type CommunicationType = 'email' | 'meeting' | 'phone_call';
 
 export interface InvestorCommunication {
@@ -226,6 +238,16 @@ export const investorsApi = {
   // Get single investor by ID (manager only)
   getById: async (investorId: string): Promise<InvestorProfile> => {
     return api.get<InvestorProfile>(`/investors/${investorId}`);
+  },
+
+  // Update investor by ID (manager only)
+  update: async (investorId: string, data: UpdateInvestorInput): Promise<InvestorProfile> => {
+    return api.patch<InvestorProfile>(`/investors/${investorId}`, data);
+  },
+
+  // Delete investor by ID (manager only)
+  delete: async (investorId: string): Promise<void> => {
+    await api.delete(`/investors/${investorId}`);
   },
 };
 

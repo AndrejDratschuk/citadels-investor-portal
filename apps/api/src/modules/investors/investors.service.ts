@@ -1,6 +1,100 @@
 import { supabaseAdmin } from '../../common/database/supabase';
+import { webhookService } from '../../common/services/webhook.service';
+import type { CreateInvestorDto } from './dtos/createInvestor.dto';
+
+/** Database row shape for investors table */
+interface InvestorDbRow {
+  id: string;
+  user_id: string | null;
+  fund_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  address: Record<string, unknown> | null;
+  ssn_encrypted: string | null;
+  date_of_birth: string | null;
+  entity_type: string | null;
+  entity_name: string | null;
+  tax_id_type: string | null;
+  accreditation_status: string;
+  accreditation_type: string | null;
+  accreditation_date: string | null;
+  verification_request_id: string | null;
+  commitment_amount: string | null;
+  total_called: string | null;
+  total_invested: string | null;
+  onboarding_step: number;
+  onboarded_at: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export class InvestorsService {
+  async createInvestorForFund(input: CreateInvestorForFundInput) {
+    // Check for existing investor with same email in the fund
+    const { data: existing, error: selectError } = await supabaseAdmin
+      .from('investors')
+      .select('id')
+      .eq('email', input.email)
+      .eq('fund_id', input.fundId)
+      .maybeSingle();
+
+    if (selectError) {
+      console.error('Error checking for existing investor:', selectError);
+      throw new Error('Failed to validate investor data');
+    }
+
+    if (existing) {
+      throw new Error('An investor with this email already exists in the fund.');
+    }
+
+    const insertRow: Record<string, unknown> = {
+      fund_id: input.fundId,
+      first_name: input.firstName,
+      last_name: input.lastName,
+      email: input.email,
+    };
+
+    if (input.phone) {
+      insertRow.phone = input.phone;
+    }
+
+    if (typeof input.commitmentAmount === 'number') {
+      insertRow.commitment_amount = input.commitmentAmount;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .insert(insertRow)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating investor:', error);
+      throw new Error('Failed to create investor');
+    }
+
+    const created = this.formatInvestor(data);
+
+    webhookService.sendWebhook(
+      'investor.created',
+      {
+        id: created.id,
+        email: created.email,
+        firstName: created.firstName,
+        lastName: created.lastName,
+        fundId: created.fundId,
+        commitmentAmount: created.commitmentAmount,
+        source: 'manager',
+      },
+      { timestamp: created.createdAt }
+    );
+
+    return created;
+  }
+
   /**
    * Get all investors for a fund (manager view)
    */
@@ -16,7 +110,7 @@ export class InvestorsService {
       throw new Error('Failed to fetch investors');
     }
 
-    return data.map((investor: any) => this.formatInvestor(investor));
+    return data.map((investor) => this.formatInvestor(investor as InvestorDbRow));
   }
 
   /**
@@ -531,7 +625,7 @@ export class InvestorsService {
     };
   }
 
-  private formatInvestor(data: any) {
+  private formatInvestor(data: InvestorDbRow) {
     return {
       id: data.id,
       userId: data.user_id,
@@ -547,9 +641,9 @@ export class InvestorsService {
       accreditationStatus: data.accreditation_status,
       accreditationType: data.accreditation_type,
       accreditationDate: data.accreditation_date,
-      commitmentAmount: parseFloat(data.commitment_amount) || 0,
-      totalCalled: parseFloat(data.total_called) || 0,
-      totalInvested: parseFloat(data.total_invested) || 0,
+      commitmentAmount: parseFloat(data.commitment_amount ?? '0') || 0,
+      totalCalled: parseFloat(data.total_called ?? '0') || 0,
+      totalInvested: parseFloat(data.total_invested ?? '0') || 0,
       onboardingStep: data.onboarding_step,
       onboardedAt: data.onboarded_at,
       status: data.status,
@@ -558,6 +652,10 @@ export class InvestorsService {
     };
   }
 }
+
+type CreateInvestorForFundInput = CreateInvestorDto & {
+  fundId: string;
+};
 
 interface InvestorUpdate {
   firstName?: string;

@@ -72,6 +72,11 @@ export async function investorsRoutes(fastify: FastifyInstance) {
     return investorsController.getAll(request as any, reply);
   });
 
+  // Create an investor for the fund
+  fastify.post('/', { preHandler: managerPreHandler }, async (request, reply) => {
+    return investorsController.create(request as any, reply);
+  });
+
   // Get single investor by ID
   fastify.get('/:id', { preHandler: managerPreHandler }, async (request, reply) => {
     return investorsController.getById(request as any, reply);

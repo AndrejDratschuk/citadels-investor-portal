@@ -27,6 +27,7 @@ import {
   DocumentsManager,
   FundSettings,
 } from './features/manager-dashboard/pages';
+import { CreateInvestor } from './features/manager-dashboard/pages/CreateInvestor';
 import {
   AccountantDashboard,
   K1Management,
@@ -156,6 +157,10 @@ export const router = createBrowserRouter([
       {
         path: 'investors',
         element: <InvestorsList />,
+      },
+      {
+        path: 'investors/new',
+        element: <CreateInvestor />,
       },
       {
         path: 'investors/:id',

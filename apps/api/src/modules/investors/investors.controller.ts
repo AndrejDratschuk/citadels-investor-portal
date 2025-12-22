@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { InvestorsService } from './investors.service';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
+import { createInvestorSchema } from './dtos/createInvestor.dto';
 
 const investorsService = new InvestorsService();
 
@@ -30,6 +31,36 @@ export class InvestorsController {
     return reply.send({
       success: true,
       data: investors,
+    });
+  }
+
+  /**
+   * Create an investor for the manager's fund (manager view)
+   */
+  async create(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    const input = createInvestorSchema.parse(request.body);
+    const created = await investorsService.createInvestorForFund({
+      fundId: manager.fund_id,
+      ...input,
+    });
+
+    return reply.send({
+      success: true,
+      data: created,
     });
   }
 

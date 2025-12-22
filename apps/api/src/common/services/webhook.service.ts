@@ -30,6 +30,10 @@ export interface WebhookPayload {
   data: Record<string, any>;
 }
 
+export interface SendWebhookOptions {
+  timestamp?: string;
+}
+
 // Map event types to environment variable names
 const eventToEnvVar: Record<WebhookEvent, string> = {
   'investor.created': 'WEBHOOK_URL_INVESTOR_CREATED',
@@ -85,7 +89,7 @@ class WebhookService {
    * Send a webhook notification
    * This is fire-and-forget - it won't block the main operation if it fails
    */
-  async sendWebhook(event: WebhookEvent, data: Record<string, any>): Promise<void> {
+  async sendWebhook(event: WebhookEvent, data: Record<string, any>, options?: SendWebhookOptions): Promise<void> {
     const url = this.getUrlForEvent(event);
     
     if (!url) {
@@ -95,7 +99,7 @@ class WebhookService {
 
     const payload: WebhookPayload = {
       event,
-      timestamp: new Date().toISOString(),
+      timestamp: options?.timestamp ?? new Date().toISOString(),
       data,
     };
 

@@ -116,6 +116,14 @@ export interface UpdateProfileInput {
   entityName?: string;
 }
 
+export interface CreateInvestorInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  commitmentAmount?: number;
+}
+
 export type CommunicationType = 'email' | 'meeting' | 'phone_call';
 
 export interface InvestorCommunication {
@@ -208,6 +216,11 @@ export const investorsApi = {
   // Get all investors for the fund (manager only)
   getAll: async (): Promise<InvestorProfile[]> => {
     return api.get<InvestorProfile[]>('/investors');
+  },
+
+  // Create investor for the fund (manager only)
+  create: async (data: CreateInvestorInput): Promise<InvestorProfile> => {
+    return api.post<InvestorProfile>('/investors', data);
   },
 
   // Get single investor by ID (manager only)

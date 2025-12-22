@@ -413,8 +413,8 @@ export class KYCService {
     // Fetch the updated application
     const updatedApp = await this.getById(id);
 
-    // Send webhook for investor creation (if new investor was created)
-    if (investorId && !current.investorId) {
+    // Send webhook for investor creation (RPC creates the investor as part of approval)
+    if (investorId) {
       webhookService.sendWebhook('investor.created', {
         id: investorId,
         email: investorData.email,

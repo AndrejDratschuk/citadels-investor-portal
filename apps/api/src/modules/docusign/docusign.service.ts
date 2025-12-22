@@ -1,3 +1,4 @@
+import { createSign } from 'crypto';
 import { supabaseAdmin } from '../../common/database/supabase';
 import type {
   DocuSignConfig,
@@ -42,7 +43,7 @@ export class DocuSignService {
 
     const { data, error } = await supabaseAdmin
       .from('fund_docusign_credentials')
-      .select('integration_key, account_id, user_id')
+      .select('integration_key, account_id, user_id, rsa_private_key')
       .eq('fund_id', fundId)
       .single();
 
@@ -54,6 +55,7 @@ export class DocuSignService {
       integrationKey: data.integration_key,
       accountId: data.account_id,
       userId: data.user_id,
+      rsaPrivateKey: data.rsa_private_key,
       baseUrl: DOCUSIGN_BASE_URL,
     };
 
@@ -68,27 +70,54 @@ export class DocuSignService {
 
   /**
    * Connect DocuSign for a fund (save credentials)
+   * Validates credentials by attempting to get an access token
    */
   async connectForFund(
     fundId: string,
-    credentials: { integrationKey: string; accountId: string; userId: string }
+    credentials: { integrationKey: string; accountId: string; userId: string; rsaPrivateKey: string }
   ): Promise<void> {
-    // Validate the credentials by attempting to get an access token
+    // Basic format validation
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    if (!credentials.integrationKey || credentials.integrationKey.length < 10) {
+      throw new Error('Invalid Integration Key format');
+    }
+    
+    if (!credentials.accountId || !uuidPattern.test(credentials.accountId)) {
+      throw new Error('Invalid Account ID format. It should be a UUID (e.g., xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)');
+    }
+    
+    if (!credentials.userId || !uuidPattern.test(credentials.userId)) {
+      throw new Error('Invalid User ID format. It should be a UUID (e.g., xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)');
+    }
+
+    if (!credentials.rsaPrivateKey || !credentials.rsaPrivateKey.includes('PRIVATE KEY')) {
+      throw new Error('Invalid RSA Private Key format. It should be a PEM-formatted private key.');
+    }
+
+    // Normalize the private key (handle both \\n and actual newlines)
+    const normalizedPrivateKey = credentials.rsaPrivateKey
+      .replace(/\\n/g, '\n')
+      .trim();
+
+    // Build test config
     const testConfig: DocuSignConfig = {
       integrationKey: credentials.integrationKey,
       accountId: credentials.accountId,
       userId: credentials.userId,
+      rsaPrivateKey: normalizedPrivateKey,
       baseUrl: DOCUSIGN_BASE_URL,
     };
 
-    // Try to get an access token to validate credentials
+    // Validate by attempting to get an access token
     try {
       await this.getAccessTokenWithConfig(testConfig);
     } catch (error) {
-      throw new Error('Invalid DocuSign credentials. Please check your Integration Key, Account ID, and User ID.');
+      console.error('[DocuSign] Credential validation failed:', error);
+      throw new Error('Invalid DocuSign credentials. Please verify your Integration Key, User ID, and RSA Private Key. Make sure you have granted consent for JWT authentication.');
     }
 
-    // Upsert credentials
+    // Save credentials
     const { error } = await supabaseAdmin
       .from('fund_docusign_credentials')
       .upsert({
@@ -96,6 +125,7 @@ export class DocuSignService {
         integration_key: credentials.integrationKey,
         account_id: credentials.accountId,
         user_id: credentials.userId,
+        rsa_private_key: normalizedPrivateKey,
       }, {
         onConflict: 'fund_id',
       });
@@ -170,7 +200,7 @@ export class DocuSignService {
 
   /**
    * Create JWT assertion for DocuSign authentication
-   * Note: This is a simplified version. In production, you'd use proper RSA key signing.
+   * Signs the JWT with the RSA private key using RS256 algorithm
    */
   private createJwtAssertion(config: DocuSignConfig): string {
     const now = Math.floor(Date.now() / 1000);
@@ -184,13 +214,19 @@ export class DocuSignService {
       scope: 'signature impersonation',
     };
 
-    // Note: This is a placeholder. Actual JWT signing requires RSA private key
-    // For demo/dev, DocuSign also supports authorization code grant
+    // Base64url encode header and payload
     const base64Header = Buffer.from(JSON.stringify(header)).toString('base64url');
     const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signatureInput = `${base64Header}.${base64Payload}`;
     
-    // Return unsigned JWT (DocuSign demo may accept this for testing)
-    return `${base64Header}.${base64Payload}.`;
+    // Sign with RSA private key using SHA-256
+    const sign = createSign('RSA-SHA256');
+    sign.update(signatureInput);
+    sign.end();
+    
+    const signature = sign.sign(config.rsaPrivateKey, 'base64url');
+    
+    return `${signatureInput}.${signature}`;
   }
 
   /**

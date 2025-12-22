@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS fund_docusign_credentials (
   integration_key TEXT NOT NULL,
   account_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
+  rsa_private_key TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(fund_id)

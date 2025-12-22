@@ -41,16 +41,17 @@ export class DocuSignController {
       return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
-    const { integrationKey, accountId, userId } = request.body as {
+    const { integrationKey, accountId, userId, rsaPrivateKey } = request.body as {
       integrationKey?: string;
       accountId?: string;
       userId?: string;
+      rsaPrivateKey?: string;
     };
 
-    if (!integrationKey || !accountId || !userId) {
+    if (!integrationKey || !accountId || !userId || !rsaPrivateKey) {
       return reply.status(400).send({
         success: false,
-        error: 'Missing required fields: integrationKey, accountId, userId',
+        error: 'Missing required fields: integrationKey, accountId, userId, rsaPrivateKey',
       });
     }
 
@@ -70,6 +71,7 @@ export class DocuSignController {
         integrationKey,
         accountId,
         userId,
+        rsaPrivateKey,
       });
 
       return reply.send({

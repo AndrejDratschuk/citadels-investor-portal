@@ -14,6 +14,7 @@ export interface DocuSignConnectInput {
   integrationKey: string;
   accountId: string;
   userId: string;
+  rsaPrivateKey: string;
 }
 
 export interface SendEnvelopeInput {

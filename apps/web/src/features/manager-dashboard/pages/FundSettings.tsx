@@ -71,6 +71,7 @@ function DocuSignCard() {
   const [integrationKey, setIntegrationKey] = useState('');
   const [accountId, setAccountId] = useState('');
   const [userId, setUserId] = useState('');
+  const [rsaPrivateKey, setRsaPrivateKey] = useState('');
 
   useEffect(() => {
     fetchStatus();
@@ -90,7 +91,7 @@ function DocuSignCard() {
   };
 
   const handleConnect = async () => {
-    if (!integrationKey.trim() || !accountId.trim() || !userId.trim()) {
+    if (!integrationKey.trim() || !accountId.trim() || !userId.trim() || !rsaPrivateKey.trim()) {
       setMessage({ type: 'error', text: 'Please fill in all fields' });
       return;
     }
@@ -103,11 +104,13 @@ function DocuSignCard() {
         integrationKey: integrationKey.trim(),
         accountId: accountId.trim(),
         userId: userId.trim(),
+        rsaPrivateKey: rsaPrivateKey.trim(),
       });
       setMessage({ type: 'success', text: 'DocuSign connected successfully!' });
       setIntegrationKey('');
       setAccountId('');
       setUserId('');
+      setRsaPrivateKey('');
       await fetchStatus();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect DocuSign';
@@ -243,6 +246,17 @@ function DocuSignCard() {
                 className="mt-1"
               />
             </div>
+            <div>
+              <Label htmlFor="ds-private-key" className="text-sm">RSA Private Key</Label>
+              <textarea
+                id="ds-private-key"
+                value={rsaPrivateKey}
+                onChange={(e) => setRsaPrivateKey(e.target.value)}
+                placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"
+                rows={4}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+              />
+            </div>
           </div>
 
           <div className="rounded-lg border bg-muted/50 p-3 text-xs text-muted-foreground">
@@ -251,12 +265,14 @@ function DocuSignCard() {
               <li>Go to DocuSign Admin → Settings → Apps and Keys</li>
               <li>Create or select your integration</li>
               <li>Copy the Integration Key, Account ID, and User ID</li>
+              <li>Generate RSA keypair and download the private key</li>
+              <li>Grant consent: visit the consent URL once to authorize JWT</li>
             </ol>
           </div>
 
           <Button
             onClick={handleConnect}
-            disabled={connecting || !integrationKey.trim() || !accountId.trim() || !userId.trim()}
+            disabled={connecting || !integrationKey.trim() || !accountId.trim() || !userId.trim() || !rsaPrivateKey.trim()}
             size="sm"
           >
             {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

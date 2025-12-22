@@ -2,6 +2,7 @@ export interface DocuSignConfig {
   integrationKey: string;
   accountId: string;
   userId: string;
+  rsaPrivateKey: string;
   baseUrl: string;
 }
 

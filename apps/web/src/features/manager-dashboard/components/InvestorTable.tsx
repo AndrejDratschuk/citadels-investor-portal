@@ -9,6 +9,9 @@ import {
   Eye,
   Edit,
   Trash2,
+  X,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@flowveda/shared';
@@ -32,6 +35,7 @@ interface InvestorTableProps {
   investors: InvestorRow[];
   onSort?: (column: string, direction: 'asc' | 'desc') => void;
   onSearch?: (query: string) => void;
+  onDelete?: (investor: InvestorRow) => Promise<void>;
   className?: string;
 }
 
@@ -41,12 +45,48 @@ export function InvestorTable({
   investors,
   onSort,
   onSearch,
+  onDelete,
   className,
 }: InvestorTableProps) {
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<InvestorRow | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteClick = (investor: InvestorRow) => {
+    setDeleteTarget(investor);
+    setDeleteConfirmText('');
+    setDeleteError(null);
+  };
+
+  const handleDeleteClose = () => {
+    setDeleteTarget(null);
+    setDeleteConfirmText('');
+    setDeleteError(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget || deleteConfirmText !== 'DELETE' || !onDelete) return;
+
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      await onDelete(deleteTarget);
+      handleDeleteClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to delete investor';
+      setDeleteError(message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const handleSort = (column: SortColumn) => {
     const newDirection =
@@ -227,10 +267,16 @@ export function InvestorTable({
                           >
                             <Eye className="h-4 w-4" /> View
                           </Link>
-                          <button className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted">
+                          <Link
+                            to={`/manager/investors/${investor.id}`}
+                            className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
+                          >
                             <Edit className="h-4 w-4" /> Edit
-                          </button>
-                          <button className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteClick(investor)}
+                            className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                          >
                             <Trash2 className="h-4 w-4" /> Delete
                           </button>
                         </div>
@@ -258,6 +304,103 @@ export function InvestorTable({
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={handleDeleteClose}
+          />
+          <div className="relative z-10 w-full max-w-md mx-4 bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-red-50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-red-900">Delete Investor</h2>
+              </div>
+              <button
+                onClick={handleDeleteClose}
+                className="p-2 rounded-lg hover:bg-red-100 transition-colors"
+              >
+                <X className="h-5 w-5 text-red-600" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-gray-700">
+                You are about to permanently delete{' '}
+                <span className="font-semibold">
+                  {deleteTarget.firstName} {deleteTarget.lastName}
+                </span>
+                . This action cannot be undone.
+              </p>
+
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="text-sm text-red-800">
+                  All associated data will be permanently removed, including:
+                </p>
+                <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                  <li>Investment records</li>
+                  <li>Documents and communications</li>
+                  <li>Capital call history</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="delete-confirm" className="block text-sm font-medium text-gray-700">
+                  Type <span className="font-bold text-red-600">DELETE</span> to confirm
+                </label>
+                <Input
+                  id="delete-confirm"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className={cn(
+                    'font-mono',
+                    deleteConfirmText === 'DELETE' && 'border-red-500 ring-1 ring-red-500'
+                  )}
+                  autoComplete="off"
+                />
+              </div>
+
+              {deleteError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={handleDeleteClose}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+                disabled={deleteConfirmText !== 'DELETE' || deleteLoading}
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Investor
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
   ManagerCommunications,
   DocumentsManager,
   FundSettings,
+  Integrations,
 } from './features/manager-dashboard/pages';
 import { CreateInvestor } from './features/manager-dashboard/pages/CreateInvestor';
 import {
@@ -205,6 +206,10 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <FundSettings />,
+      },
+      {
+        path: 'integrations',
+        element: <Integrations />,
       },
       {
         path: 'onboarding',

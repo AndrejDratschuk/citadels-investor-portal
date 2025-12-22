@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { UserPlus, Download, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InvestorTable, InvestorRow } from '../components/InvestorTable';
-import { useInvestors } from '../hooks/useInvestors';
+import { useInvestors, useDeleteInvestor } from '../hooks/useInvestors';
 
 type StatusFilter = 'all' | 'prospect' | 'onboarding' | 'active' | 'inactive';
 
@@ -13,6 +13,11 @@ export function InvestorsList() {
 
   // Fetch real investors from API
   const { data: apiInvestors, isLoading, error } = useInvestors();
+  const deleteInvestorMutation = useDeleteInvestor();
+
+  const handleDeleteInvestor = async (investor: InvestorRow): Promise<void> => {
+    await deleteInvestorMutation.mutateAsync(investor.id);
+  };
 
   // Transform API data to match InvestorRow interface
   const investors: InvestorRow[] = (apiInvestors || []).map((inv) => ({
@@ -127,6 +132,7 @@ export function InvestorsList() {
       <InvestorTable
         investors={filteredInvestors}
         onSearch={setSearchQuery}
+        onDelete={handleDeleteInvestor}
       />
     </div>
   );

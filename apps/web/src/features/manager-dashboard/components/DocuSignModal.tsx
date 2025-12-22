@@ -166,9 +166,9 @@ export function DocuSignModal({
                   Cancel
                 </Button>
                 <Button asChild>
-                  <Link to="/manager/settings">
+                  <Link to="/manager/integrations?tab=docusign">
                     <Settings className="mr-2 h-4 w-4" />
-                    Go to Settings
+                    Go to Integrations
                   </Link>
                 </Button>
               </div>

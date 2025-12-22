@@ -10,6 +10,12 @@ export interface DocuSignStatus {
   configured: boolean;
 }
 
+export interface DocuSignConnectInput {
+  integrationKey: string;
+  accountId: string;
+  userId: string;
+}
+
 export interface SendEnvelopeInput {
   templateId: string;
   investorId: string;
@@ -27,6 +33,16 @@ export const docuSignApi = {
   // Check if DocuSign is configured
   getStatus: async (): Promise<DocuSignStatus> => {
     return api.get<DocuSignStatus>('/docusign/status');
+  },
+
+  // Connect DocuSign with credentials
+  connect: async (input: DocuSignConnectInput): Promise<{ success: boolean }> => {
+    return api.post<{ success: boolean }>('/docusign/connect', input);
+  },
+
+  // Disconnect DocuSign
+  disconnect: async (): Promise<{ success: boolean }> => {
+    return api.post<{ success: boolean }>('/docusign/disconnect', {});
   },
 
   // List available templates

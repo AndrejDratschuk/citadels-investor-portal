@@ -5,34 +5,146 @@ import { docuSignService } from './docusign.service';
 
 export class DocuSignController {
   /**
-   * Check if DocuSign is configured
+   * Check if DocuSign is configured for the manager's fund
    */
-  async getStatus(_request: AuthenticatedRequest, reply: FastifyReply) {
+  async getStatus(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    // Get manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    const configured = await docuSignService.isConfiguredForFund(manager.fund_id);
+
     return reply.send({
       success: true,
       data: {
-        configured: docuSignService.isConfigured(),
+        configured,
       },
     });
   }
 
   /**
-   * List available templates
+   * Connect DocuSign for the manager's fund
+   */
+  async connect(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { integrationKey, accountId, userId } = request.body as {
+      integrationKey?: string;
+      accountId?: string;
+      userId?: string;
+    };
+
+    if (!integrationKey || !accountId || !userId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Missing required fields: integrationKey, accountId, userId',
+      });
+    }
+
+    // Get manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    try {
+      await docuSignService.connectForFund(manager.fund_id, {
+        integrationKey,
+        accountId,
+        userId,
+      });
+
+      return reply.send({
+        success: true,
+        data: { message: 'DocuSign connected successfully' },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to connect DocuSign';
+      console.error('[DocuSign] Connect error:', error);
+      return reply.status(400).send({ success: false, error: message });
+    }
+  }
+
+  /**
+   * Disconnect DocuSign for the manager's fund
+   */
+  async disconnect(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    // Get manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    try {
+      await docuSignService.disconnectForFund(manager.fund_id);
+
+      return reply.send({
+        success: true,
+        data: { message: 'DocuSign disconnected successfully' },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to disconnect DocuSign';
+      console.error('[DocuSign] Disconnect error:', error);
+      return reply.status(500).send({ success: false, error: message });
+    }
+  }
+
+  /**
+   * List available templates for the manager's fund
    */
   async listTemplates(request: AuthenticatedRequest, reply: FastifyReply) {
     if (!request.user) {
       return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
-    if (!docuSignService.isConfigured()) {
+    // Get manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    const isConfigured = await docuSignService.isConfiguredForFund(manager.fund_id);
+    if (!isConfigured) {
       return reply.status(400).send({
         success: false,
-        error: 'DocuSign is not configured',
+        error: 'DocuSign is not configured. Please connect DocuSign in Settings > Integrations.',
       });
     }
 
     try {
-      const templates = await docuSignService.listTemplates();
+      const templates = await docuSignService.listTemplatesForFund(manager.fund_id);
       return reply.send({
         success: true,
         data: templates,
@@ -49,13 +161,6 @@ export class DocuSignController {
   async sendEnvelope(request: AuthenticatedRequest, reply: FastifyReply) {
     if (!request.user) {
       return reply.status(401).send({ success: false, error: 'Unauthorized' });
-    }
-
-    if (!docuSignService.isConfigured()) {
-      return reply.status(400).send({
-        success: false,
-        error: 'DocuSign is not configured',
-      });
     }
 
     const {
@@ -86,6 +191,14 @@ export class DocuSignController {
 
     if (managerError || !manager?.fund_id) {
       return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    const isConfigured = await docuSignService.isConfiguredForFund(manager.fund_id);
+    if (!isConfigured) {
+      return reply.status(400).send({
+        success: false,
+        error: 'DocuSign is not configured. Please connect DocuSign in Settings > Integrations.',
+      });
     }
 
     // Get investor info

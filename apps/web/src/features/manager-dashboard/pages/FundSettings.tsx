@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Plug,
+  FileSignature,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +25,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { emailApi, EmailConnectionStatus } from '@/lib/api/email';
 import { fundsApi, Fund, FundBranding, FundAddress } from '@/lib/api/funds';
+import { docuSignApi, DocuSignStatus } from '@/lib/api/docusign';
 
 interface TeamMember {
   id: string;
@@ -55,7 +58,215 @@ const mockTeam: TeamMember[] = [
   { id: '3', name: 'Alice Attorney', email: 'alice@lawfirm.com', role: 'attorney' },
 ];
 
-type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'email';
+type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'integrations';
+
+// DocuSign Integration Card Component
+function DocuSignCard() {
+  const [status, setStatus] = useState<DocuSignStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Form state for connecting
+  const [integrationKey, setIntegrationKey] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [userId, setUserId] = useState('');
+
+  useEffect(() => {
+    fetchStatus();
+  }, []);
+
+  const fetchStatus = async () => {
+    setLoading(true);
+    try {
+      const result = await docuSignApi.getStatus();
+      setStatus(result);
+    } catch (err) {
+      console.error('Failed to fetch DocuSign status:', err);
+      setStatus({ configured: false });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    if (!integrationKey.trim() || !accountId.trim() || !userId.trim()) {
+      setMessage({ type: 'error', text: 'Please fill in all fields' });
+      return;
+    }
+
+    setConnecting(true);
+    setMessage(null);
+
+    try {
+      await docuSignApi.connect({
+        integrationKey: integrationKey.trim(),
+        accountId: accountId.trim(),
+        userId: userId.trim(),
+      });
+      setMessage({ type: 'success', text: 'DocuSign connected successfully!' });
+      setIntegrationKey('');
+      setAccountId('');
+      setUserId('');
+      await fetchStatus();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect DocuSign';
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect DocuSign?')) return;
+
+    setConnecting(true);
+    setMessage(null);
+
+    try {
+      await docuSignApi.disconnect();
+      setMessage({ type: 'success', text: 'DocuSign disconnected' });
+      await fetchStatus();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect DocuSign';
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border bg-card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+            <FileSignature className="h-6 w-6 text-amber-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">DocuSign</h3>
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border bg-card p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+          <FileSignature className="h-6 w-6 text-amber-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold">DocuSign</h3>
+          <p className="text-sm text-muted-foreground">
+            Send documents for e-signature
+          </p>
+        </div>
+      </div>
+
+      {message && (
+        <div className={cn(
+          'mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm',
+          message.type === 'success' 
+            ? 'border-green-200 bg-green-50 text-green-700' 
+            : 'border-red-200 bg-red-50 text-red-700'
+        )}>
+          {message.type === 'success' ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )}
+          {message.text}
+        </div>
+      )}
+
+      {status?.configured ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-900">Connected</span>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            You can now send documents for signature from investor profiles.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDisconnect}
+            disabled={connecting}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Disconnect
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Enter your DocuSign API credentials to enable document signing.
+          </p>
+          
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="ds-integration-key" className="text-sm">Integration Key</Label>
+              <Input
+                id="ds-integration-key"
+                value={integrationKey}
+                onChange={(e) => setIntegrationKey(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="ds-account-id" className="text-sm">Account ID</Label>
+              <Input
+                id="ds-account-id"
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="ds-user-id" className="text-sm">User ID (API Username)</Label>
+              <Input
+                id="ds-user-id"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-muted/50 p-3 text-xs text-muted-foreground">
+            <p className="font-medium mb-1">Where to find these:</p>
+            <ol className="list-decimal list-inside space-y-0.5">
+              <li>Go to DocuSign Admin → Settings → Apps and Keys</li>
+              <li>Create or select your integration</li>
+              <li>Copy the Integration Key, Account ID, and User ID</li>
+            </ol>
+          </div>
+
+          <Button
+            onClick={handleConnect}
+            disabled={connecting || !integrationKey.trim() || !accountId.trim() || !userId.trim()}
+            size="sm"
+          >
+            {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Connect DocuSign
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function FundSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -209,7 +420,7 @@ export function FundSettings() {
     const connectedEmail = searchParams.get('email');
 
     if (emailConnected) {
-      setActiveTab('email');
+      setActiveTab('integrations');
       setEmailMessage({ type: 'success', text: `Successfully connected ${connectedEmail || 'your email'}!` });
       // Clear params
       searchParams.delete('email_connected');
@@ -218,10 +429,16 @@ export function FundSettings() {
       // Refresh status
       fetchEmailStatus();
     } else if (emailError) {
-      setActiveTab('email');
+      setActiveTab('integrations');
       setEmailMessage({ type: 'error', text: `Failed to connect: ${emailError}` });
       searchParams.delete('email_error');
       setSearchParams(searchParams);
+    }
+    
+    // Handle tab query parameter
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'integrations') {
+      setActiveTab('integrations');
     }
   }, [searchParams, setSearchParams]);
 
@@ -317,7 +534,7 @@ export function FundSettings() {
     { id: 'branding', label: 'Branding', icon: Palette },
     { id: 'banking', label: 'Banking', icon: CreditCard },
     { id: 'team', label: 'Team', icon: Users },
-    { id: 'email', label: 'Email', icon: Mail },
+    { id: 'integrations', label: 'Integrations', icon: Plug },
   ];
 
   return (
@@ -684,168 +901,115 @@ export function FundSettings() {
         </div>
       )}
 
-      {activeTab === 'email' && (
+      {activeTab === 'integrations' && (
         <div className="space-y-6">
-          <div className="rounded-xl border bg-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <Mail className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">Email Integration</h3>
-                <p className="text-sm text-muted-foreground">
-                  Connect your email account to send emails directly from the app
-                </p>
-              </div>
-            </div>
-
-            {/* Status Messages */}
-            {emailMessage && (
-              <div className={cn(
-                'mb-6 flex items-center gap-3 rounded-lg border p-4',
-                emailMessage.type === 'success' 
-                  ? 'border-green-200 bg-green-50' 
-                  : 'border-red-200 bg-red-50'
+          {/* Status Messages */}
+          {emailMessage && (
+            <div className={cn(
+              'flex items-center gap-3 rounded-lg border p-4',
+              emailMessage.type === 'success' 
+                ? 'border-green-200 bg-green-50' 
+                : 'border-red-200 bg-red-50'
+            )}>
+              {emailMessage.type === 'success' ? (
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-600" />
+              )}
+              <p className={cn(
+                'text-sm',
+                emailMessage.type === 'success' ? 'text-green-700' : 'text-red-700'
               )}>
-                {emailMessage.type === 'success' ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" />
-                )}
-                <p className={cn(
-                  'text-sm',
-                  emailMessage.type === 'success' ? 'text-green-700' : 'text-red-700'
-                )}>
-                  {emailMessage.text}
-                </p>
-              </div>
-            )}
+                {emailMessage.text}
+              </p>
+            </div>
+          )}
 
-            {/* Connected State */}
-            {emailStatus?.connected ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-green-900">
-                        {emailStatus.provider === 'gmail' ? 'Gmail' : 'Outlook'} Connected
-                      </p>
-                      <p className="text-sm text-green-700">{emailStatus.email}</p>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Email Integration Card */}
+            <div className="rounded-xl border bg-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100">
+                  <Mail className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Email</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Send emails from your own account
+                  </p>
+                </div>
+              </div>
+
+              {emailStatus?.connected ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-900">
+                        {emailStatus.provider === 'gmail' ? 'Gmail' : emailStatus.provider === 'outlook' ? 'Outlook' : 'SMTP'} Connected
+                      </span>
                     </div>
                   </div>
+                  <p className="text-sm text-muted-foreground">{emailStatus.email}</p>
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={handleDisconnectEmail}
                     disabled={emailLoading}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
-                    {emailLoading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
+                    {emailLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Disconnect
                   </Button>
                 </div>
-
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <h4 className="font-medium mb-2">How it works</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Emails are sent directly from your {emailStatus.email} account</li>
-                    <li>• Sent emails appear in your Gmail/Outlook "Sent" folder</li>
-                    <li>• Investors will reply directly to you</li>
-                  </ul>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Connect to send investor communications from your email.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleConnectGmail}
+                      disabled={emailLoading}
+                    >
+                      {emailLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
+                        <svg viewBox="0 0 24 24" className="mr-2 h-4 w-4">
+                          <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                        </svg>
+                      )}
+                      Gmail
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleConnectOutlook}
+                      disabled={emailLoading}
+                    >
+                      {emailLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
+                        <svg viewBox="0 0 24 24" className="mr-2 h-4 w-4">
+                          <path fill="#0078D4" d="M24 7.387v10.478c0 .23-.08.424-.238.576-.16.154-.352.23-.578.23h-8.547v-6.959l1.203.86c.118.09.262.135.43.135.168 0 .312-.045.43-.135L24 7.387zm-.238-1.33c.079.063.142.14.188.227l-7.168 5.133-7.163-5.133c.045-.088.109-.164.188-.227.158-.152.35-.228.577-.228h12.8c.226 0 .418.076.578.228zM9.047 8.882v9.789H.816c-.226 0-.418-.076-.578-.23-.158-.152-.238-.345-.238-.575V4.613l4.297 3.36-4.297 3.468v3.187l4.805-3.883 4.242 3.883v-5.746zm-4.5 8.789h3.93v-2.836l-3.93 3.18v-.344z"/>
+                        </svg>
+                      )}
+                      Outlook
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSmtpModal(true)}
+                      disabled={emailLoading}
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      SMTP
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              /* Not Connected State */
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Connect your email account to send investor communications directly from FlowVeda. 
-                  Emails will be sent from your own email address for a professional touch.
-                </p>
+              )}
+            </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {/* Gmail */}
-                  <button
-                    onClick={handleConnectGmail}
-                    disabled={emailLoading}
-                    className={cn(
-                      'flex items-center gap-4 rounded-xl border-2 p-6 text-left transition-all',
-                      'hover:border-primary hover:bg-primary/5',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
-                    )}
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
-                      <svg viewBox="0 0 24 24" className="h-7 w-7">
-                        <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-semibold">Connect Gmail</p>
-                      <p className="text-sm text-muted-foreground">Google Workspace or personal Gmail</p>
-                    </div>
-                    {emailLoading && (
-                      <Loader2 className="ml-auto h-5 w-5 animate-spin" />
-                    )}
-                  </button>
-
-                  {/* Outlook */}
-                  <button
-                    onClick={handleConnectOutlook}
-                    disabled={emailLoading}
-                    className={cn(
-                      'flex items-center gap-4 rounded-xl border-2 p-6 text-left transition-all',
-                      'hover:border-primary hover:bg-primary/5',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
-                    )}
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
-                      <svg viewBox="0 0 24 24" className="h-7 w-7">
-                        <path fill="#0078D4" d="M24 7.387v10.478c0 .23-.08.424-.238.576-.16.154-.352.23-.578.23h-8.547v-6.959l1.203.86c.118.09.262.135.43.135.168 0 .312-.045.43-.135L24 7.387zm-.238-1.33c.079.063.142.14.188.227l-7.168 5.133-7.163-5.133c.045-.088.109-.164.188-.227.158-.152.35-.228.577-.228h12.8c.226 0 .418.076.578.228zM9.047 8.882v9.789H.816c-.226 0-.418-.076-.578-.23-.158-.152-.238-.345-.238-.575V4.613l4.297 3.36-4.297 3.468v3.187l4.805-3.883 4.242 3.883v-5.746zm-4.5 8.789h3.93v-2.836l-3.93 3.18v-.344z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-semibold">Connect Outlook</p>
-                      <p className="text-sm text-muted-foreground">Microsoft 365 or personal Outlook</p>
-                    </div>
-                    {emailLoading && (
-                      <Loader2 className="ml-auto h-5 w-5 animate-spin" />
-                    )}
-                  </button>
-
-                  {/* SMTP / Other Email */}
-                  <button
-                    onClick={() => setShowSmtpModal(true)}
-                    disabled={emailLoading}
-                    className={cn(
-                      'flex items-center gap-4 rounded-xl border-2 p-6 text-left transition-all',
-                      'hover:border-primary hover:bg-primary/5',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
-                    )}
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
-                      <Mail className="h-7 w-7 text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">Other Email (SMTP)</p>
-                      <p className="text-sm text-muted-foreground">Zoho, ProtonMail, custom domain</p>
-                    </div>
-                  </button>
-                </div>
-
-                <div className="rounded-lg border bg-muted/50 p-4 mt-6">
-                  <h4 className="font-medium mb-2">Why connect your email?</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Send emails directly from your own email address</li>
-                    <li>• Build trust with investors who see emails from you</li>
-                    <li>• Keep all sent emails in your regular inbox</li>
-                    <li>• No complex setup - just click and authorize</li>
-                  </ul>
-                </div>
-              </div>
-            )}
+            {/* DocuSign Integration Card */}
+            <DocuSignCard />
           </div>
         </div>
       )}

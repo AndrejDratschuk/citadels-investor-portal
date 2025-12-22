@@ -13,7 +13,6 @@ import {
   Settings,
   UserPlus,
   MessageSquare,
-  Plug,
 } from 'lucide-react';
 
 interface NavItem {
@@ -39,7 +38,6 @@ const managerNavItems: NavItem[] = [
   { title: 'Communications', href: '/manager/communications', icon: MessageSquare },
   { title: 'Documents', href: '/manager/documents', icon: FileText },
   { title: 'Reports', href: '/manager/reports', icon: Receipt },
-  { title: 'Integrations', href: '/manager/integrations', icon: Plug },
   { title: 'Settings', href: '/manager/settings', icon: Settings },
 ];
 

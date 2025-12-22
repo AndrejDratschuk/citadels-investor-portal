@@ -11,6 +11,16 @@ export async function docuSignRoutes(fastify: FastifyInstance) {
     return docuSignController.getStatus(request as any, reply);
   });
 
+  // Connect DocuSign with credentials
+  fastify.post('/connect', { preHandler: managerPreHandler }, async (request, reply) => {
+    return docuSignController.connect(request as any, reply);
+  });
+
+  // Disconnect DocuSign
+  fastify.post('/disconnect', { preHandler: managerPreHandler }, async (request, reply) => {
+    return docuSignController.disconnect(request as any, reply);
+  });
+
   // List available templates
   fastify.get('/templates', { preHandler: managerPreHandler }, async (request, reply) => {
     return docuSignController.listTemplates(request as any, reply);

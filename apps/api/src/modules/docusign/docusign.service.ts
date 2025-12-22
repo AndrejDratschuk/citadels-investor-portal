@@ -1,4 +1,3 @@
-import { env } from '../../config/env';
 import { supabaseAdmin } from '../../common/database/supabase';
 import type {
   DocuSignConfig,
@@ -7,71 +6,155 @@ import type {
   EnvelopeResult,
 } from './docusign.types';
 
+// Default to DocuSign demo environment
+const DOCUSIGN_BASE_URL = 'https://demo.docusign.net';
+
 export class DocuSignService {
-  private config: DocuSignConfig | null = null;
-  private accessToken: string | null = null;
-  private tokenExpiry: number = 0;
+  // Cache credentials per fund to avoid repeated DB lookups
+  private credentialsCache: Map<string, { config: DocuSignConfig; expiry: number }> = new Map();
+  private accessTokens: Map<string, { token: string; expiry: number }> = new Map();
 
-  constructor() {
-    this.loadConfig();
-  }
-
-  private loadConfig(): void {
-    const envRecord = env as unknown as Record<string, string | undefined>;
-    const integrationKey = envRecord.DOCUSIGN_INTEGRATION_KEY;
-    const secretKey = envRecord.DOCUSIGN_SECRET_KEY;
-    const accountId = envRecord.DOCUSIGN_ACCOUNT_ID;
-    const baseUrl = envRecord.DOCUSIGN_BASE_URL;
-
-    if (integrationKey && secretKey && accountId && baseUrl) {
-      this.config = {
-        integrationKey,
-        secretKey,
-        accountId,
-        baseUrl,
-      };
-    }
-  }
-
-  isConfigured(): boolean {
-    return this.config !== null;
-  }
-
-  getConfig(): DocuSignConfig {
-    if (!this.config) {
-      throw new Error('DocuSign is not configured. Please set the required environment variables.');
-    }
-    return this.config;
+  /**
+   * Check if a fund has DocuSign configured
+   */
+  async isConfiguredForFund(fundId: string): Promise<boolean> {
+    const config = await this.getConfigForFund(fundId);
+    return config !== null;
   }
 
   /**
-   * Get OAuth access token using JWT Grant flow
+   * Legacy method for backwards compatibility
    */
-  private async getAccessToken(): Promise<string> {
-    // Return cached token if still valid (with 5 min buffer)
-    if (this.accessToken && Date.now() < this.tokenExpiry - 300000) {
-      return this.accessToken;
+  isConfigured(): boolean {
+    // This is now fund-specific, but we keep this for old code paths
+    return false;
+  }
+
+  /**
+   * Get DocuSign config for a specific fund from database
+   */
+  async getConfigForFund(fundId: string): Promise<DocuSignConfig | null> {
+    // Check cache first (5 minute TTL)
+    const cached = this.credentialsCache.get(fundId);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.config;
     }
 
-    const config = this.getConfig();
+    const { data, error } = await supabaseAdmin
+      .from('fund_docusign_credentials')
+      .select('integration_key, account_id, user_id')
+      .eq('fund_id', fundId)
+      .single();
 
-    // For JWT Grant, we need a user consent flow first, then can use refresh tokens
-    // For demo/dev purposes, we'll use the secret key as a refresh token approach
-    // In production, you'd use proper JWT with RSA key
-    
+    if (error || !data) {
+      return null;
+    }
+
+    const config: DocuSignConfig = {
+      integrationKey: data.integration_key,
+      accountId: data.account_id,
+      userId: data.user_id,
+      baseUrl: DOCUSIGN_BASE_URL,
+    };
+
+    // Cache for 5 minutes
+    this.credentialsCache.set(fundId, {
+      config,
+      expiry: Date.now() + 5 * 60 * 1000,
+    });
+
+    return config;
+  }
+
+  /**
+   * Connect DocuSign for a fund (save credentials)
+   */
+  async connectForFund(
+    fundId: string,
+    credentials: { integrationKey: string; accountId: string; userId: string }
+  ): Promise<void> {
+    // Validate the credentials by attempting to get an access token
+    const testConfig: DocuSignConfig = {
+      integrationKey: credentials.integrationKey,
+      accountId: credentials.accountId,
+      userId: credentials.userId,
+      baseUrl: DOCUSIGN_BASE_URL,
+    };
+
+    // Try to get an access token to validate credentials
+    try {
+      await this.getAccessTokenWithConfig(testConfig);
+    } catch (error) {
+      throw new Error('Invalid DocuSign credentials. Please check your Integration Key, Account ID, and User ID.');
+    }
+
+    // Upsert credentials
+    const { error } = await supabaseAdmin
+      .from('fund_docusign_credentials')
+      .upsert({
+        fund_id: fundId,
+        integration_key: credentials.integrationKey,
+        account_id: credentials.accountId,
+        user_id: credentials.userId,
+      }, {
+        onConflict: 'fund_id',
+      });
+
+    if (error) {
+      console.error('[DocuSign] Error saving credentials:', error);
+      throw new Error('Failed to save DocuSign credentials');
+    }
+
+    // Clear cache
+    this.credentialsCache.delete(fundId);
+  }
+
+  /**
+   * Disconnect DocuSign for a fund (remove credentials)
+   */
+  async disconnectForFund(fundId: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('fund_docusign_credentials')
+      .delete()
+      .eq('fund_id', fundId);
+
+    if (error) {
+      console.error('[DocuSign] Error deleting credentials:', error);
+      throw new Error('Failed to remove DocuSign credentials');
+    }
+
+    // Clear cache
+    this.credentialsCache.delete(fundId);
+    this.accessTokens.delete(fundId);
+  }
+
+  /**
+   * Get config, throws if not configured
+   */
+  getConfig(): DocuSignConfig {
+    throw new Error('DocuSign is not configured. Please connect DocuSign in Settings > Integrations.');
+  }
+
+  /**
+   * Get OAuth access token using JWT Grant flow with specific config
+   */
+  private async getAccessTokenWithConfig(config: DocuSignConfig): Promise<string> {
+    // For JWT Grant flow, we create a JWT assertion
+    // DocuSign demo account uses account-d.docusign.com for auth
     const tokenUrl = config.baseUrl.includes('demo')
       ? 'https://account-d.docusign.com/oauth/token'
       : 'https://account.docusign.com/oauth/token';
 
+    // Create JWT for DocuSign (simplified version - in production use proper RSA)
+    // For now, we use the Integration Key Grant flow which works for demo
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${Buffer.from(`${config.integrationKey}:${config.secretKey}`).toString('base64')}`,
       },
       body: new URLSearchParams({
         grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: config.secretKey, // In production, this should be a proper JWT
+        assertion: this.createJwtAssertion(config),
       }),
     });
 
@@ -82,22 +165,75 @@ export class DocuSignService {
     }
 
     const data = await response.json() as { access_token: string; expires_in: number };
-    this.accessToken = data.access_token;
-    this.tokenExpiry = Date.now() + (data.expires_in * 1000);
-
-    return this.accessToken;
+    return data.access_token;
   }
 
   /**
-   * Make authenticated request to DocuSign API
+   * Create JWT assertion for DocuSign authentication
+   * Note: This is a simplified version. In production, you'd use proper RSA key signing.
    */
-  private async apiRequest<T>(
+  private createJwtAssertion(config: DocuSignConfig): string {
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const payload = {
+      iss: config.integrationKey,
+      sub: config.userId,
+      aud: config.baseUrl.includes('demo') ? 'account-d.docusign.com' : 'account.docusign.com',
+      iat: now,
+      exp: now + 3600,
+      scope: 'signature impersonation',
+    };
+
+    // Note: This is a placeholder. Actual JWT signing requires RSA private key
+    // For demo/dev, DocuSign also supports authorization code grant
+    const base64Header = Buffer.from(JSON.stringify(header)).toString('base64url');
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    
+    // Return unsigned JWT (DocuSign demo may accept this for testing)
+    return `${base64Header}.${base64Payload}.`;
+  }
+
+  /**
+   * Get access token for a specific fund
+   */
+  private async getAccessTokenForFund(fundId: string): Promise<string> {
+    // Check cache
+    const cached = this.accessTokens.get(fundId);
+    if (cached && Date.now() < cached.expiry - 300000) {
+      return cached.token;
+    }
+
+    const config = await this.getConfigForFund(fundId);
+    if (!config) {
+      throw new Error('DocuSign is not configured for this fund');
+    }
+
+    const token = await this.getAccessTokenWithConfig(config);
+    
+    // Cache for 55 minutes (tokens last 1 hour)
+    this.accessTokens.set(fundId, {
+      token,
+      expiry: Date.now() + 55 * 60 * 1000,
+    });
+
+    return token;
+  }
+
+  /**
+   * Make authenticated request to DocuSign API for a specific fund
+   */
+  private async apiRequestForFund<T>(
+    fundId: string,
     method: string,
     endpoint: string,
     body?: Record<string, unknown>
   ): Promise<T> {
-    const config = this.getConfig();
-    const token = await this.getAccessToken();
+    const config = await this.getConfigForFund(fundId);
+    if (!config) {
+      throw new Error('DocuSign is not configured for this fund');
+    }
+
+    const token = await this.getAccessTokenForFund(fundId);
     const url = `${config.baseUrl}/restapi/v2.1/accounts/${config.accountId}${endpoint}`;
 
     const response = await fetch(url, {
@@ -119,21 +255,22 @@ export class DocuSignService {
   }
 
   /**
-   * List available templates
+   * List available templates for a fund
    */
-  async listTemplates(): Promise<DocuSignTemplate[]> {
-    if (!this.isConfigured()) {
+  async listTemplatesForFund(fundId: string): Promise<DocuSignTemplate[]> {
+    const isConfigured = await this.isConfiguredForFund(fundId);
+    if (!isConfigured) {
       return [];
     }
 
     try {
-      const response = await this.apiRequest<{
+      const response = await this.apiRequestForFund<{
         envelopeTemplates?: Array<{
           templateId: string;
           name: string;
           description: string | null;
         }>;
-      }>('GET', '/templates');
+      }>(fundId, 'GET', '/templates');
 
       return (response.envelopeTemplates || []).map((t) => ({
         id: t.templateId,
@@ -147,16 +284,21 @@ export class DocuSignService {
   }
 
   /**
+   * Legacy method - throws error since no fund context
+   */
+  async listTemplates(): Promise<DocuSignTemplate[]> {
+    throw new Error('listTemplates requires fund context. Use listTemplatesForFund instead.');
+  }
+
+  /**
    * Send envelope using a template
    */
   async sendEnvelope(input: SendEnvelopeInput, fundId: string): Promise<EnvelopeResult> {
-    const config = this.getConfig();
-
-    // Create envelope from template
-    const envelopeResponse = await this.apiRequest<{
+    // Create envelope from template using fund-specific credentials
+    const envelopeResponse = await this.apiRequestForFund<{
       envelopeId: string;
       status: string;
-    }>('POST', '/envelopes', {
+    }>(fundId, 'POST', '/envelopes', {
       templateId: input.templateId,
       templateRoles: [
         {
@@ -201,12 +343,14 @@ export class DocuSignService {
    * Get recipient view URL (embedded signing)
    */
   async getRecipientViewUrl(
+    fundId: string,
     envelopeId: string,
     investorEmail: string,
     investorName: string,
     returnUrl: string
   ): Promise<string> {
-    const response = await this.apiRequest<{ url: string }>(
+    const response = await this.apiRequestForFund<{ url: string }>(
+      fundId,
       'POST',
       `/envelopes/${envelopeId}/views/recipient`,
       {

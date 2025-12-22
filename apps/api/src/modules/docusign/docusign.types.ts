@@ -1,7 +1,7 @@
 export interface DocuSignConfig {
   integrationKey: string;
-  secretKey: string;
   accountId: string;
+  userId: string;
   baseUrl: string;
 }
 

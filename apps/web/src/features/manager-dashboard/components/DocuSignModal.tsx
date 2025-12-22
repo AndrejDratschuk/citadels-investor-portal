@@ -159,16 +159,16 @@ export function DocuSignModal({
               </div>
               <h3 className="mt-4 text-xl font-semibold">Connect DocuSign</h3>
               <p className="mt-2 text-muted-foreground max-w-sm">
-                To send documents for e-signature, please configure DocuSign in your environment settings.
+                To send documents for e-signature, please connect your DocuSign account in Settings.
               </p>
               <div className="mt-6 flex gap-3">
                 <Button variant="outline" onClick={handleClose}>
                   Cancel
                 </Button>
                 <Button asChild>
-                  <Link to="/manager/integrations?tab=docusign">
+                  <Link to="/manager/settings?tab=integrations">
                     <Settings className="mr-2 h-4 w-4" />
-                    Go to Integrations
+                    Go to Settings
                   </Link>
                 </Button>
               </div>

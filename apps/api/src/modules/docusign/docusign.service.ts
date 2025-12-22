@@ -174,7 +174,15 @@ export class DocuSignService {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[DocuSign] Token request failed:', response.status, errorText);
-      throw new Error(`DocuSign authentication failed: ${response.status}`);
+      
+      // Provide helpful error message based on error type
+      if (response.status === 400 && errorText.includes('consent_required')) {
+        throw new Error('DocuSign consent required. Please visit DocuSign Admin to grant JWT consent for this integration.');
+      } else if (response.status === 400 && errorText.includes('invalid_grant')) {
+        throw new Error('Invalid DocuSign credentials. Please check your Integration Key, User ID, and RSA Private Key.');
+      } else {
+        throw new Error(`DocuSign authentication failed: ${errorText || response.status}`);
+      }
     }
 
     const data = await response.json() as { access_token: string; expires_in: number };
@@ -279,27 +287,22 @@ export class DocuSignService {
   async listTemplatesForFund(fundId: string): Promise<DocuSignTemplate[]> {
     const isConfigured = await this.isConfiguredForFund(fundId);
     if (!isConfigured) {
-      return [];
+      throw new Error('DocuSign is not configured');
     }
 
-    try {
-      const response = await this.apiRequestForFund<{
-        envelopeTemplates?: Array<{
-          templateId: string;
-          name: string;
-          description: string | null;
-        }>;
-      }>(fundId, 'GET', '/templates');
+    const response = await this.apiRequestForFund<{
+      envelopeTemplates?: Array<{
+        templateId: string;
+        name: string;
+        description: string | null;
+      }>;
+    }>(fundId, 'GET', '/templates');
 
-      return (response.envelopeTemplates || []).map((t) => ({
-        id: t.templateId,
-        name: t.name,
-        description: t.description,
-      }));
-    } catch (error) {
-      console.error('[DocuSign] Error listing templates:', error);
-      return [];
-    }
+    return (response.envelopeTemplates || []).map((t) => ({
+      id: t.templateId,
+      name: t.name,
+      description: t.description,
+    }));
   }
 
   /**

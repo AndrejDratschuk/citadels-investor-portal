@@ -130,8 +130,8 @@ export function OnboardingPage() {
   };
 
   const handleBankingInfoSubmit = async (data: BankingInfoData) => {
-    updateFormData(data);
-    await submitApplication();
+    // Pass banking data directly to avoid race condition with state update
+    await submitApplication(data);
   };
 
   // Determine total steps and current step offset based on KYC data

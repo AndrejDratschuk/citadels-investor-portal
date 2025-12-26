@@ -17,7 +17,7 @@ interface UseOnboardingReturn {
   updateFormData: (data: Partial<OnboardingFormData>) => void;
   updateValidationDocuments: (docs: PendingDocument[]) => void;
   setKycApplicationId: (id: string | null) => void;
-  submitApplication: (password?: string) => Promise<void>;
+  submitApplication: (finalData?: Partial<OnboardingFormData>, password?: string) => Promise<void>;
   resetForm: () => void;
 }
 
@@ -74,15 +74,18 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     setError(null);
   }, []);
 
-  const submitApplication = useCallback(async (password?: string) => {
+  const submitApplication = useCallback(async (finalData?: Partial<OnboardingFormData>, password?: string) => {
     setIsSubmitting(true);
     setError(null);
+
+    // Merge final data with existing form data
+    const submissionData = finalData ? { ...formData, ...finalData } : formData;
 
     try {
       // First submit the application to get investor ID
       const result = await onboardingApi.submit(
         inviteCode,
-        formData,
+        submissionData,
         password,
         kycApplicationId || undefined
       );

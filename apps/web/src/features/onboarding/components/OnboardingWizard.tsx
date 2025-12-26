@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Check, User, MapPin, FileText, DollarSign } from 'lucide-react';
+import { Check, User, MapPin, FileText, DollarSign, Building2 } from 'lucide-react';
 
 interface OnboardingWizardProps {
   currentStep: number;
@@ -11,21 +11,22 @@ const steps = [
   { number: 2, title: 'Address', icon: MapPin },
   { number: 3, title: 'Tax & Accreditation', icon: FileText },
   { number: 4, title: 'Investment', icon: DollarSign },
+  { number: 5, title: 'Banking', icon: Building2 },
 ];
 
-export function OnboardingWizard({ currentStep }: OnboardingWizardProps) {
+export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardProps) {
   return (
     <div className="mb-8">
       {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-          <span>Step {currentStep} of {steps.length}</span>
-          <span>{Math.round((currentStep / steps.length) * 100)}% complete</span>
+          <span>Step {currentStep} of {totalSteps}</span>
+          <span>{Math.round((currentStep / totalSteps) * 100)}% complete</span>
         </div>
         <div className="h-2 w-full rounded-full bg-muted">
           <div
             className="h-2 rounded-full bg-primary transition-all duration-300"
-            style={{ width: `${(currentStep / steps.length) * 100}%` }}
+            style={{ width: `${(currentStep / totalSteps) * 100}%` }}
           />
         </div>
       </div>

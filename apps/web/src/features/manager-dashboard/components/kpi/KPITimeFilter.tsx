@@ -61,14 +61,12 @@ interface KPIComparisonBadgeProps {
   actualValue: number;
   compareValue: number;
   compareLabel: string;
-  format?: 'currency' | 'percentage' | 'number';
 }
 
 export function KPIComparisonBadge({
   actualValue,
   compareValue,
   compareLabel,
-  format = 'percentage',
 }: KPIComparisonBadgeProps): JSX.Element {
   const diff = actualValue - compareValue;
   const percentDiff = compareValue !== 0 ? (diff / compareValue) * 100 : 0;

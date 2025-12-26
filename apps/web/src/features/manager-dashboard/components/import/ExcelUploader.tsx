@@ -3,8 +3,7 @@
  * Handles Excel/CSV file upload and parsing
  */
 
-import { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useState, useCallback, useRef } from 'react';
 import {
   Upload,
   FileSpreadsheet,
@@ -70,12 +69,11 @@ export function ExcelUploader({
   const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0];
-      if (!file) return;
-
+  const handleFile = useCallback(
+    async (file: File) => {
       setError(null);
       setIsParsing(true);
 
@@ -122,36 +120,76 @@ export function ExcelUploader({
     [onDataParsed]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'text/csv': ['.csv'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls'],
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        handleFile(file);
+      }
     },
-    maxFiles: 1,
-    disabled: isLoading || isParsing,
-  });
+    [handleFile]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        handleFile(file);
+      }
+    },
+    [handleFile]
+  );
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleClear = () => {
     setParsedFile(null);
     setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
     <div className={className}>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        onChange={handleFileInput}
+        className="hidden"
+        disabled={isLoading || isParsing}
+      />
+
       {/* Dropzone */}
       <div
-        {...getRootProps()}
+        onClick={handleClick}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
         className={cn(
           'border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer',
-          isDragActive && 'border-primary bg-primary/5',
-          !isDragActive && 'border-muted-foreground/25 hover:border-muted-foreground/50',
+          isDragOver && 'border-primary bg-primary/5',
+          !isDragOver && 'border-muted-foreground/25 hover:border-muted-foreground/50',
           (isLoading || isParsing) && 'opacity-50 cursor-not-allowed'
         )}
       >
-        <input {...getInputProps()} />
-
         {isParsing ? (
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
@@ -238,4 +276,3 @@ export function ExcelUploader({
     </div>
   );
 }
-

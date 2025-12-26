@@ -627,6 +627,7 @@ export class KYCService {
 
   /**
    * Send account creation invite email to KYC applicant
+   * Creates a secure token and sends email with proper 2FA flow
    */
   async sendAccountInvite(id: string, fundId: string): Promise<{ success: boolean; message: string }> {
     const application = await this.getById(id);
@@ -650,9 +651,36 @@ export class KYCService {
 
     const fundName = fund?.name || 'Investment Fund';
 
-    // Generate account creation URL
+    // Generate a secure random token
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Store token in database
+    const { error: tokenError } = await supabaseAdmin
+      .from('account_creation_tokens')
+      .insert({
+        kyc_application_id: id,
+        fund_id: fundId,
+        token: token,
+        email: application.email,
+        expires_at: expiresAt.toISOString(),
+      });
+
+    if (tokenError) {
+      console.error('Failed to create account token:', tokenError);
+      throw new Error('Failed to create account invitation token');
+    }
+
+    // Generate account creation URL with secure token
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const accountCreationUrl = `${baseUrl}/create-account/${id}/${fundId}`;
+    const accountCreationUrl = `${baseUrl}/create-account/${token}`;
+
+    // Update KYC status to account_invite_sent
+    await supabaseAdmin
+      .from('kyc_applications')
+      .update({ status: 'account_invite_sent' })
+      .eq('id', id);
 
     // Send webhook for account invite (will trigger N8N/email automation)
     webhookService.sendWebhook('kyc.account_invite_sent', {

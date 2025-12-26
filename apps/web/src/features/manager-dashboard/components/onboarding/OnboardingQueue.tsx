@@ -164,7 +164,7 @@ export function OnboardingQueue() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={copyKycLink} disabled={!user?.fundId}>
+          <Button size="sm" onClick={copyKycLink} disabled={!user?.fundId}>
             {kycLinkCopied ? (
               <>
                 <Check className="mr-2 h-4 w-4 text-green-500" />

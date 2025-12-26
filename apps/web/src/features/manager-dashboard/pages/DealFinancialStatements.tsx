@@ -13,7 +13,7 @@ import { financialStatementsApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@flowveda/shared';
-import type { StatementType, FinancialStatementData, FinancialStatementLineItem } from '@flowveda/shared';
+import type { StatementType, FinancialStatementData } from '@flowveda/shared';
 
 // ============================================
 // Types
@@ -251,7 +251,7 @@ export function DealFinancialStatements(): JSX.Element {
   });
 
   // Fetch statements (for now use mock data)
-  const { data: statements, isLoading: isStatementsLoading } = useQuery({
+  const { isLoading: isStatementsLoading } = useQuery({
     queryKey: ['financial-statements', dealId, activeTab],
     queryFn: () => financialStatementsApi.getLatest(dealId!, activeTab),
     enabled: !!dealId,

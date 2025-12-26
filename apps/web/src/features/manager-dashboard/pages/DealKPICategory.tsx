@@ -31,8 +31,7 @@ import {
   KPITimeFilter,
   getCategoryConfig,
 } from '../components/kpi';
-import { cn } from '@/lib/utils';
-import type { KpiCategory, KpiDataType, KpiDefinition, KpiDataPoint } from '@flowveda/shared';
+import type { KpiCategory, KpiDataType } from '@flowveda/shared';
 import { formatCurrency, formatPercentage, calculateChangePercent } from '@flowveda/shared';
 
 // ============================================
@@ -188,14 +187,14 @@ export function DealKPICategory(): JSX.Element {
   });
 
   // Fetch KPI definitions for this category
-  const { data: definitions, isLoading: isDefsLoading } = useQuery({
+  const { isLoading: isDefsLoading } = useQuery({
     queryKey: ['kpi-definitions', category],
     queryFn: () => kpiDefinitionsApi.getByCategory(category as KpiCategory),
     enabled: !!category,
   });
 
   // Fetch KPI data for this category
-  const { data: kpiData, isLoading: isDataLoading } = useQuery({
+  const { isLoading: isDataLoading } = useQuery({
     queryKey: ['deal-kpis', dealId, category, dataType],
     queryFn: () => dealKpisApi.getByCategory(dealId!, category as KpiCategory, { dataType }),
     enabled: !!dealId && !!category,

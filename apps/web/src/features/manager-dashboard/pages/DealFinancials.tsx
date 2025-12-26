@@ -3,7 +3,7 @@
  * Displays featured KPIs, trend chart, and category navigation
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { dealKpisApi, kpiDefinitionsApi } from '@/lib/api/kpis';
+import { dealKpisApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import {
   KPICard,

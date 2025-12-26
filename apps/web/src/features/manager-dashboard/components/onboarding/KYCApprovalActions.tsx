@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, XCircle, Link2, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Link2, Loader2, Copy, Check, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { KYCApplication } from './types';
@@ -24,6 +24,7 @@ export function KYCApprovalActions({
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const handleApprove = async (): Promise<void> => {
     setActionLoading('approve');
@@ -40,6 +41,12 @@ export function KYCApprovalActions({
     setRejectReason('');
   };
 
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(onboardingUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   // Use fundCode if available, otherwise fallback to fundId
   const fundIdentifier = app.fundCode || app.fundId;
   const onboardingUrl = `${getOnboardingBaseUrl()}/onboard/${fundIdentifier}?kyc=${app.id}`;
@@ -47,10 +54,10 @@ export function KYCApprovalActions({
   const hasOnboardingApp = !!app.onboardingApplicationId;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
       {/* Approval Actions for Submitted Status */}
       {app.status === 'submitted' && (
-        <>
+        <div className="flex flex-wrap items-center gap-2">
           {!showRejectInput ? (
             <>
               <Button
@@ -107,47 +114,85 @@ export function KYCApprovalActions({
               </Button>
             </div>
           )}
-        </>
+        </div>
       )}
 
-      {/* Send Account Invite after Meeting Complete */}
+      {/* Actions for Meeting Complete Status */}
       {app.status === 'meeting_complete' && (
-        <SendAccountInviteButton app={app} disabled={isLoading} />
+        <div className="flex flex-wrap items-center gap-2">
+          <SendAccountInviteButton app={app} disabled={isLoading} />
+
+          {/* Send Onboarding Link - available when no onboarding app yet */}
+          {needsOnboardingLink && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => onSendOnboardingLink(app)}
+              disabled={isLoading}
+            >
+              <Link2 className="mr-1.5 h-4 w-4" />
+              Send Onboarding Link
+            </Button>
+          )}
+
+          {/* Onboarding Application Already Submitted */}
+          {hasOnboardingApp && (
+            <span className="text-sm text-green-600 flex items-center gap-1">
+              <CheckCircle2 className="h-4 w-4" />
+              Onboarding Submitted
+            </span>
+          )}
+        </div>
       )}
 
-      {/* Send Onboarding Link - available when meeting complete and no onboarding app yet */}
-      {needsOnboardingLink && (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => onSendOnboardingLink(app)}
-          disabled={isLoading}
-        >
-          <Link2 className="mr-1.5 h-4 w-4" />
-          Send Onboarding Link
-        </Button>
+      {/* Approved - Show Onboarding Form Link */}
+      {app.status === 'pre_qualified' && (
+        <div>
+          <div className="flex items-center gap-2 text-sm text-green-600 mb-3">
+            <CheckCircle2 className="h-4 w-4" />
+            Pre-qualified. Send them the investor onboarding form:
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex-1 min-w-0 rounded-lg border bg-muted/50 px-3 py-2 text-sm font-mono truncate">
+              {onboardingUrl}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyLink}
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4 text-green-500" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy Link
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => onSendOnboardingLink(app)}
+                disabled={isLoading}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Email Link
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Onboarding Application Already Submitted */}
-      {hasOnboardingApp && (
-        <span className="text-sm text-green-600 flex items-center gap-1">
-          <CheckCircle2 className="h-4 w-4" />
-          Onboarding Submitted
-        </span>
-      )}
-
-      {/* Copy Onboarding Link */}
-      {(app.status === 'pre_qualified' || app.status === 'meeting_scheduled' || app.status === 'meeting_complete') && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            navigator.clipboard.writeText(onboardingUrl);
-          }}
-          title="Copy Onboarding Link"
-        >
-          <Link2 className="h-4 w-4" />
-        </Button>
+      {/* Rejected Status */}
+      {app.status === 'not_eligible' && (
+        <div className="flex items-center gap-2 text-sm text-red-600">
+          <XCircle className="h-4 w-4" />
+          Application rejected - not eligible.
+        </div>
       )}
     </div>
   );

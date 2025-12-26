@@ -39,12 +39,12 @@ export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardPr
           const isCurrent = currentStep === step.number;
 
           return (
-            <div key={step.number} className="flex items-center">
+            <div key={step.number} className="flex flex-1 items-center">
               {/* Step Circle */}
               <div className="flex flex-col items-center">
                 <div
                   className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all',
+                    'flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all',
                     isCompleted
                       ? 'border-primary bg-primary text-primary-foreground'
                       : isCurrent
@@ -53,14 +53,14 @@ export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardPr
                   )}
                 >
                   {isCompleted ? (
-                    <Check className="h-5 w-5" />
+                    <Check className="h-4 w-4" />
                   ) : (
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                   )}
                 </div>
                 <span
                   className={cn(
-                    'mt-2 text-xs font-medium',
+                    'mt-2 text-xs font-medium text-center max-w-[70px]',
                     isCurrent ? 'text-foreground' : 'text-muted-foreground'
                   )}
                 >
@@ -72,7 +72,7 @@ export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardPr
               {index < steps.length - 1 && (
                 <div
                   className={cn(
-                    'mx-4 h-0.5 w-16 lg:w-24',
+                    'mx-2 h-0.5 flex-1',
                     currentStep > step.number ? 'bg-primary' : 'bg-muted-foreground/30'
                   )}
                 />

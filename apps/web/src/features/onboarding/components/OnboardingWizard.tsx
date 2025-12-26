@@ -32,24 +32,41 @@ export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardPr
       </div>
 
       {/* Steps */}
-      <div className="hidden sm:flex items-center justify-between">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
-          const isCompleted = currentStep > step.number;
-          const isCurrent = currentStep === step.number;
+      <div className="hidden sm:block relative">
+        {/* Connector Lines - positioned behind circles */}
+        <div className="absolute top-[18px] left-0 right-0 flex">
+          {steps.slice(0, -1).map((step, index) => (
+            <div
+              key={`line-${index}`}
+              className={cn(
+                'h-0.5 flex-1',
+                currentStep > step.number ? 'bg-primary' : 'bg-muted-foreground/30'
+              )}
+              style={{ 
+                marginLeft: index === 0 ? 'calc(10% - 4px)' : '0',
+                marginRight: index === steps.length - 2 ? 'calc(10% - 4px)' : '0',
+              }}
+            />
+          ))}
+        </div>
 
-          return (
-            <div key={step.number} className="flex flex-1 items-center">
-              {/* Step Circle */}
-              <div className="flex flex-col items-center">
+        {/* Step Circles */}
+        <div className="relative flex justify-between">
+          {steps.map((step) => {
+            const Icon = step.icon;
+            const isCompleted = currentStep > step.number;
+            const isCurrent = currentStep === step.number;
+
+            return (
+              <div key={step.number} className="flex flex-col items-center">
                 <div
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all',
+                    'flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all bg-white',
                     isCompleted
                       ? 'border-primary bg-primary text-primary-foreground'
                       : isCurrent
                       ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-muted-foreground/30 text-muted-foreground'
+                      : 'border-muted-foreground/30 text-muted-foreground bg-white'
                   )}
                 >
                   {isCompleted ? (
@@ -60,26 +77,16 @@ export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardPr
                 </div>
                 <span
                   className={cn(
-                    'mt-2 text-xs font-medium text-center max-w-[70px]',
+                    'mt-2 text-xs font-medium text-center max-w-[80px]',
                     isCurrent ? 'text-foreground' : 'text-muted-foreground'
                   )}
                 >
                   {step.title}
                 </span>
               </div>
-
-              {/* Connector Line */}
-              {index < steps.length - 1 && (
-                <div
-                  className={cn(
-                    'mx-2 h-0.5 flex-1',
-                    currentStep > step.number ? 'bg-primary' : 'bg-muted-foreground/30'
-                  )}
-                />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Mobile Step Indicator */}

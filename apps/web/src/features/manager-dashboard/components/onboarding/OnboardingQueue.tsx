@@ -1,8 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Share2, RefreshCw, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { kycApi } from '@/lib/api/kyc';
 import { onboardingApi, OnboardingApplication } from '@/lib/api/onboarding';
 import { communicationsApi } from '@/lib/api/communications';
+import { useAuthStore } from '@/stores/authStore';
 
 import { OnboardingTabs } from './OnboardingTabs';
 import { OnboardingStats } from './OnboardingStats';
@@ -13,6 +16,7 @@ import { isKycPendingReview, getOnboardingBaseUrl, getKycDisplayName } from './k
 
 export function OnboardingQueue() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
 
   // UI State
   const [activeTab, setActiveTab] = useState<OnboardingTabType>('kyc');
@@ -20,17 +24,45 @@ export function OnboardingQueue() {
   const [investorSearchQuery, setInvestorSearchQuery] = useState('');
   const [kycStatusFilter, setKycStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [investorStatusFilter, setInvestorStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [kycLinkCopied, setKycLinkCopied] = useState(false);
 
   // Data queries
-  const { data: kycApplications = [], isLoading: kycLoading } = useQuery({
+  const { data: kycApplications = [], isLoading: kycLoading, refetch: refetchKyc } = useQuery({
     queryKey: ['kyc-applications'],
     queryFn: () => kycApi.getAll(),
   });
 
-  const { data: investorApplications = [], isLoading: investorLoading } = useQuery({
+  const { data: investorApplications = [], isLoading: investorLoading, refetch: refetchInvestor } = useQuery({
     queryKey: ['onboarding-applications'],
     queryFn: () => onboardingApi.getAll(),
   });
+
+  // Copy KYC form link to clipboard
+  const copyKycLink = useCallback(async () => {
+    if (!user?.fundId) {
+      alert('No fund ID found. Please contact support.');
+      return;
+    }
+    
+    const kycUrl = `${getOnboardingBaseUrl()}/kyc/${user.fundId}`;
+    
+    try {
+      await navigator.clipboard.writeText(kycUrl);
+      setKycLinkCopied(true);
+      setTimeout(() => setKycLinkCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }, [user?.fundId]);
+
+  // Refresh handler
+  const handleRefresh = useCallback(() => {
+    if (activeTab === 'kyc') {
+      refetchKyc();
+    } else {
+      refetchInvestor();
+    }
+  }, [activeTab, refetchKyc, refetchInvestor]);
 
   // Mutations
   const approveKycMutation = useMutation({
@@ -124,11 +156,32 @@ export function OnboardingQueue() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Onboarding Queue</h1>
-        <p className="mt-1 text-muted-foreground">
-          Review and approve investor applications
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Onboarding</h1>
+          <p className="mt-1 text-muted-foreground">
+            Review KYC pre-qualifications and investor applications
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={copyKycLink} disabled={!user?.fundId}>
+            {kycLinkCopied ? (
+              <>
+                <Check className="mr-2 h-4 w-4 text-green-500" />
+                Link Copied!
+              </>
+            ) : (
+              <>
+                <Share2 className="mr-2 h-4 w-4" />
+                Share KYC Form
+              </>
+            )}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

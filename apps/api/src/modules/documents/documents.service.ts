@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../../common/database/supabase';
 export type DocumentCategory = 'fund' | 'deal' | 'investor';
 export type DocumentDepartment = 'tax' | 'finance' | 'marketing' | 'strategy' | 'operations' | 'legal' | 'compliance';
 export type DocumentStatus = 'draft' | 'review' | 'final';
+export type ValidationStatus = 'pending' | 'approved' | 'rejected';
+export type UploadedBy = 'investor' | 'fund_manager' | 'docusign_auto' | 'system';
 
 export interface Document {
   id: string;
@@ -50,6 +52,38 @@ export interface CreateDocumentInput {
   investorId?: string;
   filePath?: string;
   requiresSignature?: boolean;
+  // Validation document fields
+  subcategory?: string;
+  validationStatus?: ValidationStatus;
+  uploadedBy?: UploadedBy;
+  documentType?: string;
+  fileSize?: number;
+  mimeType?: string;
+}
+
+export interface ValidationDocument extends Document {
+  subcategory: 'validation';
+  validationStatus: ValidationStatus;
+  uploadedBy: UploadedBy;
+  validatedBy?: string | null;
+  validatedAt?: string | null;
+  rejectionReason?: string | null;
+  fileSize?: number;
+  mimeType?: string;
+  // Email notification context
+  investorEmail?: string | null;
+}
+
+export interface InvestorEmailContext {
+  investorId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface FundEmailContext {
+  fundId: string;
+  name: string;
 }
 
 export interface DocumentFilters {
@@ -293,23 +327,42 @@ export class DocumentsService {
       }
     }
 
+    const insertData: Record<string, any> = {
+      fund_id: fundId,
+      deal_id: input.dealId || null,
+      investor_id: input.investorId || null,
+      type: input.type,
+      name: input.name,
+      file_path: input.filePath || null,
+      requires_signature: input.requiresSignature || false,
+      created_by: userId,
+      // Categorization fields
+      category,
+      department: input.department || null,
+      status: input.status || 'final',
+      tags: input.tags || [],
+    };
+
+    // Add validation document fields if provided
+    if (input.subcategory) {
+      insertData.subcategory = input.subcategory;
+    }
+    if (input.validationStatus) {
+      insertData.validation_status = input.validationStatus;
+    }
+    if (input.uploadedBy) {
+      insertData.uploaded_by = input.uploadedBy;
+    }
+    if (input.fileSize) {
+      insertData.file_size = input.fileSize;
+    }
+    if (input.mimeType) {
+      insertData.mime_type = input.mimeType;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('documents')
-      .insert({
-        fund_id: fundId,
-        deal_id: input.dealId || null,
-        investor_id: input.investorId || null,
-        type: input.type,
-        name: input.name,
-        file_path: input.filePath || null,
-        requires_signature: input.requiresSignature || false,
-        created_by: userId,
-        // New fields
-        category,
-        department: input.department || null,
-        status: input.status || 'final',
-        tags: input.tags || [],
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -366,6 +419,222 @@ export class DocumentsService {
       console.error('Error deleting document:', error);
       throw new Error('Failed to delete document');
     }
+  }
+
+  /**
+   * Get validation documents for fund manager review
+   */
+  async getValidationDocuments(
+    fundId: string, 
+    validationStatus?: ValidationStatus
+  ): Promise<ValidationDocument[]> {
+    let query = supabaseAdmin
+      .from('documents')
+      .select(`
+        *,
+        investors:investor_id (id, first_name, last_name, email)
+      `)
+      .eq('fund_id', fundId)
+      .eq('subcategory', 'validation')
+      .order('created_at', { ascending: false });
+
+    if (validationStatus) {
+      query = query.eq('validation_status', validationStatus);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching validation documents:', error);
+      throw new Error('Failed to fetch validation documents');
+    }
+
+    return data.map(this.formatValidationDocument);
+  }
+
+  /**
+   * Approve a validation document
+   */
+  async approveDocument(
+    fundId: string, 
+    documentId: string, 
+    userId: string,
+    timestamp: Date
+  ): Promise<ValidationDocument> {
+    const { data, error } = await supabaseAdmin
+      .from('documents')
+      .update({
+        validation_status: 'approved',
+        validated_by: userId,
+        validated_at: timestamp.toISOString(),
+      })
+      .eq('id', documentId)
+      .eq('fund_id', fundId)
+      .eq('subcategory', 'validation')
+      .select(`
+        *,
+        investors:investor_id (id, first_name, last_name, email)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error approving document:', error);
+      throw new Error('Failed to approve document');
+    }
+
+    return this.formatValidationDocument(data);
+  }
+
+  /**
+   * Reject a validation document
+   */
+  async rejectDocument(
+    fundId: string, 
+    documentId: string, 
+    userId: string,
+    reason: string,
+    timestamp: Date
+  ): Promise<ValidationDocument> {
+    const { data, error } = await supabaseAdmin
+      .from('documents')
+      .update({
+        validation_status: 'rejected',
+        validated_by: userId,
+        validated_at: timestamp.toISOString(),
+        rejection_reason: reason,
+      })
+      .eq('id', documentId)
+      .eq('fund_id', fundId)
+      .eq('subcategory', 'validation')
+      .select(`
+        *,
+        investors:investor_id (id, first_name, last_name, email)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error rejecting document:', error);
+      throw new Error('Failed to reject document');
+    }
+
+    return this.formatValidationDocument(data);
+  }
+
+  /**
+   * Get investor's own validation documents
+   */
+  async getMyValidationDocuments(investorId: string): Promise<ValidationDocument[]> {
+    const { data, error } = await supabaseAdmin
+      .from('documents')
+      .select('*')
+      .eq('investor_id', investorId)
+      .eq('subcategory', 'validation')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching investor validation documents:', error);
+      throw new Error('Failed to fetch validation documents');
+    }
+
+    return data.map(this.formatValidationDocument);
+  }
+
+  /**
+   * Get fund details for email context
+   */
+  async getFundEmailContext(fundId: string): Promise<FundEmailContext | null> {
+    const { data, error } = await supabaseAdmin
+      .from('funds')
+      .select('id, name')
+      .eq('id', fundId)
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching fund for email context:', error);
+      return null;
+    }
+
+    return {
+      fundId: data.id,
+      name: data.name,
+    };
+  }
+
+  /**
+   * Get investor details for email context
+   */
+  async getInvestorEmailContext(investorId: string): Promise<InvestorEmailContext | null> {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .select('id, email, first_name, last_name')
+      .eq('id', investorId)
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching investor for email context:', error);
+      return null;
+    }
+
+    return {
+      investorId: data.id,
+      email: data.email,
+      firstName: data.first_name,
+      lastName: data.last_name,
+    };
+  }
+
+  /**
+   * Get investor ID from user ID
+   */
+  async getInvestorIdByUserId(userId: string): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data.id;
+  }
+
+  private formatValidationDocument(data: any): ValidationDocument {
+    const investorData = data.investors;
+
+    return {
+      id: data.id,
+      fundId: data.fund_id,
+      dealId: data.deal_id,
+      investorId: data.investor_id,
+      type: data.type,
+      name: data.name,
+      filePath: data.file_path,
+      requiresSignature: data.requires_signature,
+      signingStatus: data.signing_status,
+      signedAt: data.signed_at,
+      createdAt: data.created_at,
+      createdBy: data.created_by,
+      category: data.category || 'investor',
+      department: data.department,
+      status: data.status,
+      tags: data.tags || [],
+      investorName: investorData 
+        ? `${investorData.first_name} ${investorData.last_name}` 
+        : null,
+      // Validation-specific fields
+      subcategory: 'validation',
+      validationStatus: data.validation_status || 'pending',
+      uploadedBy: data.uploaded_by || 'investor',
+      validatedBy: data.validated_by,
+      validatedAt: data.validated_at,
+      rejectionReason: data.rejection_reason,
+      fileSize: data.file_size,
+      mimeType: data.mime_type,
+      // Email notification context
+      investorEmail: investorData?.email || null,
+    };
   }
 
   private formatDocument(data: any): Document {

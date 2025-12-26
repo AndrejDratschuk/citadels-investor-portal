@@ -1,6 +1,7 @@
 import { FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
-import { documentsService, CreateDocumentInput, DocumentFilters, DocumentCategory, DocumentDepartment, DocumentStatus } from './documents.service';
+import { documentsService, CreateDocumentInput, DocumentFilters, DocumentCategory, DocumentDepartment, DocumentStatus, ValidationStatus } from './documents.service';
+import { emailService } from '../email/email.service';
 
 export class DocumentsController {
   /**
@@ -271,6 +272,197 @@ export class DocumentsController {
       return reply.status(500).send({
         success: false,
         error: error.message || 'Failed to delete document',
+      });
+    }
+  }
+
+  /**
+   * Get validation documents for fund manager review
+   */
+  async getValidationDocuments(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    const { status } = request.query as { status?: ValidationStatus };
+
+    try {
+      const documents = await documentsService.getValidationDocuments(fundId, status);
+
+      return reply.send({
+        success: true,
+        data: documents,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to fetch validation documents',
+      });
+    }
+  }
+
+  /**
+   * Approve a validation document
+   */
+  async approveDocument(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const userId = request.user?.id;
+    const { id } = request.params as { id: string };
+
+    if (!fundId || !userId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    const { triggerDocusign } = request.body as { triggerDocusign?: boolean };
+    const now = new Date();
+
+    try {
+      const document = await documentsService.approveDocument(fundId, id, userId, now);
+
+      // Send approval email to investor using service methods (no direct DB access)
+      let emailSent = false;
+      if (document.investorId) {
+        // Get email context from services (proper architecture - no direct DB access in controller)
+        const [investor, fund] = await Promise.all([
+          documentsService.getInvestorEmailContext(document.investorId),
+          documentsService.getFundEmailContext(fundId),
+        ]);
+
+        if (investor?.email) {
+          const portalUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const result = await emailService.sendDocumentApproved(investor.email, {
+            recipientName: `${investor.firstName || ''} ${investor.lastName || ''}`.trim() || 'Investor',
+            fundName: fund?.name || 'Investment Fund',
+            documentName: document.name,
+            documentType: document.type,
+            portalUrl: `${portalUrl}/investor/documents`,
+          });
+          emailSent = result.success;
+        }
+      }
+
+      // TODO: If triggerDocusign is true, trigger DocuSign flow
+
+      return reply.send({
+        success: true,
+        data: document,
+        emailSent,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to approve document',
+      });
+    }
+  }
+
+  /**
+   * Reject a validation document
+   */
+  async rejectDocument(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const userId = request.user?.id;
+    const { id } = request.params as { id: string };
+
+    if (!fundId || !userId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    const { reason } = request.body as { reason: string };
+
+    if (!reason || reason.length < 10) {
+      return reply.status(400).send({
+        success: false,
+        error: 'A detailed rejection reason is required (at least 10 characters)',
+      });
+    }
+
+    const now = new Date();
+
+    try {
+      const document = await documentsService.rejectDocument(fundId, id, userId, reason, now);
+
+      // Send rejection email to investor using service methods (no direct DB access)
+      let emailSent = false;
+      if (document.investorId) {
+        // Get email context from services (proper architecture - no direct DB access in controller)
+        const [investor, fund] = await Promise.all([
+          documentsService.getInvestorEmailContext(document.investorId),
+          documentsService.getFundEmailContext(fundId),
+        ]);
+
+        if (investor?.email) {
+          const portalUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const result = await emailService.sendDocumentRejection(investor.email, {
+            recipientName: `${investor.firstName || ''} ${investor.lastName || ''}`.trim() || 'Investor',
+            fundName: fund?.name || 'Investment Fund',
+            documentName: document.name,
+            documentType: document.type,
+            rejectionReason: reason,
+            portalUrl: `${portalUrl}/investor/documents`,
+          });
+          emailSent = result.success;
+        }
+      }
+
+      return reply.send({
+        success: true,
+        data: document,
+        emailSent,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to reject document',
+      });
+    }
+  }
+
+  /**
+   * Get investor's own validation documents
+   */
+  async getMyValidationDocuments(request: AuthenticatedRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+
+    if (!userId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    try {
+      // Get investor ID from user ID (using service method - no direct DB access)
+      const investorId = await documentsService.getInvestorIdByUserId(userId);
+
+      if (!investorId) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Investor not found',
+        });
+      }
+
+      const documents = await documentsService.getMyValidationDocuments(investorId);
+
+      return reply.send({
+        success: true,
+        data: documents,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to fetch validation documents',
       });
     }
   }

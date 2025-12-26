@@ -50,5 +50,15 @@ export async function kycRoutes(fastify: FastifyInstance) {
   fastify.patch('/:id/reject', { preHandler: managerPreHandler }, async (request, reply) => {
     return kycController.reject(request as any, reply);
   });
+
+  // Update KYC status
+  fastify.patch('/:id/status', { preHandler: managerPreHandler }, async (request, reply) => {
+    return kycController.updateStatus(request as any, reply);
+  });
+
+  // Send account creation invite email
+  fastify.post('/:id/send-account-invite', { preHandler: managerPreHandler }, async (request, reply) => {
+    return kycController.sendAccountInvite(request as any, reply);
+  });
 }
 

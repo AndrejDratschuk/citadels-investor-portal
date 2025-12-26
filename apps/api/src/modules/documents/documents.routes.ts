@@ -45,7 +45,34 @@ export async function documentsRoutes(fastify: FastifyInstance) {
   fastify.delete('/:id', { preHandler: managerPreHandler }, async (request, reply) => {
     return documentsController.delete(request as any, reply);
   });
+
+  // ============================================================
+  // Validation Documents Routes
+  // ============================================================
+
+  // Get validation documents (manager only)
+  fastify.get('/validation', { preHandler: managerPreHandler }, async (request, reply) => {
+    return documentsController.getValidationDocuments(request as any, reply);
+  });
+
+  // Approve validation document (manager only)
+  fastify.post('/:id/approve', { preHandler: managerPreHandler }, async (request, reply) => {
+    return documentsController.approveDocument(request as any, reply);
+  });
+
+  // Reject validation document (manager only)
+  fastify.post('/:id/reject', { preHandler: managerPreHandler }, async (request, reply) => {
+    return documentsController.rejectDocument(request as any, reply);
+  });
+
+  // Get my validation documents (investor only - authenticated)
+  fastify.get('/my-validation', { preHandler: [authenticate] }, async (request, reply) => {
+    return documentsController.getMyValidationDocuments(request as any, reply);
+  });
 }
+
+
+
 
 
 

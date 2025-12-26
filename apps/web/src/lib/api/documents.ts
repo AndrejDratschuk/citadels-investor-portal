@@ -9,7 +9,7 @@ export interface Document {
   fundId: string;
   dealId: string | null;
   investorId: string | null;
-  type: 'ppm' | 'subscription' | 'k1' | 'report' | 'capital_call' | 'kyc' | 'other';
+  type: 'ppm' | 'subscription' | 'k1' | 'report' | 'capital_call' | 'kyc' | 'tax_filing' | 'proof_of_identity' | 'net_worth_statement' | 'other';
   name: string;
   filePath: string | null;
   requiresSignature: boolean;
@@ -24,6 +24,11 @@ export interface Document {
   department?: DocumentDepartment | null;
   status?: DocumentStatus;
   tags?: string[];
+  // Validation document fields
+  subcategory?: string | null;
+  uploadedBy?: 'investor' | 'fund_manager' | 'docusign_auto' | 'system';
+  validatedBy?: string | null;
+  validatedAt?: string | null;
 }
 
 export interface DocumentsByDeal {
@@ -43,6 +48,8 @@ export interface DocumentsByInvestor {
   documentCount: number;
 }
 
+export type ValidationStatus = 'pending' | 'approved' | 'rejected';
+
 export interface CreateDocumentInput {
   name: string;
   type: Document['type'];
@@ -54,6 +61,13 @@ export interface CreateDocumentInput {
   investorId?: string;
   filePath?: string;
   requiresSignature?: boolean;
+  // Validation document fields
+  subcategory?: string;
+  validationStatus?: ValidationStatus;
+  uploadedBy?: 'investor' | 'fund_manager' | 'docusign_auto' | 'system';
+  documentType?: string;
+  fileSize?: number;
+  mimeType?: string;
 }
 
 export interface DocumentFilters {
@@ -149,6 +163,26 @@ export const documentsApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/documents/${id}`);
   },
+
+  // Get all validation documents (pending validation investor documents)
+  getValidationDocuments: async (): Promise<Document[]> => {
+    return api.get<Document[]>('/documents/validation');
+  },
+
+  // Approve a validation document
+  approveValidationDocument: async (documentId: string): Promise<Document> => {
+    return api.post<Document>(`/documents/${documentId}/approve`);
+  },
+
+  // Reject a validation document
+  rejectValidationDocument: async (documentId: string, reason: string): Promise<Document> => {
+    return api.post<Document>(`/documents/${documentId}/reject`, { reason });
+  },
+
+  // Get investor's own validation documents (for logged in investor)
+  getMyValidationDocuments: async (): Promise<Document[]> => {
+    return api.get<Document[]>('/documents/my-validation');
+  },
 };
 
 export const typeLabels: Record<string, string> = {
@@ -158,7 +192,22 @@ export const typeLabels: Record<string, string> = {
   report: 'Report',
   capital_call: 'Capital Call',
   kyc: 'KYC',
+  tax_filing: 'Tax Filing',
+  proof_of_identity: 'Proof of Identity',
+  net_worth_statement: 'Net Worth Statement',
   other: 'Other',
+};
+
+export const validationStatusLabels: Record<string, string> = {
+  pending: 'Pending Validation',
+  approved: 'Approved',
+  rejected: 'Rejected',
+};
+
+export const validationStatusStyles: Record<string, { bg: string; text: string }> = {
+  pending: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  approved: { bg: 'bg-green-100', text: 'text-green-700' },
+  rejected: { bg: 'bg-red-100', text: 'text-red-700' },
 };
 
 export const categoryLabels: Record<DocumentCategory, string> = {

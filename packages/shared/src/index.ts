@@ -7,6 +7,8 @@ export * from './schemas/document.schema';
 export * from './schemas/capital-call.schema';
 export * from './schemas/communication.schema';
 export * from './schemas/kpi.schema';
+export * from './schemas/account-creation.schema';
+export * from './schemas/validation-document.schema';
 
 // Types
 export * from './types/auth.types';

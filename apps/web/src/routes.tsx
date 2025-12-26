@@ -4,6 +4,7 @@ import { BaseLayout } from './components/layout/BaseLayout';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { SignupPage } from './features/auth/pages/SignupPage';
+import { CreateAccountPage } from './features/auth/pages/CreateAccountPage';
 import {
   InvestorDashboard,
   InvestorInvestments,
@@ -63,6 +64,11 @@ export const router = createBrowserRouter([
   {
     path: '/signup',
     element: <SignupPage />,
+  },
+  // Account creation route (for investors with token)
+  {
+    path: '/create-account/:token',
+    element: <CreateAccountPage />,
   },
   // Onboarding routes (public, invite-only)
   {

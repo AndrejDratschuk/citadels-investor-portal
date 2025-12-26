@@ -46,5 +46,15 @@ export const kycApi = {
   reject: async (id: string, reason?: string): Promise<KYCApplication> => {
     return api.patch<KYCApplication>(`/kyc/${id}/reject`, { reason });
   },
+
+  // Send account creation invite email to KYC applicant
+  sendAccountInvite: async (id: string): Promise<{ success: boolean; message: string }> => {
+    return api.post<{ success: boolean; message: string }>(`/kyc/${id}/send-account-invite`);
+  },
+
+  // Update KYC status (generic status update)
+  updateStatus: async (id: string, status: string, reason?: string): Promise<KYCApplication> => {
+    return api.patch<KYCApplication>(`/kyc/${id}/status`, { status, reason });
+  },
 };
 

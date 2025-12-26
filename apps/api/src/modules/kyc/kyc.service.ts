@@ -584,6 +584,92 @@ export class KYCService {
     return this.formatKYCApplication(data);
   }
 
+  /**
+   * Update KYC application status (generic status update)
+   */
+  async updateStatus(id: string, status: string, reason?: string): Promise<KYCApplication> {
+    const current = await this.getById(id);
+    
+    const validStatuses = ['draft', 'submitted', 'pre_qualified', 'not_eligible', 'meeting_scheduled', 'meeting_complete'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('kyc_applications')
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating KYC status:', error);
+      throw new Error('Failed to update KYC status');
+    }
+
+    // Send webhook for KYC status change
+    webhookService.sendWebhook('kyc.status_changed', {
+      id: current.id,
+      email: current.email,
+      firstName: current.firstName,
+      lastName: current.lastName,
+      fundId: current.fundId,
+      oldStatus: current.status,
+      newStatus: status,
+      reason,
+    });
+
+    return this.formatKYCApplication(data);
+  }
+
+  /**
+   * Send account creation invite email to KYC applicant
+   */
+  async sendAccountInvite(id: string, fundId: string): Promise<{ success: boolean; message: string }> {
+    const application = await this.getById(id);
+
+    // Verify application belongs to the fund
+    if (application.fundId !== fundId) {
+      throw new Error('Application does not belong to this fund');
+    }
+
+    // Get the display name
+    const displayName = application.investorCategory === 'entity'
+      ? `${application.authorizedSignerFirstName || ''} ${application.authorizedSignerLastName || ''}`.trim() || application.entityLegalName
+      : `${application.firstName || ''} ${application.lastName || ''}`.trim();
+
+    // Get fund details
+    const { data: fund } = await supabaseAdmin
+      .from('funds')
+      .select('name')
+      .eq('id', fundId)
+      .single();
+
+    const fundName = fund?.name || 'Investment Fund';
+
+    // Generate account creation URL
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const accountCreationUrl = `${baseUrl}/create-account/${id}/${fundId}`;
+
+    // Send webhook for account invite (will trigger N8N/email automation)
+    webhookService.sendWebhook('kyc.account_invite_sent', {
+      id: application.id,
+      email: application.email,
+      firstName: displayName,
+      fundId: fundId,
+      fundName: fundName,
+      accountCreationUrl: accountCreationUrl,
+    });
+
+    return {
+      success: true,
+      message: `Account creation invite sent to ${application.email}`,
+    };
+  }
+
   private formatKYCApplication(data: any): KYCApplication {
     return {
       id: data.id,

@@ -1,4 +1,14 @@
 import { z } from 'zod';
+import type { ValidationDocumentType } from '@flowveda/shared';
+
+// Pending document for upload
+export interface PendingDocument {
+  id: string;
+  file: File;
+  documentType: ValidationDocumentType;
+  customName: string;
+  error?: string;
+}
 
 // Contact preference options
 export const CONTACT_PREFERENCES = [
@@ -87,6 +97,9 @@ export const bankingInfoSchema = z.object({
   beneficiaryInfo: z.string().optional(),
 });
 
+// Step 5: Validation Documents (validated at runtime, not with Zod)
+// This step requires at least 1 document but uses file uploads
+
 // Combined schema for full form
 export const onboardingFormSchema = z.object({
   ...personalInfoSchema.shape,
@@ -114,6 +127,7 @@ export interface OnboardingApplication {
   fundId: string;
   status: OnboardingStatus;
   data: Partial<OnboardingFormData>;
+  validationDocuments?: PendingDocument[];
   submittedAt?: string;
   reviewedAt?: string;
   reviewedBy?: string;

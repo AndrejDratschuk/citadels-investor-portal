@@ -86,6 +86,12 @@ export interface InvestorDocument {
   signingStatus: string | null;
   signedAt: string | null;
   createdAt: string;
+  // Validation document fields
+  subcategory?: string | null;
+  validationStatus?: 'pending' | 'approved' | 'rejected' | null;
+  uploadedBy?: 'investor' | 'fund_manager' | 'docusign_auto' | 'system' | null;
+  validatedAt?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface CapitalCallItem {
@@ -191,6 +197,11 @@ export const investorsApi = {
   // Get documents
   getMyDocuments: async (): Promise<InvestorDocument[]> => {
     return api.get<InvestorDocument[]>('/investors/me/documents');
+  },
+
+  // Get validation documents (investor's own uploaded documents for validation)
+  getMyValidationDocuments: async (): Promise<InvestorDocument[]> => {
+    return api.get<InvestorDocument[]>('/documents/my-validation');
   },
 
   // Get capital calls

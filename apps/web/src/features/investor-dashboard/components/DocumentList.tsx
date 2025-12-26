@@ -1,4 +1,4 @@
-import { FileText, Download, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FileText, Download, Clock, CheckCircle2, AlertCircle, XCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InvestorDocument } from '@/lib/api/investors';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ interface DocumentListProps {
   documents: InvestorDocument[];
   className?: string;
   limit?: number;
+  showValidationStatus?: boolean;
 }
 
 const typeLabels: Record<string, string> = {
@@ -17,6 +18,9 @@ const typeLabels: Record<string, string> = {
   report: 'Report',
   capital_call: 'Capital Call',
   kyc: 'KYC Document',
+  tax_filing: 'Tax Filing',
+  proof_of_identity: 'Proof of Identity',
+  net_worth_statement: 'Net Worth Statement',
   other: 'Document',
 };
 
@@ -28,7 +32,13 @@ const signingStatusIcons: Record<string, { icon: typeof CheckCircle2; color: str
   declined: { icon: AlertCircle, color: 'text-red-500' },
 };
 
-export function DocumentList({ documents, className, limit }: DocumentListProps) {
+const validationStatusConfig: Record<string, { icon: typeof CheckCircle2; color: string; bg: string; label: string }> = {
+  pending: { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Pending Review' },
+  approved: { icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-100', label: 'Approved' },
+  rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', label: 'Rejected' },
+};
+
+export function DocumentList({ documents, className, limit, showValidationStatus = false }: DocumentListProps) {
   const displayedDocs = limit ? documents.slice(0, limit) : documents;
 
   if (documents.length === 0) {
@@ -44,10 +54,16 @@ export function DocumentList({ documents, className, limit }: DocumentListProps)
     <div className={cn('rounded-lg border bg-card', className)}>
       <div className="divide-y">
         {displayedDocs.map((doc) => {
-          const statusConfig = doc.signingStatus
+          const signingConfig = doc.signingStatus
             ? signingStatusIcons[doc.signingStatus]
             : null;
-          const StatusIcon = statusConfig?.icon;
+          const SigningStatusIcon = signingConfig?.icon;
+          
+          // Validation status for validation documents
+          const validationConfig = doc.validationStatus
+            ? validationStatusConfig[doc.validationStatus]
+            : null;
+          const ValidationStatusIcon = validationConfig?.icon;
 
           return (
             <div
@@ -64,26 +80,63 @@ export function DocumentList({ documents, className, limit }: DocumentListProps)
                     <span>{typeLabels[doc.type] || doc.type}</span>
                     <span>•</span>
                     <span>{formatDate(doc.createdAt)}</span>
+                    {doc.uploadedBy === 'investor' && (
+                      <>
+                        <span>•</span>
+                        <span className="text-xs text-muted-foreground">Uploaded by you</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                {doc.requiresSignature && StatusIcon && (
+                {/* Validation Status Badge */}
+                {showValidationStatus && validationConfig && ValidationStatusIcon && (
+                  <div
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+                      validationConfig.bg,
+                      validationConfig.color
+                    )}
+                  >
+                    <ValidationStatusIcon className="h-3.5 w-3.5" />
+                    <span>{validationConfig.label}</span>
+                  </div>
+                )}
+                
+                {/* Signing Status (for DocuSign documents) */}
+                {doc.requiresSignature && SigningStatusIcon && (
                   <div
                     className={cn(
                       'flex items-center gap-1 text-sm',
-                      statusConfig.color
+                      signingConfig.color
                     )}
                   >
-                    <StatusIcon className="h-4 w-4" />
+                    <SigningStatusIcon className="h-4 w-4" />
                     <span className="capitalize">
                       {doc.signingStatus?.replace(/_/g, ' ')}
                     </span>
                   </div>
                 )}
+                
+                {/* Rejection reason tooltip for rejected documents */}
+                {doc.validationStatus === 'rejected' && doc.rejectionReason && (
+                  <div className="group relative">
+                    <AlertCircle className="h-4 w-4 cursor-help text-red-500" />
+                    <div className="absolute right-0 top-6 z-10 hidden w-64 rounded-lg border bg-card p-3 shadow-lg group-hover:block">
+                      <p className="text-xs font-medium text-red-600">Rejection Reason:</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{doc.rejectionReason}</p>
+                    </div>
+                  </div>
+                )}
+                
                 {doc.filePath && (
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(doc.filePath!, '_blank')}
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 )}

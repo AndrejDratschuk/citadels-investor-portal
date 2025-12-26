@@ -240,5 +240,64 @@ export class KYCController {
       });
     }
   }
+
+  /**
+   * Update KYC application status
+   */
+  async updateStatus(request: AuthenticatedRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const { status, reason } = request.body as { status: string; reason?: string };
+
+    if (!status) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Status is required',
+      });
+    }
+
+    try {
+      const application = await kycService.updateStatus(id, status, reason);
+
+      return reply.send({
+        success: true,
+        data: application,
+        message: `KYC application status updated to ${status}`,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to update KYC application status',
+      });
+    }
+  }
+
+  /**
+   * Send account creation invite email to KYC applicant
+   */
+  async sendAccountInvite(request: AuthenticatedRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const fundId = request.user?.fundId;
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Manager is not associated with a fund',
+      });
+    }
+
+    try {
+      const result = await kycService.sendAccountInvite(id, fundId);
+
+      return reply.send({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to send account invite',
+      });
+    }
+  }
 }
 

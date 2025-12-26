@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
-import { OnboardingFormData, OnboardingStatus } from '../types';
+import { OnboardingFormData, OnboardingStatus, PendingDocument } from '../types';
 import { onboardingApi } from '@/lib/api/onboarding';
+import { documentsApi } from '@/lib/api/documents';
 
 interface UseOnboardingReturn {
   currentStep: number;
   formData: Partial<OnboardingFormData>;
+  validationDocuments: PendingDocument[];
   status: OnboardingStatus;
   isSubmitting: boolean;
   error: string | null;
@@ -13,12 +15,14 @@ interface UseOnboardingReturn {
   nextStep: () => void;
   prevStep: () => void;
   updateFormData: (data: Partial<OnboardingFormData>) => void;
+  updateValidationDocuments: (docs: PendingDocument[]) => void;
   setKycApplicationId: (id: string | null) => void;
   submitApplication: (password?: string) => Promise<void>;
   resetForm: () => void;
 }
 
-const TOTAL_STEPS = 5;
+// Updated to 6 steps: Personal, Address, Tax, Documents, Investment, Banking
+const TOTAL_STEPS = 6;
 
 const initialFormData: Partial<OnboardingFormData> = {
   preferredContact: 'email',
@@ -36,6 +40,7 @@ const initialFormData: Partial<OnboardingFormData> = {
 export function useOnboarding(inviteCode: string): UseOnboardingReturn {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<OnboardingFormData>>(initialFormData);
+  const [validationDocuments, setValidationDocuments] = useState<PendingDocument[]>([]);
   const [status, setStatus] = useState<OnboardingStatus>('draft');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,17 +69,53 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     setError(null);
   }, []);
 
+  const updateValidationDocuments = useCallback((docs: PendingDocument[]) => {
+    setValidationDocuments(docs);
+    setError(null);
+  }, []);
+
   const submitApplication = useCallback(async (password?: string) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      await onboardingApi.submit(
+      // First submit the application to get investor ID
+      const result = await onboardingApi.submit(
         inviteCode,
         formData,
         password,
         kycApplicationId || undefined
       );
+      
+      // If we have validation documents and an investor ID, upload them
+      const validDocs = validationDocuments.filter(doc => !doc.error);
+      if (validDocs.length > 0 && result?.investorId) {
+        for (const doc of validDocs) {
+          try {
+            // Upload the file
+            const { fileUrl } = await documentsApi.uploadFile(doc.file);
+            
+            // Create the document record
+            await documentsApi.create({
+              name: doc.customName || doc.file.name,
+              type: 'kyc', // Use kyc type for validation documents
+              category: 'investor',
+              investorId: result.investorId,
+              filePath: fileUrl,
+              // Additional metadata for validation documents
+              subcategory: 'validation',
+              validationStatus: 'pending',
+              uploadedBy: 'investor',
+              documentType: doc.documentType,
+              fileSize: doc.file.size,
+              mimeType: doc.file.type,
+            });
+          } catch (uploadErr) {
+            console.error('Failed to upload document:', doc.file.name, uploadErr);
+            // Continue with other documents even if one fails
+          }
+        }
+      }
       
       setStatus('submitted');
     } catch (err) {
@@ -83,11 +124,12 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     } finally {
       setIsSubmitting(false);
     }
-  }, [inviteCode, formData, kycApplicationId]);
+  }, [inviteCode, formData, validationDocuments, kycApplicationId]);
 
   const resetForm = useCallback(() => {
     setCurrentStep(1);
     setFormData(initialFormData);
+    setValidationDocuments([]);
     setStatus('draft');
     setError(null);
     setKycApplicationId(null);
@@ -96,6 +138,7 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
   return {
     currentStep,
     formData,
+    validationDocuments,
     status,
     isSubmitting,
     error,
@@ -104,6 +147,7 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     nextStep,
     prevStep,
     updateFormData,
+    updateValidationDocuments,
     setKycApplicationId,
     submitApplication,
     resetForm,

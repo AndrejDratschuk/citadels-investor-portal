@@ -3,14 +3,14 @@ import { CheckCircle2, XCircle, Link2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { KYCApplication } from './types';
-import { getForm2BaseUrl } from './kycHelpers';
+import { getOnboardingBaseUrl } from './kycHelpers';
 import { SendAccountInviteButton } from './SendAccountInviteButton';
 
 interface KYCApprovalActionsProps {
   app: KYCApplication;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string, reason: string) => Promise<void>;
-  onSendForm2: (app: KYCApplication) => void;
+  onSendOnboardingLink: (app: KYCApplication) => void;
   isLoading?: boolean;
 }
 
@@ -18,7 +18,7 @@ export function KYCApprovalActions({
   app,
   onApprove,
   onReject,
-  onSendForm2,
+  onSendOnboardingLink,
   isLoading = false,
 }: KYCApprovalActionsProps) {
   const [showRejectInput, setShowRejectInput] = useState(false);
@@ -42,9 +42,9 @@ export function KYCApprovalActions({
 
   // Use fundCode if available, otherwise fallback to fundId
   const fundIdentifier = app.fundCode || app.fundId;
-  const form2Url = `${getForm2BaseUrl()}/onboard/${fundIdentifier}?kyc=${app.id}`;
-  const needsForm2 = app.status === 'meeting_complete' && !app.onboardingApplicationId;
-  const hasForm2 = !!app.onboardingApplicationId;
+  const onboardingUrl = `${getOnboardingBaseUrl()}/onboard/${fundIdentifier}?kyc=${app.id}`;
+  const needsOnboardingLink = app.status === 'meeting_complete' && !app.onboardingApplicationId;
+  const hasOnboardingApp = !!app.onboardingApplicationId;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -115,36 +115,36 @@ export function KYCApprovalActions({
         <SendAccountInviteButton app={app} disabled={isLoading} />
       )}
 
-      {/* Legacy: Send Form 2 Link after Meeting Complete (if not using account creation flow) */}
-      {needsForm2 && app.status !== 'meeting_complete' && (
+      {/* Send Onboarding Link - available when meeting complete and no onboarding app yet */}
+      {needsOnboardingLink && (
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => onSendForm2(app)}
+          onClick={() => onSendOnboardingLink(app)}
           disabled={isLoading}
         >
           <Link2 className="mr-1.5 h-4 w-4" />
-          Send Form 2 Link
+          Send Onboarding Link
         </Button>
       )}
 
-      {/* Form 2 Already Sent */}
-      {hasForm2 && (
+      {/* Onboarding Application Already Submitted */}
+      {hasOnboardingApp && (
         <span className="text-sm text-green-600 flex items-center gap-1">
           <CheckCircle2 className="h-4 w-4" />
-          Form 2 Sent
+          Onboarding Submitted
         </span>
       )}
 
-      {/* Copy Form 2 Link */}
+      {/* Copy Onboarding Link */}
       {(app.status === 'pre_qualified' || app.status === 'meeting_scheduled' || app.status === 'meeting_complete') && (
         <Button
           size="sm"
           variant="ghost"
           onClick={() => {
-            navigator.clipboard.writeText(form2Url);
+            navigator.clipboard.writeText(onboardingUrl);
           }}
-          title="Copy Form 2 Link"
+          title="Copy Onboarding Link"
         >
           <Link2 className="h-4 w-4" />
         </Button>

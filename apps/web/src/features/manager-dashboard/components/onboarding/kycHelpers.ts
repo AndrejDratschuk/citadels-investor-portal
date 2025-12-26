@@ -79,7 +79,7 @@ export function formatTimeAgo(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export function getForm2BaseUrl(): string {
+export function getOnboardingBaseUrl(): string {
   return window.location.origin;
 }
 

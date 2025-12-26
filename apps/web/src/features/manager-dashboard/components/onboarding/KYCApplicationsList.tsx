@@ -13,7 +13,7 @@ interface KYCApplicationsListProps {
   isLoading: boolean;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string, reason: string) => Promise<void>;
-  onSendForm2: (app: KYCApplication) => void;
+  onSendOnboardingLink: (app: KYCApplication) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   statusFilter: 'all' | 'pending' | 'approved' | 'rejected';
@@ -25,7 +25,7 @@ export function KYCApplicationsList({
   isLoading,
   onApprove,
   onReject,
-  onSendForm2,
+  onSendOnboardingLink,
   searchQuery,
   onSearchChange,
   statusFilter,
@@ -119,7 +119,7 @@ export function KYCApplicationsList({
                           app={app}
                           onApprove={onApprove}
                           onReject={onReject}
-                          onSendForm2={onSendForm2}
+                          onSendOnboardingLink={onSendOnboardingLink}
                         />
                       </div>
                     )}

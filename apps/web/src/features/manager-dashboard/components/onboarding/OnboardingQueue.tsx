@@ -9,7 +9,7 @@ import { OnboardingStats } from './OnboardingStats';
 import { KYCApplicationsList } from './KYCApplicationsList';
 import { InvestorApplicationsList } from './InvestorApplicationsList';
 import { OnboardingTabType, KYCApplication, OnboardingStats as StatsType } from './types';
-import { isKycPendingReview, getForm2BaseUrl, getKycDisplayName } from './kycHelpers';
+import { isKycPendingReview, getOnboardingBaseUrl, getKycDisplayName } from './kycHelpers';
 
 export function OnboardingQueue() {
   const queryClient = useQueryClient();
@@ -80,10 +80,10 @@ export function OnboardingQueue() {
     await rejectInvestorMutation.mutateAsync({ id, reason });
   }, [rejectInvestorMutation]);
 
-  const handleSendForm2 = useCallback(async (app: KYCApplication): Promise<void> => {
+  const handleSendOnboardingLink = useCallback(async (app: KYCApplication): Promise<void> => {
     // Use fundCode if available, otherwise fallback to fundId
     const fundIdentifier = app.fundCode || app.fundId;
-    const form2Url = `${getForm2BaseUrl()}/onboard/${fundIdentifier}?kyc=${app.id}`;
+    const onboardingUrl = `${getOnboardingBaseUrl()}/onboard/${fundIdentifier}?kyc=${app.id}`;
     
     try {
       await communicationsApi.send({
@@ -91,18 +91,18 @@ export function OnboardingQueue() {
         subject: 'Complete Your Investor Application',
         body: `
           <p>Dear ${getKycDisplayName(app)},</p>
-          <p>Thank you for completing your pre-qualification. Please complete your investor application by clicking the link below:</p>
-          <p><a href="${form2Url}">Complete Application</a></p>
+          <p>Thank you for completing your pre-qualification. Please complete your investor onboarding by clicking the link below:</p>
+          <p><a href="${onboardingUrl}">Complete Onboarding</a></p>
         `,
         recipientEmails: [app.email],
       });
 
       // Copy to clipboard as fallback
-      await navigator.clipboard.writeText(form2Url);
+      await navigator.clipboard.writeText(onboardingUrl);
     } catch (error) {
-      console.error('Failed to send Form 2 link:', error);
+      console.error('Failed to send onboarding link:', error);
       // Fallback: just copy to clipboard
-      await navigator.clipboard.writeText(form2Url);
+      await navigator.clipboard.writeText(onboardingUrl);
     }
   }, []);
 
@@ -149,7 +149,7 @@ export function OnboardingQueue() {
           isLoading={kycLoading}
           onApprove={handleApproveKyc}
           onReject={handleRejectKyc}
-          onSendForm2={handleSendForm2}
+          onSendOnboardingLink={handleSendOnboardingLink}
           searchQuery={kycSearchQuery}
           onSearchChange={setKycSearchQuery}
           statusFilter={kycStatusFilter}

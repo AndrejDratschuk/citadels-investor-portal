@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, XCircle, Clock } from 'lucide-react';
+import { Loader2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -166,36 +166,6 @@ export function KYCPage({ investorType }: KYCPageProps) {
     );
   }
 
-  // Submitted - pending manager review
-  if (application?.status === 'submitted') {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white" style={brandingStyle}>
-        <PublicFormHeader fundId={fundCode} />
-
-        <main className="mx-auto max-w-3xl px-4 py-8">
-          <div className="rounded-xl border bg-white p-8 shadow-sm text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
-              <Clock className="h-8 w-8 text-amber-600" />
-            </div>
-            <h2 className="mt-6 text-2xl font-bold">Application Submitted</h2>
-            <p className="mt-4 text-muted-foreground max-w-md mx-auto">
-              Thank you for submitting your pre-qualification application. Our team will review
-              your information and get back to you shortly.
-            </p>
-            <div className="mt-8 p-4 rounded-lg bg-amber-50 text-left">
-              <h3 className="font-semibold mb-2">What happens next?</h3>
-              <ul className="text-sm text-muted-foreground space-y-2">
-                <li>• Our team will review your application within 1-2 business days</li>
-                <li>• You'll receive an email once a decision has been made</li>
-                <li>• If approved, you'll be invited to schedule an introductory meeting</li>
-              </ul>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   // Not eligible state (rejected by manager)
   if (application?.status === 'not_eligible' || eligible === false) {
     return (
@@ -231,8 +201,8 @@ export function KYCPage({ investorType }: KYCPageProps) {
     );
   }
 
-  // Pre-qualified (approved by manager) - show Calendly
-  if (application?.status === 'pre_qualified' || application?.status === 'meeting_scheduled' || eligible === true) {
+  // Show Calendly after submission, pre-qualification, or meeting scheduled
+  if (application?.status === 'submitted' || application?.status === 'pre_qualified' || application?.status === 'meeting_scheduled' || eligible === true) {
     const prefillName = formData.investorCategory === 'entity'
       ? `${formData.authorizedSignerFirstName} ${formData.authorizedSignerLastName}`
       : `${formData.firstName} ${formData.lastName}`;

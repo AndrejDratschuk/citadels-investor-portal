@@ -23,7 +23,6 @@ import type {
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
-  KPI_CATEGORIES,
 } from '@flowveda/shared';
 
 // ============================================

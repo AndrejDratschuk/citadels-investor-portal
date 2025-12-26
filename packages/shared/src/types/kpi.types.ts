@@ -193,24 +193,16 @@ export interface DataConnection {
 // ============================================
 // API Request/Response Types
 // ============================================
-export interface KpiDataWriteInput {
-  kpiId: string;
-  periodType: KpiPeriodType;
-  periodDate: string;
-  dataType: KpiDataType;
-  value: number;
-  source?: KpiSource;
-}
-
-export interface KpiPreferenceUpdateInput {
-  kpiId: string;
-  isFeatured?: boolean;
-  isEnabled?: boolean;
-  sortOrder?: number;
-}
+// Note: KpiDataWriteInput and KpiPreferenceUpdateInput are defined in kpi.schema.ts
+// to avoid duplication with Zod inferred types
 
 export interface KpiPreferencesUpdateRequest {
-  preferences: KpiPreferenceUpdateInput[];
+  preferences: {
+    kpiId: string;
+    isFeatured?: boolean;
+    isEnabled?: boolean;
+    sortOrder?: number;
+  }[];
 }
 
 export interface DealKpiSummary {
@@ -232,7 +224,7 @@ export interface KpiCategoryInfo {
   color: string;
 }
 
-export const KPI_CATEGORIES: KpiCategoryInfo[] = [
+export const KPI_CATEGORY_INFO: KpiCategoryInfo[] = [
   {
     code: 'rent_revenue',
     name: 'Rent/Revenue',

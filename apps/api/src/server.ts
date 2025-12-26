@@ -25,11 +25,22 @@ const fastify = Fastify({
 // Register plugins
 async function start() {
   try {
-    // Security
-    await fastify.register(helmet);
+    // CORS must be registered BEFORE other plugins
     await fastify.register(cors, {
-      origin: true, // Allow all origins (or set specific domains via env)
+      origin: [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://citadel-investor-portal-api-olde.vercel.app',
+        /\.vercel\.app$/,  // Allow all Vercel preview deployments
+      ],
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    });
+
+    // Security (register after CORS)
+    await fastify.register(helmet, {
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
     });
 
     // File uploads

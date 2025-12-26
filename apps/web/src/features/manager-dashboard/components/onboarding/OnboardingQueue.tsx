@@ -1,14 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { kycApi } from '@/lib/api/kyc';
-import { onboardingApi } from '@/lib/api/onboarding';
+import { onboardingApi, OnboardingApplication } from '@/lib/api/onboarding';
 import { communicationsApi } from '@/lib/api/communications';
 
 import { OnboardingTabs } from './OnboardingTabs';
 import { OnboardingStats } from './OnboardingStats';
 import { KYCApplicationsList } from './KYCApplicationsList';
 import { InvestorApplicationsList } from './InvestorApplicationsList';
-import { OnboardingTabType, KYCApplication, InvestorApplication, OnboardingStats as StatsType } from './types';
+import { OnboardingTabType, KYCApplication, OnboardingStats as StatsType } from './types';
 import { isKycPendingReview, getForm2BaseUrl, getKycDisplayName } from './kycHelpers';
 
 export function OnboardingQueue() {
@@ -114,9 +114,9 @@ export function OnboardingQueue() {
   };
 
   const investorStats: StatsType = {
-    pending: investorApplications.filter((app: InvestorApplication) => app.status === 'pending').length,
-    approved: investorApplications.filter((app: InvestorApplication) => app.status === 'approved').length,
-    rejected: investorApplications.filter((app: InvestorApplication) => app.status === 'rejected').length,
+    pending: investorApplications.filter((app: OnboardingApplication) => app.status === 'pending').length,
+    approved: investorApplications.filter((app: OnboardingApplication) => app.status === 'approved').length,
+    rejected: investorApplications.filter((app: OnboardingApplication) => app.status === 'rejected').length,
   };
 
   const currentStats = activeTab === 'kyc' ? kycStats : investorStats;

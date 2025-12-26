@@ -18,7 +18,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 import { accountCreationApi } from '@/lib/api/account-creation';
 import { useAuthStore } from '@/stores/authStore';
 import type { VerifyTokenResponse } from '@flowveda/shared';

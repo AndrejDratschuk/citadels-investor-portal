@@ -81,7 +81,7 @@ export const ACCREDITATION_OPTIONS = [
 
 // Timeline options
 export const TIMELINE_OPTIONS = [
-  { value: 'asap', label: 'ASAP' },
+  { value: 'asap', label: '<30 days' },
   { value: '30_60_days', label: '30-60 days' },
   { value: '60_90_days', label: '60-90 days' },
   { value: 'over_90_days', label: '>90 days' },

@@ -13,11 +13,19 @@ export interface OnboardingApplication {
   lastName: string;
   email: string;
   phone?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  submittedAt: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
   entityType?: string;
   entityName?: string;
+  taxResidency?: string;
+  taxIdType?: string;
+  taxIdLast4?: string;
+  accreditationType?: string;
   commitmentAmount?: number;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
 }
 
 export const onboardingApi = {

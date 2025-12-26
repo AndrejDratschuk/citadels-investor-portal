@@ -4,10 +4,11 @@ import { formatCurrency, formatDate } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { InvestorApplication, entityLabels, accreditationLabels } from './types';
+import { OnboardingApplication } from '@/lib/api/onboarding';
+import { entityLabels, accreditationLabels } from './types';
 
 interface InvestorApplicationsListProps {
-  applications: InvestorApplication[];
+  applications: OnboardingApplication[];
   isLoading: boolean;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string, reason: string) => Promise<void>;
@@ -61,7 +62,7 @@ export function InvestorApplicationsList({
     setRejectReason('');
   };
 
-  const getStatusBadge = (status: InvestorApplication['status']): { label: string; color: string } => {
+  const getStatusBadge = (status: OnboardingApplication['status']): { label: string; color: string } => {
     switch (status) {
       case 'pending':
         return { label: 'Pending', color: 'bg-amber-100 text-amber-700' };
@@ -139,8 +140,8 @@ export function InvestorApplicationsList({
                     </button>
 
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
-                      {app.firstName[0].toUpperCase()}
-                      {app.lastName[0].toUpperCase()}
+                      {app.firstName?.[0]?.toUpperCase() || '?'}
+                      {app.lastName?.[0]?.toUpperCase() || '?'}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -151,7 +152,7 @@ export function InvestorApplicationsList({
                     </div>
 
                     <div className="hidden sm:block text-right">
-                      <p className="text-sm font-medium">{formatCurrency(app.commitmentAmount)}</p>
+                      <p className="text-sm font-medium">{app.commitmentAmount ? formatCurrency(app.commitmentAmount) : '-'}</p>
                       <p className="text-xs text-muted-foreground">Commitment</p>
                     </div>
 
@@ -184,42 +185,52 @@ export function InvestorApplicationsList({
                           <div className="space-y-1 text-sm">
                             <p>{app.email}</p>
                             {app.phone && <p>{app.phone}</p>}
-                            <p className="text-muted-foreground">
-                              {app.city}, {app.state}, {app.country}
+                            {(app.city || app.state || app.country) && (
+                              <p className="text-muted-foreground">
+                                {[app.city, app.state, app.country].filter(Boolean).join(', ')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {app.entityType && (
+                          <div>
+                            <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                              Entity
+                            </h4>
+                            <div className="space-y-1 text-sm">
+                              <p>{entityLabels[app.entityType] || app.entityType}</p>
+                              {app.entityName && <p>{app.entityName}</p>}
+                            </div>
+                          </div>
+                        )}
+
+                        {(app.taxResidency || app.taxIdType) && (
+                          <div>
+                            <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                              Tax Info
+                            </h4>
+                            <div className="space-y-1 text-sm">
+                              {app.taxResidency && <p>{app.taxResidency}</p>}
+                              {app.taxIdType && app.taxIdLast4 && (
+                                <p>
+                                  {app.taxIdType} ending in {app.taxIdLast4}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {app.accreditationType && (
+                          <div>
+                            <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                              Accreditation
+                            </h4>
+                            <p className="text-sm">
+                              {accreditationLabels[app.accreditationType] || app.accreditationType}
                             </p>
                           </div>
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                            Entity
-                          </h4>
-                          <div className="space-y-1 text-sm">
-                            <p>{entityLabels[app.entityType] || app.entityType}</p>
-                            {app.entityName && <p>{app.entityName}</p>}
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                            Tax Info
-                          </h4>
-                          <div className="space-y-1 text-sm">
-                            <p>{app.taxResidency}</p>
-                            <p>
-                              {app.taxIdType} ending in {app.taxIdLast4}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                            Accreditation
-                          </h4>
-                          <p className="text-sm">
-                            {accreditationLabels[app.accreditationType] || app.accreditationType}
-                          </p>
-                        </div>
+                        )}
                       </div>
 
                       {/* Actions */}

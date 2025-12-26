@@ -205,10 +205,13 @@ export interface KYCApplication {
   questionsForManager?: string;
   preferredContact?: string;
   consentGiven: boolean;
-  status: 'draft' | 'submitted' | 'pre_qualified' | 'not_eligible' | 'meeting_scheduled' | 'meeting_complete';
+  status: 'draft' | 'submitted' | 'pre_qualified' | 'not_eligible' | 'meeting_scheduled' | 'meeting_complete' | 'account_invite_sent' | 'account_created';
   calendlyEventUrl?: string;
   createdAt: string;
   updatedAt: string;
+  // Additional fields for integration
+  fundCode?: string;
+  onboardingApplicationId?: string;
 }
 
 export type KYCFormData = Partial<

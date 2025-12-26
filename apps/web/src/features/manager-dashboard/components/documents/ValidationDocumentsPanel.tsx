@@ -105,10 +105,11 @@ export function ValidationDocumentsPanel() {
   });
 
   // Memoize status counts to avoid recalculating on every render
+  // Use validationStatus field for validation documents
   const { pendingCount, approvedCount, rejectedCount } = useMemo(() => ({
-    pendingCount: documents.filter((d) => d.status === 'review' || d.status === 'pending').length,
-    approvedCount: documents.filter((d) => d.status === 'final' || d.status === 'approved').length,
-    rejectedCount: documents.filter((d) => d.status === 'rejected').length,
+    pendingCount: documents.filter((d) => d.validationStatus === 'pending' || !d.validationStatus).length,
+    approvedCount: documents.filter((d) => d.validationStatus === 'approved').length,
+    rejectedCount: documents.filter((d) => d.validationStatus === 'rejected').length,
   }), [documents]);
 
   // Memoize filtered documents to avoid recalculating on every render
@@ -119,10 +120,11 @@ export function ValidationDocumentsPanel() {
         doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         doc.investorName?.toLowerCase().includes(searchQuery.toLowerCase());
       
+      // Use validationStatus for filtering
+      const docValidationStatus = doc.validationStatus || 'pending';
       const matchesStatus =
         statusFilter === 'all' ||
-        doc.status === statusFilter ||
-        (statusFilter === 'pending' && doc.status === 'review');
+        docValidationStatus === statusFilter;
       
       return matchesSearch && matchesStatus;
     });
@@ -263,7 +265,9 @@ export function ValidationDocumentsPanel() {
                 </tr>
               ) : (
                 filteredDocuments.map((doc) => {
-                  const isPending = doc.status === 'review' || doc.status === 'draft' || !doc.status;
+                  // Use validationStatus for validation documents
+                  const docValidationStatus = doc.validationStatus || 'pending';
+                  const isPending = docValidationStatus === 'pending';
                   const isApproving = approveMutation.isPending && approveMutation.variables === doc.id;
                   
                   return (
@@ -282,7 +286,7 @@ export function ValidationDocumentsPanel() {
                           {doc.investorName || 'Unknown'}
                         </span>
                       </td>
-                      <td className="p-4">{getStatusBadge(doc.status)}</td>
+                      <td className="p-4">{getStatusBadge(docValidationStatus)}</td>
                       <td className="p-4 text-muted-foreground">{formatDate(doc.createdAt)}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
@@ -338,13 +342,13 @@ export function ValidationDocumentsPanel() {
                               </Button>
                             </>
                           )}
-                          {doc.status === 'final' || doc.status === 'approved' ? (
+                          {docValidationStatus === 'approved' && (
                             <span className="flex items-center gap-1 text-sm text-green-600">
                               <CheckCircle2 className="h-4 w-4" />
                               Validated
                             </span>
-                          ) : null}
-                          {doc.status === 'rejected' && (
+                          )}
+                          {docValidationStatus === 'rejected' && (
                             <span className="flex items-center gap-1 text-sm text-red-600">
                               <AlertCircle className="h-4 w-4" />
                               Rejected

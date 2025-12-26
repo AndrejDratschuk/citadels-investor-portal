@@ -29,6 +29,8 @@ export interface Document {
   uploadedBy?: 'investor' | 'fund_manager' | 'docusign_auto' | 'system';
   validatedBy?: string | null;
   validatedAt?: string | null;
+  validationStatus?: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string | null;
 }
 
 export interface DocumentsByDeal {

@@ -40,7 +40,9 @@ export function KYCApprovalActions({
     setRejectReason('');
   };
 
-  const form2Url = `${getForm2BaseUrl()}/onboard/${app.fundCode}?kyc=${app.id}`;
+  // Use fundCode if available, otherwise fallback to fundId
+  const fundIdentifier = app.fundCode || app.fundId;
+  const form2Url = `${getForm2BaseUrl()}/onboard/${fundIdentifier}?kyc=${app.id}`;
   const needsForm2 = app.status === 'meeting_complete' && !app.onboardingApplicationId;
   const hasForm2 = !!app.onboardingApplicationId;
 

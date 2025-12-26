@@ -34,6 +34,13 @@ export interface CreateCommunicationInput {
   meetingDurationMinutes?: number;
 }
 
+export interface SendEmailInput {
+  investorIds?: string[];
+  recipientEmails?: string[];
+  subject: string;
+  body: string;
+}
+
 export const communicationsApi = {
   // Get all communications for the fund (manager view)
   getAll: async (): Promise<CommunicationWithInvestor[]> => {
@@ -49,6 +56,11 @@ export const communicationsApi = {
   // Create a communication log
   create: async (investorId: string, input: CreateCommunicationInput): Promise<Communication> => {
     return api.post<Communication>(`/investors/${investorId}/communications`, input);
+  },
+
+  // Send email to investors or recipients (manager)
+  send: async (input: SendEmailInput): Promise<{ success: boolean; messageId?: string }> => {
+    return api.post<{ success: boolean; messageId?: string }>('/communications/send', input);
   },
 
   // Mark a communication as read (manager)

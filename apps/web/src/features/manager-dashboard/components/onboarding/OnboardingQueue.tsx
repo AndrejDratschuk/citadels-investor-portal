@@ -81,7 +81,9 @@ export function OnboardingQueue() {
   }, [rejectInvestorMutation]);
 
   const handleSendForm2 = useCallback(async (app: KYCApplication): Promise<void> => {
-    const form2Url = `${getForm2BaseUrl()}/onboard/${app.fundCode}?kyc=${app.id}`;
+    // Use fundCode if available, otherwise fallback to fundId
+    const fundIdentifier = app.fundCode || app.fundId;
+    const form2Url = `${getForm2BaseUrl()}/onboard/${fundIdentifier}?kyc=${app.id}`;
     
     try {
       await communicationsApi.send({

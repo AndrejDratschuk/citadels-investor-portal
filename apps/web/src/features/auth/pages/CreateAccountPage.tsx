@@ -140,16 +140,16 @@ export function CreateAccountPage() {
         verificationCode: data.code,
       });
 
-      // Set auth state
-      setAuth({
-        user: {
+      // Set auth state (setAuth expects 3 separate arguments)
+      setAuth(
+        {
           id: result.user.id,
           email: result.user.email,
           role: result.user.role,
-        },
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-      });
+        } as any, // Type cast needed since User type may have more fields
+        result.accessToken,
+        result.refreshToken
+      );
 
       setPageState('success');
 

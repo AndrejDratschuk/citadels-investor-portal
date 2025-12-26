@@ -16,6 +16,8 @@ import {
   AlertCircle,
   Save,
   Loader2,
+  TrendingUp,
+  ArrowRight,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage } from '@flowveda/shared';
 import { Button } from '@/components/ui/button';
@@ -105,7 +107,7 @@ const statusStyles: Record<string, string> = {
   sold: 'bg-gray-100 text-gray-700',
 };
 
-type TabType = 'overview' | 'investors' | 'documents' | 'kpis';
+type TabType = 'overview' | 'investors' | 'documents' | 'financials' | 'kpis';
 
 interface DealWithKpis extends Deal {
   kpis?: {
@@ -161,6 +163,7 @@ export function DealDetail() {
     { id: 'overview', label: 'Overview' },
     { id: 'investors', label: 'Investors', count: mockInvestors.length },
     { id: 'documents', label: 'Documents', count: mockDocuments.length },
+    { id: 'financials', label: 'Financials' },
     { id: 'kpis', label: 'KPIs' },
   ];
 
@@ -466,6 +469,104 @@ export function DealDetail() {
                 </Button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'financials' && (
+        <div className="space-y-6">
+          {/* Quick KPI Summary */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">NOI</p>
+              <p className="mt-1 text-2xl font-bold">{deal.kpis?.noi ? formatCurrency(deal.kpis.noi) : '—'}</p>
+              <p className="mt-1 text-xs text-green-600">+12% vs last month</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Cap Rate</p>
+              <p className="mt-1 text-2xl font-bold">{deal.kpis?.capRate ? `${(deal.kpis.capRate * 100).toFixed(2)}%` : '—'}</p>
+              <p className="mt-1 text-xs text-green-600">+5% vs last month</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Occupancy</p>
+              <p className="mt-1 text-2xl font-bold">{deal.kpis?.occupancyRate ? `${(deal.kpis.occupancyRate * 100).toFixed(0)}%` : '—'}</p>
+              <p className="mt-1 text-xs text-red-600">-2% vs last month</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Cash on Cash</p>
+              <p className="mt-1 text-2xl font-bold">{deal.kpis?.cashOnCash ? `${(deal.kpis.cashOnCash * 100).toFixed(2)}%` : '—'}</p>
+              <p className="mt-1 text-xs text-green-600">+8% vs last month</p>
+            </div>
+          </div>
+
+          {/* CTA to Full Financials Page */}
+          <Link to={`/manager/deals/${id}/financials`}>
+            <div className="rounded-xl border bg-gradient-to-r from-primary/5 to-primary/10 p-6 hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                    <TrendingUp className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Full Financial Dashboard</h3>
+                    <p className="text-sm text-muted-foreground">
+                      View detailed KPIs, financial statements, and performance trends
+                    </p>
+                  </div>
+                </div>
+                <Button className="gap-2">
+                  View Financials
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Link>
+
+          {/* Category Quick Links */}
+          <div className="rounded-xl border bg-card p-5">
+            <h3 className="font-semibold mb-4">Browse by Category</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <Link to={`/manager/deals/${id}/financials/category/rent_revenue`}>
+                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
+                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <span className="text-sm font-medium">Rent/Revenue</span>
+                </div>
+              </Link>
+              <Link to={`/manager/deals/${id}/financials/category/occupancy`}>
+                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
+                    <Home className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium">Occupancy</span>
+                </div>
+              </Link>
+              <Link to={`/manager/deals/${id}/financials/category/property_performance`}>
+                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+                    <TrendingUp className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <span className="text-sm font-medium">Performance</span>
+                </div>
+              </Link>
+              <Link to={`/manager/deals/${id}/financials/category/financial`}>
+                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
+                    <Building2 className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <span className="text-sm font-medium">Financial</span>
+                </div>
+              </Link>
+              <Link to={`/manager/deals/${id}/financials/category/debt_service`}>
+                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100">
+                    <DollarSign className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <span className="text-sm font-medium">Debt Service</span>
+                </div>
+              </Link>
+            </div>
           </div>
         </div>
       )}

@@ -12,6 +12,8 @@ import { dealsRoutes } from './modules/deals/deals.routes';
 import { notificationsRoutes } from './modules/notifications/notifications.routes';
 import { capitalCallsRoutes } from './modules/capital-calls/capital-calls.routes';
 import { docuSignRoutes } from './modules/docusign/docusign.routes';
+import { kpisRoutes, dealKpisRoutes } from './modules/kpis/kpis.routes';
+import { dataImportRoutes } from './modules/data-import/data-import.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -28,6 +30,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(notificationsRoutes, { prefix: '/notifications' });
   await fastify.register(capitalCallsRoutes, { prefix: '/capital-calls' });
   await fastify.register(docuSignRoutes, { prefix: '/docusign' });
+  await fastify.register(kpisRoutes, { prefix: '/kpis' });
+  await fastify.register(dealKpisRoutes, { prefix: '/deals' });
+  await fastify.register(dataImportRoutes, { prefix: '/import' });
 
   // Health check
   fastify.get('/health', async () => {

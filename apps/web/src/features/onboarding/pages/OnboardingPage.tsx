@@ -110,12 +110,13 @@ export function OnboardingPage() {
 
   const handleKYCConfirm = () => {
     setKycConfirmed(true);
-    nextStep();
+    // Don't call nextStep() - user still needs to create account (step 1)
   };
 
   const handleKYCEdit = () => {
     setKycConfirmed(true);
-    // Go to personal info step to edit
+    // Skip account creation and go directly to personal info step to edit
+    // Note: They'll need to go back to create account first
   };
 
   const handlePersonalInfoNext = (data: PersonalInfoData) => {

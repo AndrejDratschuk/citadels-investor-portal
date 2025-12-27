@@ -6,8 +6,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as prospectsApi from '../../../lib/api/prospects';
 import type {
-  Prospect,
-  PipelineMetrics,
   ProspectFilters,
   SendKYCInput,
   UpdateProspectStatusInput,

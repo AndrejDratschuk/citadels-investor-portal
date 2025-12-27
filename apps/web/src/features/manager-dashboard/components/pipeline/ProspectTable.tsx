@@ -6,12 +6,10 @@
 import { useState } from 'react';
 import {
   Search,
-  ChevronDown,
   MoreHorizontal,
   Mail,
   Eye,
   Clock,
-  UserCheck,
   XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -4,14 +4,14 @@
  */
 
 import { useState } from 'react';
-import { Mail, Download, Loader2, AlertCircle, Filter } from 'lucide-react';
+import { Mail, Download, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProspects, usePipelineStats } from '../hooks/useProspects';
 import { PipelineMetricsBar } from '../components/pipeline/PipelineMetricsBar';
 import { ProspectTable } from '../components/pipeline/ProspectTable';
 import { SendKYCModal } from '../components/pipeline/SendKYCModal';
 import { ProspectDetailModal } from '../components/pipeline/ProspectDetailModal';
-import type { Prospect, ProspectStatus } from '@flowveda/shared';
+import type { Prospect } from '@flowveda/shared';
 
 const STATUS_GROUPS = {
   all: 'All',

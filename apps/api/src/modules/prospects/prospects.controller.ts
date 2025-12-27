@@ -46,45 +46,30 @@ export class ProspectsController {
   }
 
   /**
-   * Get manager's fund info from their user record
+   * Get manager's fund info using the fundId from auth middleware
    */
-  private async getManagerFundInfo(userId: string): Promise<{
+  private async getManagerFundInfo(
+    fundId: string | null,
+    userId: string
+  ): Promise<{
     fundId: string;
     fundName: string;
     managerName: string;
     managerEmail: string;
     calendlyUrl?: string;
   } | null> {
-    // First, get manager info
-    const { data: manager, error: managerError } = await supabaseAdmin
+    if (!fundId) {
+      return null;
+    }
+
+    // Get manager info
+    const { data: manager } = await supabaseAdmin
       .from('users')
-      .select('fund_id, first_name, last_name, email')
+      .select('first_name, last_name, email')
       .eq('id', userId)
       .single();
 
-    if (managerError || !manager) {
-      return null;
-    }
-
-    let fundId = manager.fund_id;
-
-    // If no fund_id on user, try to find the fund they created/manage
-    if (!fundId) {
-      const { data: fund, error: fundError } = await supabaseAdmin
-        .from('funds')
-        .select('id')
-        .eq('created_by', userId)
-        .single();
-
-      if (fund && !fundError) {
-        fundId = fund.id;
-      }
-    }
-
-    if (!fundId) {
-      return null;
-    }
-
+    // Get fund info
     const { data: fund } = await supabaseAdmin
       .from('funds')
       .select('name, calendly_url')
@@ -94,8 +79,8 @@ export class ProspectsController {
     return {
       fundId,
       fundName: fund?.name || 'Fund',
-      managerName: `${manager.first_name || ''} ${manager.last_name || ''}`.trim() || 'Fund Manager',
-      managerEmail: manager.email,
+      managerName: `${manager?.first_name || ''} ${manager?.last_name || ''}`.trim() || 'Fund Manager',
+      managerEmail: manager?.email || '',
       calendlyUrl: fund?.calendly_url,
     };
   }
@@ -111,7 +96,7 @@ export class ProspectsController {
       }
 
       const input = SendKYCInputSchema.parse(request.body);
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
 
       if (!managerInfo) {
         reply.status(404).send({ success: false, error: 'Fund not found' });
@@ -179,7 +164,7 @@ export class ProspectsController {
         return;
       }
 
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo) {
         reply.status(404).send({ success: false, error: 'Fund not found' });
         return;
@@ -222,7 +207,7 @@ export class ProspectsController {
         return;
       }
 
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo) {
         reply.status(404).send({ success: false, error: 'Fund not found' });
         return;
@@ -256,7 +241,7 @@ export class ProspectsController {
       }
 
       // Verify manager has access to this prospect's fund
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
         reply.status(403).send({ success: false, error: 'Access denied' });
         return;
@@ -290,7 +275,7 @@ export class ProspectsController {
       }
 
       // Verify manager has access
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
         reply.status(403).send({ success: false, error: 'Access denied' });
         return;
@@ -361,7 +346,7 @@ export class ProspectsController {
       }
 
       // Verify manager has access
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
         reply.status(403).send({ success: false, error: 'Access denied' });
         return;
@@ -418,7 +403,7 @@ export class ProspectsController {
       }
 
       // Verify manager has access
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
         reply.status(403).send({ success: false, error: 'Access denied' });
         return;
@@ -484,7 +469,7 @@ export class ProspectsController {
       }
 
       // Verify manager has access
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
         reply.status(403).send({ success: false, error: 'Access denied' });
         return;
@@ -572,7 +557,7 @@ export class ProspectsController {
       }
 
       // Verify manager has access
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
         reply.status(403).send({ success: false, error: 'Access denied' });
         return;
@@ -607,7 +592,7 @@ export class ProspectsController {
       }
 
       // Verify manager has access
-      const managerInfo = await this.getManagerFundInfo(request.user.id);
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
       if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
         reply.status(403).send({ success: false, error: 'Access denied' });
         return;

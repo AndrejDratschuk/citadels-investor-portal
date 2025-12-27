@@ -4,12 +4,13 @@
  */
 
 import { useState } from 'react';
-import { Mail, Download, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Download, Loader2, AlertCircle, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProspects, usePipelineStats } from '../hooks/useProspects';
 import { PipelineMetricsBar } from '../components/pipeline/PipelineMetricsBar';
 import { ProspectTable } from '../components/pipeline/ProspectTable';
 import { SendKYCModal } from '../components/pipeline/SendKYCModal';
+import { ShareKYCLinkModal } from '../components/pipeline/ShareKYCLinkModal';
 import { ProspectDetailModal } from '../components/pipeline/ProspectDetailModal';
 import type { Prospect } from '@flowveda/shared';
 
@@ -46,6 +47,7 @@ const STATUS_TO_GROUP: Record<string, StatusGroup> = {
 
 export function PipelinePage(): JSX.Element {
   const [isKYCModalOpen, setKYCModalOpen] = useState(false);
+  const [isShareLinkModalOpen, setShareLinkModalOpen] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusGroup>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,6 +134,10 @@ export function PipelinePage(): JSX.Element {
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setShareLinkModalOpen(true)}>
+            <Link2 className="mr-2 h-4 w-4" />
+            Share KYC Link
+          </Button>
           <Button size="sm" onClick={() => setKYCModalOpen(true)}>
             <Mail className="mr-2 h-4 w-4" />
             Send KYC Form
@@ -178,6 +184,12 @@ export function PipelinePage(): JSX.Element {
           setKYCModalOpen(false);
           refetch();
         }}
+      />
+
+      {/* Share KYC Link Modal */}
+      <ShareKYCLinkModal
+        open={isShareLinkModalOpen}
+        onClose={() => setShareLinkModalOpen(false)}
       />
 
       {/* Prospect Detail Modal */}

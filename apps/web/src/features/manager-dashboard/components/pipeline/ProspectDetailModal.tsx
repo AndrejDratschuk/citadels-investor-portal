@@ -1,9 +1,9 @@
 /**
  * ProspectDetailModal
- * Modal for viewing prospect details and taking actions
+ * Modal for viewing prospect details and timeline
+ * Actions are delegated to ProspectActions component
  */
 
-import { useState } from 'react';
 import {
   X,
   Mail,
@@ -13,25 +13,11 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  ArrowRight,
-  DollarSign,
-  Loader2,
   Send,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ProspectStatusBadge } from './ProspectStatusBadge';
-import {
-  useUpdateProspectStatus,
-  useApproveDocuments,
-  useRejectDocuments,
-  useConvertToInvestor,
-  useSendReminder,
-} from '../../hooks/useProspects';
-import {
-  getStatusLabel,
-  getPossibleNextStatuses,
-  requiresManagerAction,
-} from '@flowveda/shared';
+import { ProspectActions } from './ProspectActions';
+import { requiresManagerAction } from '@flowveda/shared';
 import type { Prospect, ProspectStatus } from '@flowveda/shared';
 
 interface ProspectDetailModalProps {
@@ -47,17 +33,6 @@ export function ProspectDetailModal({
   onClose,
   onRefresh,
 }: ProspectDetailModalProps): JSX.Element | null {
-  const [showConvertForm, setShowConvertForm] = useState(false);
-  const [commitmentAmount, setCommitmentAmount] = useState('');
-  const [rejectReason, setRejectReason] = useState('');
-  const [showRejectForm, setShowRejectForm] = useState(false);
-
-  const updateStatusMutation = useUpdateProspectStatus();
-  const approveDocsMutation = useApproveDocuments();
-  const rejectDocsMutation = useRejectDocuments();
-  const convertMutation = useConvertToInvestor();
-  const sendReminderMutation = useSendReminder();
-
   if (!open) return null;
 
   const formatDate = (date: string | null): string => {
@@ -80,78 +55,6 @@ export function ProspectDetailModal({
     return prospect.email;
   };
 
-  const handleUpdateStatus = async (newStatus: ProspectStatus) => {
-    try {
-      await updateStatusMutation.mutateAsync({
-        id: prospect.id,
-        input: { status: newStatus },
-      });
-      onRefresh();
-    } catch (error: any) {
-      alert(`Failed to update status: ${error.message}`);
-    }
-  };
-
-  const handleApproveDocuments = async () => {
-    try {
-      await approveDocsMutation.mutateAsync({
-        id: prospect.id,
-        input: { documentIds: [] }, // In real app, get actual document IDs
-      });
-      onRefresh();
-    } catch (error: any) {
-      alert(`Failed to approve documents: ${error.message}`);
-    }
-  };
-
-  const handleRejectDocuments = async () => {
-    if (!rejectReason.trim()) {
-      alert('Please provide a rejection reason');
-      return;
-    }
-    try {
-      await rejectDocsMutation.mutateAsync({
-        id: prospect.id,
-        input: { documentIds: [], reason: rejectReason },
-      });
-      setShowRejectForm(false);
-      setRejectReason('');
-      onRefresh();
-    } catch (error: any) {
-      alert(`Failed to reject documents: ${error.message}`);
-    }
-  };
-
-  const handleConvert = async () => {
-    const amount = parseFloat(commitmentAmount);
-    if (!amount || amount <= 0) {
-      alert('Please enter a valid commitment amount');
-      return;
-    }
-    try {
-      await convertMutation.mutateAsync({
-        id: prospect.id,
-        input: { commitmentAmount: amount },
-      });
-      setShowConvertForm(false);
-      setCommitmentAmount('');
-      onRefresh();
-      onClose();
-    } catch (error: any) {
-      alert(`Failed to convert: ${error.message}`);
-    }
-  };
-
-  const handleSendReminder = async (type: 'kyc' | 'onboarding') => {
-    try {
-      await sendReminderMutation.mutateAsync({ id: prospect.id, type });
-      alert('Reminder sent successfully!');
-    } catch (error: any) {
-      alert(`Failed to send reminder: ${error.message}`);
-    }
-  };
-
-  const possibleNextStatuses = getPossibleNextStatuses(prospect.status as ProspectStatus);
   const needsAction = requiresManagerAction(prospect.status as ProspectStatus);
 
   // Timeline events
@@ -167,7 +70,7 @@ export function ProspectDetailModal({
     prospect.docusignSentAt && { label: 'DocuSign Sent', date: prospect.docusignSentAt, icon: Send },
     prospect.docusignSignedAt && { label: 'DocuSign Signed', date: prospect.docusignSignedAt, icon: CheckCircle },
     prospect.convertedAt && { label: 'Converted to Investor', date: prospect.convertedAt, icon: CheckCircle },
-  ].filter(Boolean) as Array<{ label: string; date: string; icon: any }>;
+  ].filter(Boolean) as Array<{ label: string; date: string; icon: typeof Clock }>;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
@@ -286,147 +189,10 @@ export function ProspectDetailModal({
             </div>
           </div>
 
-          {/* Actions Section */}
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium mb-4">Actions</h3>
-            
-            {/* Status Transition Buttons */}
-            {possibleNextStatuses.length > 0 && !showConvertForm && !showRejectForm && (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Available actions:</p>
-                <div className="flex flex-wrap gap-2">
-                  {possibleNextStatuses.map((status) => (
-                    <Button
-                      key={status}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (status === 'converted') {
-                          setShowConvertForm(true);
-                        } else if (status === 'documents_rejected') {
-                          setShowRejectForm(true);
-                        } else {
-                          handleUpdateStatus(status);
-                        }
-                      }}
-                      disabled={updateStatusMutation.isPending}
-                    >
-                      <ArrowRight className="mr-1 h-3 w-3" />
-                      {getStatusLabel(status)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Document Actions */}
-            {prospect.status === 'documents_pending' && !showRejectForm && (
-              <div className="flex gap-2 mt-4">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleApproveDocuments}
-                  disabled={approveDocsMutation.isPending}
-                >
-                  <CheckCircle className="mr-1 h-4 w-4" />
-                  Approve Documents
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowRejectForm(true)}
-                >
-                  <XCircle className="mr-1 h-4 w-4" />
-                  Reject Documents
-                </Button>
-              </div>
-            )}
-
-            {/* Reject Form */}
-            {showRejectForm && (
-              <div className="space-y-3 mt-4">
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="Enter rejection reason..."
-                  className="w-full rounded-md border p-2 text-sm"
-                  rows={3}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleRejectDocuments}
-                    disabled={rejectDocsMutation.isPending}
-                  >
-                    {rejectDocsMutation.isPending ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <XCircle className="mr-1 h-4 w-4" />
-                    )}
-                    Confirm Rejection
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowRejectForm(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Convert Form */}
-            {showConvertForm && (
-              <div className="space-y-3 mt-4">
-                <div>
-                  <label className="text-sm font-medium">Commitment Amount ($)</label>
-                  <input
-                    type="number"
-                    value={commitmentAmount}
-                    onChange={(e) => setCommitmentAmount(e.target.value)}
-                    placeholder="100000"
-                    className="w-full rounded-md border p-2 text-sm mt-1"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleConvert}
-                    disabled={convertMutation.isPending}
-                  >
-                    {convertMutation.isPending ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <DollarSign className="mr-1 h-4 w-4" />
-                    )}
-                    Convert to Investor
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowConvertForm(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Reminder Buttons */}
-            {(prospect.status === 'kyc_sent' || prospect.status === 'account_created') && (
-              <div className="mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleSendReminder(prospect.status === 'kyc_sent' ? 'kyc' : 'onboarding')
-                  }
-                  disabled={sendReminderMutation.isPending}
-                >
-                  <Mail className="mr-1 h-4 w-4" />
-                  Send Reminder Email
-                </Button>
-              </div>
-            )}
-          </div>
+          {/* Actions - delegated to ProspectActions component */}
+          <ProspectActions prospect={prospect} onRefresh={onRefresh} onClose={onClose} />
         </div>
       </div>
     </div>
   );
 }
-

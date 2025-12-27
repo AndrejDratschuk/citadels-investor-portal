@@ -7,6 +7,7 @@ const onboardingService = new OnboardingService();
 interface SubmitOnboardingBody extends OnboardingSubmissionData {
   inviteCode: string;
   password?: string;
+  userId?: string; // Pre-created user ID from AccountCreationStep
 }
 
 export class OnboardingController {
@@ -42,20 +43,50 @@ export class OnboardingController {
       }
     }
 
-    // Look up fund by invite code (for now, use the invite code as fund ID or fund name)
-    let fundId: string;
+    // Look up fund - first try from KYC application if provided
+    let fundId: string | null = null;
     
-    // First try to find by fund name/code
-    const { data: fundByName } = await supabaseAdmin
-      .from('funds')
-      .select('id')
-      .eq('name', body.inviteCode)
-      .single();
+    // If KYC application ID is provided, get fund from there (most reliable)
+    if (body.kycApplicationId) {
+      const { data: kycApp } = await supabaseAdmin
+        .from('kyc_applications')
+        .select('fund_id')
+        .eq('id', body.kycApplicationId)
+        .single();
+      
+      if (kycApp?.fund_id) {
+        fundId = kycApp.fund_id;
+      }
+    }
 
-    if (fundByName) {
-      fundId = fundByName.id;
-    } else {
-      // Try as direct fund ID
+    // If not found via KYC, try invite code as fund code (e.g., "citadel-2024")
+    if (!fundId) {
+      const { data: fundByCode } = await supabaseAdmin
+        .from('funds')
+        .select('id')
+        .ilike('name', `%${body.inviteCode.split('-')[0]}%`)
+        .single();
+
+      if (fundByCode) {
+        fundId = fundByCode.id;
+      }
+    }
+
+    // Try as fund name
+    if (!fundId) {
+      const { data: fundByName } = await supabaseAdmin
+        .from('funds')
+        .select('id')
+        .eq('name', body.inviteCode)
+        .single();
+
+      if (fundByName) {
+        fundId = fundByName.id;
+      }
+    }
+
+    // Try as direct fund ID (UUID)
+    if (!fundId) {
       const { data: fundById } = await supabaseAdmin
         .from('funds')
         .select('id')
@@ -64,36 +95,43 @@ export class OnboardingController {
 
       if (fundById) {
         fundId = fundById.id;
-      } else {
-        // Use a default fund if exists
-        const { data: defaultFund } = await supabaseAdmin
-          .from('funds')
-          .select('id')
-          .limit(1)
-          .single();
+      }
+    }
 
-        if (!defaultFund) {
-          return reply.status(404).send({
-            success: false,
-            error: 'Fund not found',
-          });
-        }
+    // Last resort: use default fund
+    if (!fundId) {
+      const { data: defaultFund } = await supabaseAdmin
+        .from('funds')
+        .select('id')
+        .limit(1)
+        .single();
+
+      if (defaultFund) {
         fundId = defaultFund.id;
       }
     }
 
-    // Check if email already exists
-    const { data: existingUser } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('email', body.email)
-      .single();
-
-    if (existingUser) {
-      return reply.status(409).send({
+    if (!fundId) {
+      return reply.status(404).send({
         success: false,
-        error: 'An account with this email already exists',
+        error: 'Fund not found',
       });
+    }
+
+    // Check if email already exists (but skip if userId is provided - account was created in step 1)
+    if (!body.userId) {
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('email', body.email)
+        .single();
+
+      if (existingUser) {
+        return reply.status(409).send({
+          success: false,
+          error: 'An account with this email already exists',
+        });
+      }
     }
 
     try {

@@ -152,9 +152,10 @@ export function CreateAccountPage() {
 
       setPageState('success');
 
-      // Redirect to onboarding after a brief success message
+      // Redirect to investor dashboard after account creation
+      // The investor will receive an onboarding invite separately
       setTimeout(() => {
-        navigate('/investor/onboarding', { replace: true });
+        navigate('/investor/dashboard', { replace: true });
       }, 2000);
     } catch (error: any) {
       setPageState('verification');

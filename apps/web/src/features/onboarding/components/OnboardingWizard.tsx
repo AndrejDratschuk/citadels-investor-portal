@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Check, User, MapPin, FileText, DollarSign, Building2 } from 'lucide-react';
+import { Check, User, MapPin, FileText, Upload, DollarSign, Building2 } from 'lucide-react';
 
 interface OnboardingWizardProps {
   currentStep: number;
@@ -10,8 +10,9 @@ const steps = [
   { number: 1, title: 'Personal Info', icon: User },
   { number: 2, title: 'Address', icon: MapPin },
   { number: 3, title: 'Tax & Accreditation', icon: FileText },
-  { number: 4, title: 'Investment', icon: DollarSign },
-  { number: 5, title: 'Banking', icon: Building2 },
+  { number: 4, title: 'Documents', icon: Upload },
+  { number: 5, title: 'Investment', icon: DollarSign },
+  { number: 6, title: 'Banking', icon: Building2 },
 ];
 
 export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardProps) {
@@ -33,25 +34,23 @@ export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardPr
 
       {/* Steps */}
       <div className="hidden sm:block relative">
-        {/* Connector Lines - positioned behind circles */}
-        <div className="absolute top-[18px] left-0 right-0 flex">
-          {steps.slice(0, -1).map((step, index) => (
-            <div
-              key={`line-${index}`}
-              className={cn(
-                'h-0.5 flex-1',
-                currentStep > step.number ? 'bg-primary' : 'bg-muted-foreground/30'
-              )}
-              style={{ 
-                marginLeft: index === 0 ? 'calc(10% - 4px)' : '0',
-                marginRight: index === steps.length - 2 ? 'calc(10% - 4px)' : '0',
-              }}
-            />
-          ))}
-        </div>
+        {/* Connector line - one continuous line behind all circles */}
+        <div 
+          className="absolute top-[18px] left-0 right-0 h-0.5 bg-muted-foreground/30"
+          style={{ zIndex: 0, marginLeft: '8.33%', marginRight: '8.33%' }}
+        />
+        {/* Progress line - colored portion */}
+        <div 
+          className="absolute top-[18px] left-0 h-0.5 bg-primary transition-all duration-300"
+          style={{ 
+            zIndex: 0, 
+            marginLeft: '8.33%',
+            width: `${((currentStep - 1) / (steps.length - 1)) * 83.34}%`
+          }}
+        />
 
         {/* Step Circles */}
-        <div className="relative flex justify-between">
+        <div className="relative flex justify-between" style={{ zIndex: 1 }}>
           {steps.map((step) => {
             const Icon = step.icon;
             const isCompleted = currentStep > step.number;
@@ -61,11 +60,11 @@ export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardPr
               <div key={step.number} className="flex flex-col items-center">
                 <div
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all bg-white',
+                    'flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all',
                     isCompleted
                       ? 'border-primary bg-primary text-primary-foreground'
                       : isCurrent
-                      ? 'border-primary bg-primary/10 text-primary'
+                      ? 'border-primary bg-white text-primary'
                       : 'border-muted-foreground/30 text-muted-foreground bg-white'
                   )}
                 >

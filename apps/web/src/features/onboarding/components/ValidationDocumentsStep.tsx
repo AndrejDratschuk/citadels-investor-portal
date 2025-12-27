@@ -31,6 +31,8 @@ export interface PendingDocument {
 interface ValidationDocumentsStepProps {
   documents: PendingDocument[];
   onDocumentsChange: (documents: PendingDocument[]) => void;
+  onNext?: () => void;
+  onBack?: () => void;
   errors?: string[];
 }
 
@@ -80,6 +82,8 @@ function validateFile(file: File): string | null {
 export function ValidationDocumentsStep({
   documents,
   onDocumentsChange,
+  onNext,
+  onBack,
   errors = [],
 }: ValidationDocumentsStepProps) {
   const [dragActive, setDragActive] = useState(false);
@@ -317,6 +321,27 @@ export function ValidationDocumentsStep({
               {validDocuments.length !== 1 ? 's' : ''} will be uploaded when you submit your
               application.
             </p>
+          )}
+        </div>
+      )}
+
+      {/* Navigation Buttons */}
+      {(onNext || onBack) && (
+        <div className="flex items-center justify-between pt-6 border-t">
+          {onBack && (
+            <Button type="button" variant="outline" onClick={onBack}>
+              Back
+            </Button>
+          )}
+          {onNext && (
+            <Button
+              type="button"
+              onClick={onNext}
+              disabled={validDocuments.length === 0}
+              className={onBack ? 'ml-auto' : ''}
+            >
+              Continue
+            </Button>
           )}
         </div>
       )}

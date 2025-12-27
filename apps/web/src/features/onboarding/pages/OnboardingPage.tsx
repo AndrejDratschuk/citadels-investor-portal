@@ -7,6 +7,7 @@ import {
   PersonalInfoStep,
   AddressEntityStep,
   TaxAccreditationStep,
+  ValidationDocumentsStep,
   InvestmentConsentStep,
   BankingInfoStep,
   ConfirmKYCStep,
@@ -36,12 +37,14 @@ export function OnboardingPage() {
   const {
     currentStep,
     formData,
+    validationDocuments,
     status,
     isSubmitting,
     error,
     nextStep,
     prevStep,
     updateFormData,
+    updateValidationDocuments,
     submitApplication,
     setKycApplicationId,
   } = useOnboarding(inviteCode || '');
@@ -124,6 +127,15 @@ export function OnboardingPage() {
     nextStep();
   };
 
+  const handleValidationDocumentsNext = () => {
+    // Validate that at least one document is uploaded
+    const validDocs = validationDocuments.filter((doc) => !doc.error);
+    if (validDocs.length === 0) {
+      return; // Don't proceed if no valid documents
+    }
+    nextStep();
+  };
+
   const handleInvestmentConsentNext = (data: InvestmentConsentData) => {
     updateFormData(data);
     nextStep();
@@ -136,7 +148,7 @@ export function OnboardingPage() {
 
   // Determine total steps and current step offset based on KYC data
   const hasKYCData = !!kycData && !kycConfirmed;
-  const totalSteps = 5; // Personal Info, Address, Tax, Investment, Banking
+  const totalSteps = 6; // Personal Info, Address, Tax, Documents, Investment, Banking
 
   const renderStep = () => {
     // Show KYC confirmation step if we have KYC data and haven't confirmed yet
@@ -176,6 +188,20 @@ export function OnboardingPage() {
         );
       case 4:
         return (
+          <ValidationDocumentsStep
+            documents={validationDocuments}
+            onDocumentsChange={updateValidationDocuments}
+            onNext={handleValidationDocumentsNext}
+            onBack={prevStep}
+            errors={
+              validationDocuments.filter((d) => !d.error).length === 0 && validationDocuments.length > 0
+                ? ['Please upload at least one validation document']
+                : []
+            }
+          />
+        );
+      case 5:
+        return (
           <InvestmentConsentStep
             data={formData}
             onSubmit={handleInvestmentConsentNext}
@@ -183,7 +209,7 @@ export function OnboardingPage() {
             isSubmitting={false}
           />
         );
-      case 5:
+      case 6:
         return (
           <BankingInfoStep
             data={formData}

@@ -336,6 +336,358 @@ export const documentApprovedTemplate = (data: DocumentApprovedTemplateData): st
   );
 };
 
+// ============================================================
+// Pipeline / Prospect Email Templates
+// ============================================================
+
+export interface KYCInviteTemplateData {
+  recipientName: string;
+  fundName: string;
+  kycUrl: string;
+  managerName?: string;
+  managerEmail?: string;
+}
+
+/**
+ * KYC Invite Email (Manual Send)
+ * Sent by fund manager to invite prospect to complete KYC form
+ */
+export const kycInviteTemplate = (data: KYCInviteTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  const safeManagerName = data.managerName ? escapeHtml(data.managerName) : undefined;
+  
+  return baseTemplate(
+    `
+    ${header('Investment Opportunity', safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        ${safeManagerName ? `${safeManagerName} from ${safeFundName}` : safeFundName} has invited you to explore an investment opportunity.
+      </p>
+      <p style="margin: 0 0 24px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        To get started, please complete this brief pre-qualification form (takes 3-4 minutes):
+      </p>
+      ${primaryButton('Complete Pre-Qualification', data.kycUrl)}
+      ${infoBox('This helps us verify you qualify as an accredited investor. We will follow up to schedule a brief call to discuss the opportunity.', 'info')}
+      <p style="margin: 24px 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Questions? Reply to this email or contact us directly.
+      </p>
+      ${safeManagerName ? `<p style="margin: 24px 0 0 0; font-size: 16px; color: #374151;">Best regards,<br><strong>${safeManagerName}</strong><br>${safeFundName}</p>` : ''}
+    `)}
+    `,
+    'You have been invited to explore an investment opportunity'
+  );
+};
+
+export interface KYCAutoSendTemplateData {
+  recipientName: string;
+  fundName: string;
+  kycUrl: string;
+}
+
+/**
+ * KYC Auto-Send Email (Interest Form)
+ * Sent automatically when someone submits the interest form
+ */
+export const kycAutoSendTemplate = (data: KYCAutoSendTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  
+  return baseTemplate(
+    `
+    ${header('Thanks for Your Interest', safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Thank you for expressing interest in ${safeFundName}!
+      </p>
+      <p style="margin: 0 0 24px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        <strong>Next step:</strong> Please complete this brief pre-qualification form (takes 3-4 minutes):
+      </p>
+      ${primaryButton('Complete Pre-Qualification', data.kycUrl)}
+      ${infoBox('This verifies you qualify as an accredited investor. We will follow up within 24 hours to schedule a brief call.', 'info')}
+      <p style="margin: 24px 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Looking forward to speaking with you!
+      </p>
+      <p style="margin: 16px 0 0 0; font-size: 16px; color: #374151;">Best regards,<br><strong>${safeFundName}</strong></p>
+    `)}
+    `,
+    'Complete your pre-qualification to continue'
+  );
+};
+
+export interface MeetingInviteTemplateData {
+  recipientName: string;
+  fundName: string;
+  calendlyUrl: string;
+  managerName?: string;
+}
+
+/**
+ * Meeting Invite Email
+ * Sent when KYC is approved to invite prospect to schedule a meeting
+ */
+export const meetingInviteTemplate = (data: MeetingInviteTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  const safeManagerName = data.managerName ? escapeHtml(data.managerName) : undefined;
+  
+  return baseTemplate(
+    `
+    ${header('Pre-Qualified! Schedule Your Call', safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      ${infoBox('Great news - you are pre-qualified as an accredited investor!', 'success')}
+      <p style="margin: 16px 0 24px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        <strong>Next step:</strong> Schedule a brief 15-minute call with ${safeManagerName || 'our team'} to discuss the investment opportunity:
+      </p>
+      ${primaryButton('Schedule Call', data.calendlyUrl)}
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        We will review the fund details, answer your questions, and outline next steps if you decide to proceed.
+      </p>
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151;">Best regards,<br><strong>${safeManagerName || safeFundName}</strong></p>
+    `)}
+    `,
+    'You are pre-qualified! Schedule your call.'
+  );
+};
+
+export interface PostMeetingOnboardingTemplateData {
+  recipientName: string;
+  fundName: string;
+  accountCreationUrl: string;
+  managerName?: string;
+}
+
+/**
+ * Post-Meeting Onboarding Email
+ * Sent after meeting complete to invite prospect to create account
+ */
+export const postMeetingOnboardingTemplate = (data: PostMeetingOnboardingTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  const safeManagerName = data.managerName ? escapeHtml(data.managerName) : undefined;
+  
+  return baseTemplate(
+    `
+    ${header('Create Your Investor Account', safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Thank you for our conversation! To move forward with your investment, please create your secure investor account:
+      </p>
+      ${primaryButton('Create Account', data.accountCreationUrl)}
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        This takes about 5 minutes and includes:
+      </p>
+      <ul style="margin: 8px 0 24px 0; padding-left: 24px; font-size: 16px; color: #374151; line-height: 1.8;">
+        <li>Creating your secure account</li>
+        <li>Completing your investor profile</li>
+        <li>Uploading verification documents</li>
+      </ul>
+      <p style="margin: 24px 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Questions? Reply to this email.
+      </p>
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151;">Best regards,<br><strong>${safeManagerName || safeFundName}</strong></p>
+    `)}
+    `,
+    'Create your investor account to continue'
+  );
+};
+
+export interface DocumentsApprovedDocuSignTemplateData {
+  recipientName: string;
+  fundName: string;
+  docusignUrl: string;
+  commitmentAmount?: string;
+}
+
+/**
+ * Documents Approved + DocuSign Email
+ * Sent when documents are approved to request DocuSign signature
+ */
+export const documentsApprovedDocuSignTemplate = (data: DocumentsApprovedDocuSignTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  const safeAmount = data.commitmentAmount ? escapeHtml(data.commitmentAmount) : undefined;
+  
+  return baseTemplate(
+    `
+    ${header('Investment Documents Ready for Signature', safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      ${infoBox('Your verification documents have been approved!', 'success')}
+      <p style="margin: 16px 0 24px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        <strong>Next step:</strong> Please review and sign your investment documents:
+      </p>
+      ${primaryButton('Sign Documents', data.docusignUrl)}
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Documents to sign:
+      </p>
+      <ul style="margin: 8px 0 24px 0; padding-left: 24px; font-size: 16px; color: #374151; line-height: 1.8;">
+        <li>Subscription Agreement${safeAmount ? ` ($${safeAmount} investment)` : ''}</li>
+        <li>Private Placement Memorandum Acknowledgement</li>
+      </ul>
+      <p style="margin: 0 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        After signing, you will receive wire instructions to complete your investment.
+      </p>
+    `)}
+    `,
+    'Your documents are ready for signature'
+  );
+};
+
+export interface WelcomeInvestorTemplateData {
+  recipientName: string;
+  fundName: string;
+  investmentAmount: string;
+  investmentDate: string;
+  portalUrl: string;
+  managerName?: string;
+  managerEmail?: string;
+}
+
+/**
+ * Welcome Investor Email
+ * Sent when prospect is converted to investor
+ */
+export const welcomeInvestorTemplate = (data: WelcomeInvestorTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  const safeAmount = escapeHtml(data.investmentAmount);
+  const safeDate = escapeHtml(data.investmentDate);
+  const safeManagerName = data.managerName ? escapeHtml(data.managerName) : undefined;
+  const safeManagerEmail = data.managerEmail ? escapeHtml(data.managerEmail) : undefined;
+  
+  return baseTemplate(
+    `
+    ${header('Welcome to ' + safeFundName, safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      ${infoBox('Congratulations! Your investment is confirmed.', 'success')}
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 24px 0; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+        <tr>
+          <td style="padding: 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">Investment Details:</p>
+            <p style="margin: 0 0 4px 0; font-size: 16px; color: #111827;"><strong>Amount:</strong> $${safeAmount}</p>
+            <p style="margin: 0 0 4px 0; font-size: 16px; color: #111827;"><strong>Date:</strong> ${safeDate}</p>
+            <p style="margin: 0; font-size: 16px; color: #111827;"><strong>Fund:</strong> ${safeFundName}</p>
+          </td>
+        </tr>
+      </table>
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Access Your Portal:
+      </p>
+      ${primaryButton('Login to Portal', data.portalUrl)}
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        In your portal you will find:
+      </p>
+      <ul style="margin: 8px 0 24px 0; padding-left: 24px; font-size: 16px; color: #374151; line-height: 1.8;">
+        <li>✓ Investment documents</li>
+        <li>✓ Performance updates</li>
+        <li>✓ Capital call notices</li>
+        <li>✓ Quarterly reports</li>
+      </ul>
+      ${safeManagerName ? `<p style="margin: 16px 0 0 0; font-size: 14px; color: #6b7280;">Your fund manager ${safeManagerName}${safeManagerEmail ? ` (${safeManagerEmail})` : ''} is available for any questions.</p>` : ''}
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151;">Thank you for investing with us!<br><strong>${safeFundName} Team</strong></p>
+    `)}
+    `,
+    'Welcome! Your investment is confirmed.'
+  );
+};
+
+export interface KYCReminderTemplateData {
+  recipientName: string;
+  fundName: string;
+  kycUrl: string;
+}
+
+/**
+ * KYC Reminder Email
+ * Sent 48 hours after KYC form sent if not completed
+ */
+export const kycReminderTemplate = (data: KYCReminderTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  
+  return baseTemplate(
+    `
+    ${header('Reminder: Complete Your Pre-Qualification', safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        We noticed you have not completed your pre-qualification form yet.
+      </p>
+      ${primaryButton('Complete Pre-Qualification', data.kycUrl)}
+      ${infoBox('This only takes 3-4 minutes and is required to move forward.', 'info')}
+      <p style="margin: 24px 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Questions? Reply to this email.
+      </p>
+      <p style="margin: 16px 0 0 0; font-size: 16px; color: #374151;">Best regards,<br><strong>${safeFundName}</strong></p>
+    `)}
+    `,
+    'Reminder: Complete your pre-qualification form'
+  );
+};
+
+export interface OnboardingReminderTemplateData {
+  recipientName: string;
+  fundName: string;
+  onboardingUrl: string;
+}
+
+/**
+ * Onboarding Reminder Email
+ * Sent 3 days after account creation if onboarding not completed
+ */
+export const onboardingReminderTemplate = (data: OnboardingReminderTemplateData): string => {
+  const safeRecipientName = escapeHtml(data.recipientName);
+  const safeFundName = escapeHtml(data.fundName);
+  
+  return baseTemplate(
+    `
+    ${header('Complete Your Investor Profile', safeFundName)}
+    ${content(`
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Hi ${safeRecipientName},
+      </p>
+      <p style="margin: 0 0 16px 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        You are almost done! Please complete your investor profile to move forward:
+      </p>
+      ${primaryButton('Continue Profile', data.onboardingUrl)}
+      <p style="margin: 24px 0 0 0; font-size: 16px; color: #374151; line-height: 1.6;">
+        Remaining steps:
+      </p>
+      <ul style="margin: 8px 0 24px 0; padding-left: 24px; font-size: 16px; color: #374151; line-height: 1.8;">
+        <li>Upload verification documents</li>
+        <li>Banking information</li>
+        <li>Final review</li>
+      </ul>
+      <p style="margin: 0 0 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Questions? Reply to this email.
+      </p>
+      <p style="margin: 16px 0 0 0; font-size: 16px; color: #374151;">Best regards,<br><strong>${safeFundName}</strong></p>
+    `)}
+    `,
+    'Complete your investor profile'
+  );
+};
+
 // Export all templates as an object for easier access
 export const emailTemplates = {
   accountInvite: accountInviteTemplate,
@@ -343,5 +695,14 @@ export const emailTemplates = {
   accountCreated: accountCreatedTemplate,
   documentRejection: documentRejectionTemplate,
   documentApproved: documentApprovedTemplate,
+  // Pipeline templates
+  kycInvite: kycInviteTemplate,
+  kycAutoSend: kycAutoSendTemplate,
+  meetingInvite: meetingInviteTemplate,
+  postMeetingOnboarding: postMeetingOnboardingTemplate,
+  documentsApprovedDocuSign: documentsApprovedDocuSignTemplate,
+  welcomeInvestor: welcomeInvestorTemplate,
+  kycReminder: kycReminderTemplate,
+  onboardingReminder: onboardingReminderTemplate,
 };
 

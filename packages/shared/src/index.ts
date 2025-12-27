@@ -9,6 +9,7 @@ export * from './schemas/communication.schema';
 export * from './schemas/kpi.schema';
 export * from './schemas/account-creation.schema';
 export * from './schemas/validation-document.schema';
+export * from './schemas/prospect.schema';
 
 // Types
 export * from './types/auth.types';
@@ -20,6 +21,7 @@ export * from './types/capital-call.types';
 export * from './types/api.types';
 export * from './types/communication.types';
 export * from './types/kpi.types';
+export * from './types/prospect.types';
 
 // Constants
 export * from './constants/roles';
@@ -29,4 +31,5 @@ export * from './constants/status';
 export * from './utils/formatters';
 export * from './utils/validators';
 export * from './utils/calculations';
+export * from './utils/prospectStatusTransitions';
 

@@ -6,6 +6,14 @@ import {
   AccountCreatedTemplateData,
   DocumentRejectionTemplateData,
   DocumentApprovedTemplateData,
+  KYCInviteTemplateData,
+  KYCAutoSendTemplateData,
+  MeetingInviteTemplateData,
+  PostMeetingOnboardingTemplateData,
+  DocumentsApprovedDocuSignTemplateData,
+  WelcomeInvestorTemplateData,
+  KYCReminderTemplateData,
+  OnboardingReminderTemplateData,
 } from './email.templates';
 
 // Initialize Resend with API key from environment
@@ -122,6 +130,106 @@ export class EmailService {
       subject: `Document Approved - ${data.fundName}`,
       body: `Hi ${data.recipientName}, your document "${data.documentName}" has been approved. View your documents at: ${data.portalUrl}`,
       html: emailTemplates.documentApproved(data),
+    });
+  }
+
+  // ============================================================
+  // Pipeline / Prospect Email Methods
+  // ============================================================
+
+  /**
+   * Send KYC invite email (manual send)
+   */
+  async sendKYCInvite(to: string, data: KYCInviteTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Investment Opportunity - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, you've been invited to complete a pre-qualification form for ${data.fundName}. Complete it here: ${data.kycUrl}`,
+      html: emailTemplates.kycInvite(data),
+    });
+  }
+
+  /**
+   * Send KYC auto-send email (from interest form)
+   */
+  async sendKYCAutoSend(to: string, data: KYCAutoSendTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Thanks for Your Interest - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, thank you for your interest in ${data.fundName}. Complete your pre-qualification here: ${data.kycUrl}`,
+      html: emailTemplates.kycAutoSend(data),
+    });
+  }
+
+  /**
+   * Send meeting invite email
+   */
+  async sendMeetingInvite(to: string, data: MeetingInviteTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `You're Pre-Qualified! Schedule Your Call - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, you're pre-qualified for ${data.fundName}. Schedule your call here: ${data.calendlyUrl}`,
+      html: emailTemplates.meetingInvite(data),
+    });
+  }
+
+  /**
+   * Send post-meeting onboarding email
+   */
+  async sendPostMeetingOnboarding(to: string, data: PostMeetingOnboardingTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Create Your Investor Account - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, thank you for meeting with us! Create your account here: ${data.accountCreationUrl}`,
+      html: emailTemplates.postMeetingOnboarding(data),
+    });
+  }
+
+  /**
+   * Send documents approved + DocuSign email
+   */
+  async sendDocumentsApprovedDocuSign(to: string, data: DocumentsApprovedDocuSignTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Documents Ready for Signature - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your documents have been approved. Sign your investment documents here: ${data.docusignUrl}`,
+      html: emailTemplates.documentsApprovedDocuSign(data),
+    });
+  }
+
+  /**
+   * Send welcome investor email
+   */
+  async sendWelcomeInvestor(to: string, data: WelcomeInvestorTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Welcome to ${data.fundName}!`,
+      body: `Hi ${data.recipientName}, congratulations! Your investment of $${data.investmentAmount} in ${data.fundName} is confirmed. Access your portal: ${data.portalUrl}`,
+      html: emailTemplates.welcomeInvestor(data),
+    });
+  }
+
+  /**
+   * Send KYC reminder email
+   */
+  async sendKYCReminder(to: string, data: KYCReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Reminder: Complete Your Pre-Qualification - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, don't forget to complete your pre-qualification form: ${data.kycUrl}`,
+      html: emailTemplates.kycReminder(data),
+    });
+  }
+
+  /**
+   * Send onboarding reminder email
+   */
+  async sendOnboardingReminder(to: string, data: OnboardingReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Complete Your Investor Profile - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, please complete your investor profile: ${data.onboardingUrl}`,
+      html: emailTemplates.onboardingReminder(data),
     });
   }
 }

@@ -15,6 +15,7 @@ import { docuSignRoutes } from './modules/docusign/docusign.routes';
 import { kpisRoutes, dealKpisRoutes } from './modules/kpis/kpis.routes';
 import { dataImportRoutes } from './modules/data-import/data-import.routes';
 import { accountCreationRoutes } from './modules/account-creation/account-creation.routes';
+import { prospectsRoutes } from './modules/prospects/prospects.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -35,6 +36,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(dealKpisRoutes, { prefix: '/deals' });
   await fastify.register(dataImportRoutes, { prefix: '/import' });
   await fastify.register(accountCreationRoutes, { prefix: '/account-creation' });
+  await fastify.register(prospectsRoutes, { prefix: '/prospects' });
 
   // Health check
   fastify.get('/health', async () => {

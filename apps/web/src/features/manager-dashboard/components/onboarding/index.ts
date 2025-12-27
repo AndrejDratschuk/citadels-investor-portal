@@ -1,5 +1,4 @@
 export * from './types';
-export { OnboardingQueue } from './OnboardingQueue';
 export { OnboardingTabs } from './OnboardingTabs';
 export { OnboardingStats } from './OnboardingStats';
 export { KYCApplicationRow } from './KYCApplicationRow';

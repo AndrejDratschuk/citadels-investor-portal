@@ -49,7 +49,7 @@ import {
   OnboardingPending,
 } from './features/onboarding/pages';
 import { KYCPage, KYCTypeSelectorPage } from './features/kyc/pages';
-import { OnboardingQueue } from './features/manager-dashboard/pages/OnboardingQueue';
+import { PipelinePage } from './features/manager-dashboard/pages/PipelinePage';
 import { USER_ROLES } from '@flowveda/shared';
 
 export const router = createBrowserRouter([
@@ -233,8 +233,8 @@ export const router = createBrowserRouter([
         element: <FundSettings />,
       },
       {
-        path: 'onboarding',
-        element: <OnboardingQueue />,
+        path: 'pipeline',
+        element: <PipelinePage />,
       },
     ],
   },

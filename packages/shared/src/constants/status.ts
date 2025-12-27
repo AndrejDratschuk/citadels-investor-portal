@@ -117,3 +117,54 @@ export const PROPERTY_TYPE = {
 
 export type PropertyType = typeof PROPERTY_TYPE[keyof typeof PROPERTY_TYPE];
 
+// Prospect statuses (pipeline stages)
+export const PROSPECT_STATUS = {
+  KYC_SENT: 'kyc_sent',
+  KYC_SUBMITTED: 'kyc_submitted',
+  PRE_QUALIFIED: 'pre_qualified',
+  NOT_ELIGIBLE: 'not_eligible',
+  MEETING_SCHEDULED: 'meeting_scheduled',
+  MEETING_COMPLETE: 'meeting_complete',
+  ACCOUNT_INVITE_SENT: 'account_invite_sent',
+  ACCOUNT_CREATED: 'account_created',
+  ONBOARDING_SUBMITTED: 'onboarding_submitted',
+  DOCUMENTS_PENDING: 'documents_pending',
+  DOCUMENTS_APPROVED: 'documents_approved',
+  DOCUMENTS_REJECTED: 'documents_rejected',
+  DOCUSIGN_SENT: 'docusign_sent',
+  DOCUSIGN_SIGNED: 'docusign_signed',
+  CONVERTED: 'converted',
+} as const;
+
+export type ProspectStatus = typeof PROSPECT_STATUS[keyof typeof PROSPECT_STATUS];
+
+// Prospect source (how they entered the pipeline)
+export const PROSPECT_SOURCE = {
+  MANUAL: 'manual',
+  WEBSITE: 'website',
+  INTEREST_FORM: 'interest_form',
+} as const;
+
+export type ProspectSource = typeof PROSPECT_SOURCE[keyof typeof PROSPECT_SOURCE];
+
+// Prospect event types (for status transitions)
+export const PROSPECT_EVENT = {
+  KYC_FORM_SENT: 'kyc_form_sent',
+  KYC_FORM_SUBMITTED: 'kyc_form_submitted',
+  KYC_APPROVED: 'kyc_approved',
+  KYC_REJECTED: 'kyc_rejected',
+  MEETING_BOOKED: 'meeting_booked',
+  MEETING_COMPLETED: 'meeting_completed',
+  ACCOUNT_INVITE_SENT: 'account_invite_sent',
+  ACCOUNT_CREATED: 'account_created',
+  ONBOARDING_SUBMITTED: 'onboarding_submitted',
+  DOCUMENTS_UPLOADED: 'documents_uploaded',
+  DOCUMENTS_APPROVED: 'documents_approved',
+  DOCUMENTS_REJECTED: 'documents_rejected',
+  DOCUSIGN_SENT: 'docusign_sent',
+  DOCUSIGN_SIGNED: 'docusign_signed',
+  CONVERTED_TO_INVESTOR: 'converted_to_investor',
+} as const;
+
+export type ProspectEvent = typeof PROSPECT_EVENT[keyof typeof PROSPECT_EVENT];
+

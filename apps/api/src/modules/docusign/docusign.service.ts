@@ -1,6 +1,7 @@
 import { createSign } from 'crypto';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { onboardingService } from '../onboarding/onboarding.service';
+import { prospectsRepository } from '../prospects/prospects.repository';
 import type {
   DocuSignConfig,
   DocuSignTemplate,
@@ -451,6 +452,51 @@ export class DocuSignService {
         // Don't throw - document update was successful
       }
     }
+
+    // Also check if this is a prospect's DocuSign (from pipeline flow)
+    if (signingStatus === 'signed') {
+      try {
+        await this.handleProspectDocuSignSigned(envelopeId);
+      } catch (err) {
+        console.error('[DocuSign] Error handling prospect DocuSign:', err);
+        // Don't throw - main document update was successful
+      }
+    }
+  }
+
+  /**
+   * Handle prospect's DocuSign being signed
+   * Updates prospect status from docusign_sent to docusign_signed
+   */
+  private async handleProspectDocuSignSigned(envelopeId: string): Promise<void> {
+    // Find prospect by docusign envelope ID
+    const { data: prospect } = await supabaseAdmin
+      .from('kyc_applications')
+      .select('id, status, fund_id')
+      .eq('docusign_envelope_id', envelopeId)
+      .single();
+
+    if (!prospect) {
+      // Not a prospect envelope, that's OK
+      return;
+    }
+
+    if (prospect.status !== 'docusign_sent') {
+      // Already processed or wrong status
+      console.log(`[DocuSign] Prospect ${prospect.id} not in docusign_sent status, skipping`);
+      return;
+    }
+
+    // Update prospect status to docusign_signed
+    const now = new Date();
+    await prospectsRepository.updateStatus(
+      prospect.id,
+      'docusign_signed',
+      now,
+      { docusignSignedAt: now }
+    );
+
+    console.log(`[DocuSign] Updated prospect ${prospect.id} to docusign_signed`);
   }
 }
 

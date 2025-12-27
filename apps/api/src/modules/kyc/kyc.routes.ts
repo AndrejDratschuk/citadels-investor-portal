@@ -13,6 +13,16 @@ export async function kycRoutes(fastify: FastifyInstance) {
     return kycController.start(request, reply);
   });
 
+  // Submit interest form (creates prospect and auto-sends KYC link)
+  fastify.post('/interest', async (request, reply) => {
+    return kycController.submitInterest(request, reply);
+  });
+
+  // Get KYC application by token (for manual sends)
+  fastify.get('/token/:token', async (request, reply) => {
+    return kycController.getByToken(request, reply);
+  });
+
   // Get KYC application by ID (no auth required - using ID as token)
   fastify.get('/:id', async (request, reply) => {
     return kycController.getById(request, reply);

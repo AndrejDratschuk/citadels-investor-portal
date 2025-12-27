@@ -1,7 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import crypto from 'crypto';
 import { KYCService, KYCApplicationData } from './kyc.service';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { InterestFormInputSchema } from '@flowveda/shared';
+import { prospectsRepository } from '../prospects/prospects.repository';
+import { prospectsService } from '../prospects/prospects.service';
+import { ProspectEmailTriggers } from '../prospects/prospectEmailTriggers';
+import { emailService } from '../email/email.service';
 
 const kycService = new KYCService();
 
@@ -14,6 +20,13 @@ interface UpdateKYCBody extends Partial<KYCApplicationData> {}
 
 interface UpdateCalendlyBody {
   eventUrl: string;
+}
+
+interface InterestFormBody {
+  email: string;
+  name: string;
+  phone?: string;
+  fundId: string;
 }
 
 export class KYCController {
@@ -66,6 +79,113 @@ export class KYCController {
       return reply.status(500).send({
         success: false,
         error: error.message || 'Failed to create KYC application',
+      });
+    }
+  }
+
+  /**
+   * Submit interest form (creates prospect and auto-sends KYC link)
+   * Public route - no auth required
+   */
+  async submitInterest(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = InterestFormInputSchema.parse(request.body);
+      
+      // Check if fund exists
+      const { data: fund, error: fundError } = await supabaseAdmin
+        .from('funds')
+        .select('id, name')
+        .eq('id', input.fundId)
+        .single();
+
+      if (fundError || !fund) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Fund not found',
+        });
+      }
+
+      // Check if prospect already exists
+      const existing = await prospectsRepository.findByEmail(input.email, input.fundId);
+      if (existing) {
+        return reply.status(400).send({
+          success: false,
+          error: 'You have already expressed interest in this fund. Please check your email for the KYC form link.',
+        });
+      }
+
+      // Generate IDs and prepare prospect data
+      const id = crypto.randomUUID();
+      const token = crypto.randomUUID();
+      const now = new Date();
+
+      const prospectData = prospectsService.prepareInterestFormProspect(
+        input.email,
+        input.name,
+        input.phone,
+        input.fundId,
+        id,
+        token,
+        now
+      );
+
+      // Create prospect
+      const prospect = await prospectsRepository.create(prospectData);
+
+      // Send auto-KYC email
+      const emailTriggers = new ProspectEmailTriggers(emailService);
+      await emailTriggers.onInterestFormSubmitted(prospect, fund.name);
+
+      return reply.status(201).send({
+        success: true,
+        message: 'Thank you for your interest! Please check your email for the next steps.',
+        data: {
+          prospectId: prospect.id,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error submitting interest form:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to submit interest form',
+      });
+    }
+  }
+
+  /**
+   * Get KYC application by token (for manual sends)
+   */
+  async getByToken(request: FastifyRequest, reply: FastifyReply) {
+    const { token } = request.params as { token: string };
+
+    try {
+      const prospect = await prospectsRepository.findByToken(token);
+
+      if (!prospect) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Invalid or expired KYC link',
+        });
+      }
+
+      // Return the prospect data for the KYC form to use
+      return reply.send({
+        success: true,
+        data: {
+          prospectId: prospect.id,
+          fundId: prospect.fundId,
+          fundName: prospect.fundName,
+          email: prospect.email,
+          firstName: prospect.firstName,
+          lastName: prospect.lastName,
+          phone: prospect.phone,
+          status: prospect.status,
+        },
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to fetch KYC application',
       });
     }
   }

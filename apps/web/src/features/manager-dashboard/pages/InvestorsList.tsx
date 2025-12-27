@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { UserPlus, Download, Loader2, AlertCircle } from 'lucide-react';
+import { Download, Loader2, AlertCircle, Users, DollarSign, TrendingUp, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InvestorTable, InvestorRow } from '../components/InvestorTable';
 import { useInvestors, useDeleteInvestor } from '../hooks/useInvestors';
 
-type StatusFilter = 'all' | 'prospect' | 'onboarding' | 'active' | 'inactive';
+type StatusFilter = 'all' | 'active' | 'inactive' | 'exited';
 
 export function InvestorsList() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -19,18 +18,22 @@ export function InvestorsList() {
     await deleteInvestorMutation.mutateAsync(investor.id);
   };
 
-  // Transform API data to match InvestorRow interface
-  const investors: InvestorRow[] = (apiInvestors || []).map((inv) => ({
-    id: inv.id,
-    firstName: inv.firstName,
-    lastName: inv.lastName,
-    email: inv.email,
-    status: inv.status as InvestorRow['status'],
-    accreditationStatus: inv.accreditationStatus as InvestorRow['accreditationStatus'],
-    commitmentAmount: inv.commitmentAmount,
-    totalCalled: inv.totalCalled,
-    createdAt: inv.createdAt,
-  }));
+  // Filter to only show confirmed investors (active, inactive, exited)
+  // Prospects and onboarding investors are now in the Pipeline
+  const confirmedStatuses = ['active', 'inactive', 'exited'];
+  const investors: InvestorRow[] = (apiInvestors || [])
+    .filter((inv) => confirmedStatuses.includes(inv.status))
+    .map((inv) => ({
+      id: inv.id,
+      firstName: inv.firstName,
+      lastName: inv.lastName,
+      email: inv.email,
+      status: inv.status as InvestorRow['status'],
+      accreditationStatus: inv.accreditationStatus as InvestorRow['accreditationStatus'],
+      commitmentAmount: inv.commitmentAmount,
+      totalCalled: inv.totalCalled,
+      createdAt: inv.createdAt,
+    }));
 
   const filteredInvestors = investors.filter((investor) => {
     // Status filter
@@ -51,11 +54,21 @@ export function InvestorsList() {
 
   const statusCounts = {
     all: investors.length,
-    prospect: investors.filter((i) => i.status === 'prospect').length,
-    onboarding: investors.filter((i) => i.status === 'onboarding').length,
     active: investors.filter((i) => i.status === 'active').length,
     inactive: investors.filter((i) => i.status === 'inactive').length,
+    exited: investors.filter((i) => (i.status as string) === 'exited').length,
   };
+
+  // Calculate aggregate metrics
+  const totalCommitted = investors.reduce((sum, inv) => sum + (inv.commitmentAmount || 0), 0);
+  const totalCalled = investors.reduce((sum, inv) => sum + (inv.totalCalled || 0), 0);
+  const avgInvestment = investors.length > 0 ? totalCommitted / investors.length : 0;
+
+  // Calculate new investors this month
+  const thisMonth = new Date();
+  thisMonth.setDate(1);
+  thisMonth.setHours(0, 0, 0, 0);
+  const newThisMonth = investors.filter((inv) => new Date(inv.createdAt) >= thisMonth).length;
 
   // Loading state
   if (isLoading) {
@@ -89,7 +102,7 @@ export function InvestorsList() {
         <div>
           <h1 className="text-3xl font-bold">Investors</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage your fund investors
+            Confirmed investors in your fund
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -97,35 +110,66 @@ export function InvestorsList() {
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
-          <Link to="/manager/investors/new">
-            <Button size="sm">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Investor
-            </Button>
-          </Link>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Metrics Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-        {(['all', 'active', 'onboarding', 'prospect', 'inactive'] as const).map(
-          (status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`rounded-lg border p-4 text-left transition-colors ${
-                statusFilter === status
-                  ? 'border-primary bg-primary/5'
-                  : 'hover:bg-muted/50'
-              }`}
-            >
-              <p className="text-sm font-medium capitalize text-muted-foreground">
-                {status === 'all' ? 'Total' : status}
-              </p>
-              <p className="mt-1 text-2xl font-bold">{statusCounts[status]}</p>
-            </button>
-          )
-        )}
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">Active Investors</p>
+          </div>
+          <p className="mt-2 text-2xl font-bold">{statusCounts.active}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-green-500" />
+            <p className="text-sm font-medium text-muted-foreground">Total Committed</p>
+          </div>
+          <p className="mt-2 text-2xl font-bold">${(totalCommitted / 1000000).toFixed(1)}M</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-blue-500" />
+            <p className="text-sm font-medium text-muted-foreground">Total Called</p>
+          </div>
+          <p className="mt-2 text-2xl font-bold">${(totalCalled / 1000000).toFixed(1)}M</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-purple-500" />
+            <p className="text-sm font-medium text-muted-foreground">Avg Investment</p>
+          </div>
+          <p className="mt-2 text-2xl font-bold">${(avgInvestment / 1000).toFixed(0)}K</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <CalendarPlus className="h-5 w-5 text-amber-500" />
+            <p className="text-sm font-medium text-muted-foreground">New This Month</p>
+          </div>
+          <p className="mt-2 text-2xl font-bold">{newThisMonth}</p>
+        </div>
+      </div>
+
+      {/* Status Filter */}
+      <div className="flex gap-2">
+        {(['all', 'active', 'inactive', 'exited'] as const).map((status) => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+              statusFilter === status
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-background hover:bg-muted'
+            }`}
+          >
+            {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+            <span className="ml-2 rounded-full bg-background/20 px-2 py-0.5 text-xs">
+              {statusCounts[status]}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Investor Table */}

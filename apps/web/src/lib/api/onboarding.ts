@@ -21,7 +21,7 @@ export interface OnboardingApplication {
   entityName?: string;
   taxResidency?: string;
   taxIdType?: string;
-  taxIdLast4?: string;
+  taxIdNumber?: string;
   accreditationType?: string;
   commitmentAmount?: number;
   status: 'pending' | 'approved' | 'rejected';

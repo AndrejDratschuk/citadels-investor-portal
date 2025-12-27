@@ -61,7 +61,7 @@ export const addressEntitySchema = z.object({
 export const taxAccreditationSchema = z.object({
   taxResidency: z.string().min(1, 'Tax residency is required'),
   taxIdType: z.enum(['ssn', 'ein']),
-  taxIdLast4: z.string().length(4, 'Must be exactly 4 digits').regex(/^\d{4}$/, 'Must be 4 digits'),
+  taxIdNumber: z.string().min(9, 'SSN must be 9 digits').max(11, 'Invalid format').regex(/^[\d-]+$/, 'Must contain only digits and dashes'),
   accreditationType: z.enum(['income', 'net_worth', 'professional', 'entity']),
   accreditationDetails: z.string().max(500).optional(),
 });

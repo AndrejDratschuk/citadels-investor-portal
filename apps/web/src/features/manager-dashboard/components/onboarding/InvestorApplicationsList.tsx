@@ -212,9 +212,9 @@ export function InvestorApplicationsList({
                             </h4>
                             <div className="space-y-1 text-sm">
                               {app.taxResidency && <p>{app.taxResidency}</p>}
-                              {app.taxIdType && app.taxIdLast4 && (
+                              {app.taxIdType && app.taxIdNumber && (
                                 <p>
-                                  {app.taxIdType} ending in {app.taxIdLast4}
+                                  {app.taxIdType.toUpperCase()}: ***-**-{app.taxIdNumber.slice(-4)}
                                 </p>
                               )}
                             </div>

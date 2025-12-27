@@ -27,7 +27,7 @@ export class OnboardingController {
     const requiredFields = [
       'firstName', 'lastName', 'email', 'phone',
       'address1', 'city', 'state', 'zipCode', 'country',
-      'taxResidency', 'taxIdType', 'taxIdLast4', 'accreditationType',
+      'taxResidency', 'taxIdType', 'taxIdNumber', 'accreditationType',
       'commitmentAmount',
       'distributionMethod', 'bankName', 'bankAddress', 
       'routingNumber', 'accountNumber', 'accountType', 'beneficiaryName',

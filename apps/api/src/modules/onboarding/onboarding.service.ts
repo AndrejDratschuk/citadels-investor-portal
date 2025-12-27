@@ -25,7 +25,7 @@ export interface OnboardingSubmissionData {
   // Tax & Accreditation
   taxResidency: string;
   taxIdType: string;
-  taxIdLast4: string;
+  taxIdNumber: string;
   accreditationType: string;
   accreditationDetails?: string;
   
@@ -106,7 +106,7 @@ export class OnboardingService {
           entity_type: data.entityType,
           entity_name: data.entityName,
           tax_id_type: data.taxIdType,
-          tax_id_last4: data.taxIdLast4,
+          tax_id_number: data.taxIdNumber,
           accreditation_status: 'approved', // Auto-approve since they passed KYC
           accreditation_type: data.accreditationType,
           commitment_amount: data.commitmentAmount,

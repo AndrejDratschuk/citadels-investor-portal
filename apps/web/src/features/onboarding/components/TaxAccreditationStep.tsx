@@ -69,22 +69,22 @@ export function TaxAccreditationStep({ data, onNext, onBack }: TaxAccreditationS
           )}
         </div>
         <div>
-          <Label htmlFor="taxIdLast4">
-            {taxIdType === 'ein' ? 'EIN' : 'SSN'} Last 4 Digits *
+          <Label htmlFor="taxIdNumber">
+            {taxIdType === 'ein' ? 'EIN' : 'SSN'} *
           </Label>
           <Input
-            id="taxIdLast4"
-            {...register('taxIdLast4')}
-            placeholder="1234"
-            maxLength={4}
+            id="taxIdNumber"
+            {...register('taxIdNumber')}
+            placeholder={taxIdType === 'ein' ? '12-3456789' : '123-45-6789'}
+            maxLength={11}
             className="mt-1.5"
             autoComplete="off"
           />
-          {errors.taxIdLast4 && (
-            <p className="mt-1 text-sm text-red-600">{errors.taxIdLast4.message}</p>
+          {errors.taxIdNumber && (
+            <p className="mt-1 text-sm text-red-600">{errors.taxIdNumber.message}</p>
           )}
           <p className="mt-1 text-xs text-muted-foreground">
-            Enter only the last 4 digits for security
+            {taxIdType === 'ein' ? 'Format: XX-XXXXXXX' : 'Format: XXX-XX-XXXX'}
           </p>
         </div>
       </div>

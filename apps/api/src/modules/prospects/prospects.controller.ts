@@ -55,24 +55,44 @@ export class ProspectsController {
     managerEmail: string;
     calendlyUrl?: string;
   } | null> {
+    // First, get manager info
     const { data: manager, error: managerError } = await supabaseAdmin
       .from('users')
       .select('fund_id, first_name, last_name, email')
       .eq('id', userId)
       .single();
 
-    if (managerError || !manager?.fund_id) {
+    if (managerError || !manager) {
+      return null;
+    }
+
+    let fundId = manager.fund_id;
+
+    // If no fund_id on user, try to find the fund they created/manage
+    if (!fundId) {
+      const { data: fund, error: fundError } = await supabaseAdmin
+        .from('funds')
+        .select('id')
+        .eq('created_by', userId)
+        .single();
+
+      if (fund && !fundError) {
+        fundId = fund.id;
+      }
+    }
+
+    if (!fundId) {
       return null;
     }
 
     const { data: fund } = await supabaseAdmin
       .from('funds')
       .select('name, calendly_url')
-      .eq('id', manager.fund_id)
+      .eq('id', fundId)
       .single();
 
     return {
-      fundId: manager.fund_id,
+      fundId,
       fundName: fund?.name || 'Fund',
       managerName: `${manager.first_name || ''} ${manager.last_name || ''}`.trim() || 'Fund Manager',
       managerEmail: manager.email,

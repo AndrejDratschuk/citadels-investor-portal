@@ -44,11 +44,15 @@ export interface OnboardingSubmissionData {
   
   // Optional KYC link
   kycApplicationId?: string;
+  
+  // Optional pre-created user ID (from account creation step)
+  userId?: string;
 }
 
 export class OnboardingService {
   /**
    * Submit onboarding application and create investor account
+   * If userId is provided, it means the account was already created in the frontend
    */
   async submit(
     fundId: string,
@@ -56,40 +60,75 @@ export class OnboardingService {
     data: OnboardingSubmissionData,
     password: string
   ) {
-    // Generate a random password if not provided (user will need to reset)
-    const userPassword = password || this.generateTempPassword();
+    let authUserId: string;
+    let createdAuthUser = false;
 
-    // 1. Create Supabase Auth user
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: userPassword,
-      email_confirm: true,
-    });
+    // Check if user account was already created (from AccountCreationStep)
+    if (data.userId) {
+      // Use the pre-created user ID
+      authUserId = data.userId;
+      
+      // Verify the user exists in Supabase Auth
+      const { data: existingUser, error: verifyError } = await supabaseAdmin.auth.admin.getUserById(data.userId);
+      if (verifyError || !existingUser.user) {
+        throw new Error('Invalid user account. Please try again.');
+      }
+    } else {
+      // Create Supabase Auth user (legacy path for backwards compatibility)
+      const userPassword = password || this.generateTempPassword();
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: data.email,
+        password: userPassword,
+        email_confirm: true,
+      });
 
-    if (authError || !authData.user) {
-      throw new Error(authError?.message || 'Failed to create user account');
+      if (authError || !authData.user) {
+        throw new Error(authError?.message || 'Failed to create user account');
+      }
+      
+      authUserId = authData.user.id;
+      createdAuthUser = true;
     }
 
     try {
-      // 2. Create user record
-      const { error: userError } = await supabaseAdmin
+      // Check if user record already exists (from frontend signup)
+      const { data: existingUserRecord } = await supabaseAdmin
         .from('users')
-        .insert({
-          id: authData.user.id,
-          email: data.email,
-          role: USER_ROLES.INVESTOR,
-          fund_id: fundId,
-        });
+        .select('id')
+        .eq('id', authUserId)
+        .single();
 
-      if (userError) {
-        throw new Error(userError.message);
+      // Create user record only if it doesn't exist
+      if (!existingUserRecord) {
+        const { error: userError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            id: authUserId,
+            email: data.email,
+            role: USER_ROLES.INVESTOR,
+            fund_id: fundId,
+          });
+
+        if (userError) {
+          throw new Error(userError.message);
+        }
+      } else {
+        // Update existing user record with fund_id if needed
+        await supabaseAdmin
+          .from('users')
+          .update({
+            fund_id: fundId,
+            role: USER_ROLES.INVESTOR,
+          })
+          .eq('id', authUserId);
       }
 
-      // 3. Create investor record with all details
+      // Create investor record with all details
+      // Status is 'onboarding' - will change to 'active' when docs approved + agreements signed
       const { data: investor, error: investorError } = await supabaseAdmin
         .from('investors')
         .insert({
-          user_id: authData.user.id,
+          user_id: authUserId,
           fund_id: fundId,
           first_name: data.firstName,
           last_name: data.lastName,
@@ -112,9 +151,9 @@ export class OnboardingService {
           commitment_amount: data.commitmentAmount,
           total_called: 0,
           total_invested: 0,
-          status: 'active',
+          status: 'onboarding', // Changed from 'active' - will be updated when onboarding completes
           onboarding_step: 5,
-          onboarded_at: new Date().toISOString(),
+          onboarded_at: null, // Not fully onboarded yet
           // Banking info (encrypted fields would need additional handling)
           distribution_method: data.distributionMethod,
           bank_name: data.bankName,
@@ -141,9 +180,10 @@ export class OnboardingService {
         fundId: fundId,
         commitmentAmount: data.commitmentAmount,
         source: 'onboarding',
+        status: 'onboarding',
       });
 
-      // 4. Create onboarding application record
+      // Create onboarding application record
       const { error: applicationError } = await supabaseAdmin
         .from('onboarding_applications')
         .insert({
@@ -161,7 +201,7 @@ export class OnboardingService {
         // Don't throw - investor is already created
       }
 
-      // 5. Update KYC application status if linked
+      // Update KYC application status if linked
       if (data.kycApplicationId) {
         await supabaseAdmin
           .from('kyc_applications')
@@ -173,16 +213,95 @@ export class OnboardingService {
       }
 
       return {
-        userId: authData.user.id,
+        userId: authUserId,
         investorId: investor.id,
         email: data.email,
-        tempPassword: password ? undefined : userPassword, // Only return if generated
       };
     } catch (error) {
-      // Rollback: delete auth user if anything fails
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      // Rollback: delete auth user if we created it and something fails
+      if (createdAuthUser) {
+        await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      }
       throw error;
     }
+  }
+
+  /**
+   * Check if investor has completed all onboarding requirements and update status
+   * Requirements:
+   * 1. All validation documents must be approved
+   * 2. All DocuSign agreements must be signed
+   */
+  async checkAndUpdateStatus(investorId: string): Promise<{ updated: boolean; newStatus?: string }> {
+    // Check validation documents status
+    const { data: pendingDocs } = await supabaseAdmin
+      .from('documents')
+      .select('id')
+      .eq('investor_id', investorId)
+      .eq('subcategory', 'validation')
+      .neq('validation_status', 'approved');
+
+    // Check DocuSign documents status
+    const { data: unsignedDocs } = await supabaseAdmin
+      .from('documents')
+      .select('id')
+      .eq('investor_id', investorId)
+      .eq('requires_signature', true)
+      .neq('signing_status', 'signed');
+
+    const allDocsApproved = !pendingDocs || pendingDocs.length === 0;
+    const allDocsSigned = !unsignedDocs || unsignedDocs.length === 0;
+
+    // Check if investor has any required signature documents
+    const { data: sigDocs } = await supabaseAdmin
+      .from('documents')
+      .select('id')
+      .eq('investor_id', investorId)
+      .eq('requires_signature', true);
+
+    // Only require signing if there are signature documents
+    const signingComplete = !sigDocs || sigDocs.length === 0 || allDocsSigned;
+
+    if (allDocsApproved && signingComplete) {
+      // All requirements met - update status to active
+      const { error } = await supabaseAdmin
+        .from('investors')
+        .update({
+          status: 'active',
+          onboarded_at: new Date().toISOString(),
+        })
+        .eq('id', investorId)
+        .eq('status', 'onboarding'); // Only update if still in onboarding
+
+      if (!error) {
+        // Send webhook for status change
+        webhookService.sendWebhook('investor.onboarding_complete', {
+          investorId,
+          status: 'active',
+        });
+
+        return { updated: true, newStatus: 'active' };
+      }
+    }
+
+    return { updated: false };
+  }
+
+  /**
+   * Get investor by ID
+   */
+  async getInvestorById(investorId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .select('*')
+      .eq('id', investorId)
+      .single();
+
+    if (error) {
+      return null;
+    }
+
+    return data;
   }
 
   private generateTempPassword(): string {
@@ -194,6 +313,8 @@ export class OnboardingService {
     return password;
   }
 }
+
+export const onboardingService = new OnboardingService();
 
 
 

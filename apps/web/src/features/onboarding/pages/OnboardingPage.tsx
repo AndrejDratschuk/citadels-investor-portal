@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { PublicFormHeader } from '@/components/layout/PublicFormHeader';
 import {
   OnboardingWizard,
+  AccountCreationStep,
   PersonalInfoStep,
   AddressEntityStep,
   TaxAccreditationStep,
@@ -11,8 +12,10 @@ import {
   InvestmentConsentStep,
   BankingInfoStep,
   ConfirmKYCStep,
+  OnboardingConfirmation,
 } from '../components';
 import { useOnboarding } from '../hooks';
+import type { AccountCreationData } from '../components/AccountCreationStep';
 import {
   PersonalInfoData,
   AddressEntityData,
@@ -26,7 +29,6 @@ import { KYCApplication } from '@/features/kyc/types';
 export function OnboardingPage() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const kycId = searchParams.get('kyc');
 
   // KYC data state
@@ -40,11 +42,14 @@ export function OnboardingPage() {
     validationDocuments,
     status,
     isSubmitting,
+    isCreatingAccount,
     error,
+    accountError,
     nextStep,
     prevStep,
     updateFormData,
     updateValidationDocuments,
+    createAccount,
     submitApplication,
     setKycApplicationId,
   } = useOnboarding(inviteCode || '');
@@ -96,11 +101,12 @@ export function OnboardingPage() {
     }
   }, [kycId, setKycApplicationId]);
 
-  // Redirect to success page after submission
-  if (status === 'submitted') {
-    navigate('/onboard/success', { replace: true });
-    return null;
-  }
+  // Show confirmation page after submission
+  const showConfirmation = status === 'submitted';
+
+  const handleAccountCreation = async (data: AccountCreationData) => {
+    await createAccount({ email: data.email, password: data.password });
+  };
 
   const handleKYCConfirm = () => {
     setKycConfirmed(true);
@@ -148,9 +154,18 @@ export function OnboardingPage() {
 
   // Determine total steps and current step offset based on KYC data
   const hasKYCData = !!kycData && !kycConfirmed;
-  const totalSteps = 6; // Personal Info, Address, Tax, Documents, Investment, Banking
+  const totalSteps = 7; // Account, Personal Info, Address, Tax, Documents, Investment, Banking
 
   const renderStep = () => {
+    // Show confirmation after successful submission
+    if (showConfirmation) {
+      return (
+        <OnboardingConfirmation 
+          investorName={formData.firstName ? `${formData.firstName}` : undefined} 
+        />
+      );
+    }
+
     // Show KYC confirmation step if we have KYC data and haven't confirmed yet
     if (hasKYCData) {
       return (
@@ -165,12 +180,21 @@ export function OnboardingPage() {
     switch (currentStep) {
       case 1:
         return (
+          <AccountCreationStep
+            prefilledEmail={kycData?.email}
+            onNext={handleAccountCreation}
+            isLoading={isCreatingAccount}
+            error={accountError}
+          />
+        );
+      case 2:
+        return (
           <PersonalInfoStep
             data={formData}
             onNext={handlePersonalInfoNext}
           />
         );
-      case 2:
+      case 3:
         return (
           <AddressEntityStep
             data={formData}
@@ -178,7 +202,7 @@ export function OnboardingPage() {
             onBack={prevStep}
           />
         );
-      case 3:
+      case 4:
         return (
           <TaxAccreditationStep
             data={formData}
@@ -186,7 +210,7 @@ export function OnboardingPage() {
             onBack={prevStep}
           />
         );
-      case 4:
+      case 5:
         return (
           <ValidationDocumentsStep
             documents={validationDocuments}
@@ -200,7 +224,7 @@ export function OnboardingPage() {
             }
           />
         );
-      case 5:
+      case 6:
         return (
           <InvestmentConsentStep
             data={formData}
@@ -209,7 +233,7 @@ export function OnboardingPage() {
             isSubmitting={false}
           />
         );
-      case 6:
+      case 7:
         return (
           <BankingInfoStep
             data={formData}
@@ -250,11 +274,11 @@ export function OnboardingPage() {
         </div>
 
         <div className="rounded-xl border bg-white p-6 shadow-sm sm:p-8">
-          {!hasKYCData && (
+          {!hasKYCData && !showConfirmation && (
             <OnboardingWizard currentStep={currentStep} totalSteps={totalSteps} />
           )}
           
-          {error && (
+          {error && !showConfirmation && (
             <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
             </div>

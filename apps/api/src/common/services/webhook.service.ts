@@ -17,8 +17,10 @@
 export type WebhookEvent = 
   | 'investor.created'
   | 'investor.updated'
+  | 'investor.onboarding_complete'
   | 'kyc.status_changed'
   | 'kyc.acknowledged'
+  | 'kyc.account_invite_sent'
   | 'capital_call.created'
   | 'deal.created'
   | 'deal.updated'
@@ -38,8 +40,10 @@ export interface SendWebhookOptions {
 const eventToEnvVar: Record<WebhookEvent, string> = {
   'investor.created': 'WEBHOOK_URL_INVESTOR_CREATED',
   'investor.updated': 'WEBHOOK_URL_INVESTOR_UPDATED',
+  'investor.onboarding_complete': 'WEBHOOK_URL_INVESTOR_ONBOARDING_COMPLETE',
   'kyc.status_changed': 'WEBHOOK_URL_KYC_STATUS_CHANGED',
   'kyc.acknowledged': 'WEBHOOK_URL_KYC_ACKNOWLEDGED',
+  'kyc.account_invite_sent': 'WEBHOOK_URL_KYC_ACCOUNT_INVITE_SENT',
   'capital_call.created': 'WEBHOOK_URL_CAPITAL_CALL_CREATED',
   'deal.created': 'WEBHOOK_URL_DEAL_CREATED',
   'deal.updated': 'WEBHOOK_URL_DEAL_UPDATED',

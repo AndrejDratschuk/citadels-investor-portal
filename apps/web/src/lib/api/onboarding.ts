@@ -34,13 +34,15 @@ export const onboardingApi = {
     inviteCode: string,
     data: Partial<OnboardingFormData>,
     password?: string,
-    kycApplicationId?: string
+    kycApplicationId?: string,
+    userId?: string
   ): Promise<OnboardingSubmitResponse> => {
     return api.post<OnboardingSubmitResponse>('/onboarding/submit', {
       inviteCode,
       ...data,
       password,
       kycApplicationId,
+      userId,
     });
   },
 

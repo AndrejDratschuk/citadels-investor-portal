@@ -2,6 +2,12 @@ import { useState, useCallback } from 'react';
 import { OnboardingFormData, OnboardingStatus, PendingDocument } from '../types';
 import { onboardingApi } from '@/lib/api/onboarding';
 import { documentsApi } from '@/lib/api/documents';
+import { supabase } from '@/lib/supabase';
+
+interface AccountData {
+  email: string;
+  password: string;
+}
 
 interface UseOnboardingReturn {
   currentStep: number;
@@ -9,20 +15,25 @@ interface UseOnboardingReturn {
   validationDocuments: PendingDocument[];
   status: OnboardingStatus;
   isSubmitting: boolean;
+  isCreatingAccount: boolean;
   error: string | null;
+  accountError: string | null;
   kycApplicationId: string | null;
+  accountCreated: boolean;
+  userId: string | null;
   goToStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
   updateFormData: (data: Partial<OnboardingFormData>) => void;
   updateValidationDocuments: (docs: PendingDocument[]) => void;
   setKycApplicationId: (id: string | null) => void;
-  submitApplication: (finalData?: Partial<OnboardingFormData>, password?: string) => Promise<void>;
+  createAccount: (data: AccountData) => Promise<void>;
+  submitApplication: (finalData?: Partial<OnboardingFormData>) => Promise<void>;
   resetForm: () => void;
 }
 
-// Updated to 6 steps: Personal, Address, Tax, Documents, Investment, Banking
-const TOTAL_STEPS = 6;
+// Updated to 7 steps: Account, Personal, Address, Tax, Documents, Investment, Banking
+const TOTAL_STEPS = 7;
 
 const initialFormData: Partial<OnboardingFormData> = {
   preferredContact: 'email',
@@ -43,8 +54,13 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
   const [validationDocuments, setValidationDocuments] = useState<PendingDocument[]>([]);
   const [status, setStatus] = useState<OnboardingStatus>('draft');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accountError, setAccountError] = useState<string | null>(null);
   const [kycApplicationId, setKycApplicationId] = useState<string | null>(null);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userPassword, setUserPassword] = useState<string | null>(null);
 
   const goToStep = useCallback((step: number) => {
     if (step >= 1 && step <= TOTAL_STEPS) {
@@ -74,7 +90,45 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     setError(null);
   }, []);
 
-  const submitApplication = useCallback(async (finalData?: Partial<OnboardingFormData>, password?: string) => {
+  const createAccount = useCallback(async (data: AccountData) => {
+    setIsCreatingAccount(true);
+    setAccountError(null);
+
+    try {
+      // Create Supabase Auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
+      if (!authData.user) {
+        throw new Error('Failed to create account');
+      }
+
+      // Store user ID and password for later use during submission
+      setUserId(authData.user.id);
+      setUserPassword(data.password);
+      setAccountCreated(true);
+      
+      // Update form data with email
+      setFormData((prev) => ({ ...prev, email: data.email }));
+      
+      // Move to next step
+      setCurrentStep((prev) => prev + 1);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create account';
+      setAccountError(message);
+      throw err;
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  }, []);
+
+  const submitApplication = useCallback(async (finalData?: Partial<OnboardingFormData>) => {
     setIsSubmitting(true);
     setError(null);
 
@@ -83,11 +137,13 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
 
     try {
       // First submit the application to get investor ID
+      // Pass the password for existing account linking
       const result = await onboardingApi.submit(
         inviteCode,
         submissionData,
-        password,
-        kycApplicationId || undefined
+        userPassword || undefined,
+        kycApplicationId || undefined,
+        userId || undefined
       );
       
       // If we have validation documents and an investor ID, upload them
@@ -127,7 +183,7 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     } finally {
       setIsSubmitting(false);
     }
-  }, [inviteCode, formData, validationDocuments, kycApplicationId]);
+  }, [inviteCode, formData, validationDocuments, kycApplicationId, userId, userPassword]);
 
   const resetForm = useCallback(() => {
     setCurrentStep(1);
@@ -135,7 +191,11 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     setValidationDocuments([]);
     setStatus('draft');
     setError(null);
+    setAccountError(null);
     setKycApplicationId(null);
+    setAccountCreated(false);
+    setUserId(null);
+    setUserPassword(null);
   }, []);
 
   return {
@@ -144,14 +204,19 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     validationDocuments,
     status,
     isSubmitting,
+    isCreatingAccount,
     error,
+    accountError,
     kycApplicationId,
+    accountCreated,
+    userId,
     goToStep,
     nextStep,
     prevStep,
     updateFormData,
     updateValidationDocuments,
     setKycApplicationId,
+    createAccount,
     submitApplication,
     resetForm,
   };

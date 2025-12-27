@@ -2,6 +2,7 @@ import { FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { documentsService, CreateDocumentInput, DocumentFilters, DocumentCategory, DocumentDepartment, DocumentStatus, ValidationStatus } from './documents.service';
 import { emailService } from '../email/email.service';
+import { onboardingService } from '../onboarding/onboarding.service';
 
 export class DocumentsController {
   /**
@@ -351,10 +352,18 @@ export class DocumentsController {
 
       // TODO: If triggerDocusign is true, trigger DocuSign flow
 
+      // Check if investor's onboarding is now complete
+      let onboardingUpdated = false;
+      if (document.investorId) {
+        const statusResult = await onboardingService.checkAndUpdateStatus(document.investorId);
+        onboardingUpdated = statusResult.updated;
+      }
+
       return reply.send({
         success: true,
         data: document,
         emailSent,
+        onboardingUpdated,
       });
     } catch (error: any) {
       return reply.status(500).send({

@@ -1,5 +1,6 @@
 import { createSign } from 'crypto';
 import { supabaseAdmin } from '../../common/database/supabase';
+import { onboardingService } from '../onboarding/onboarding.service';
 import type {
   DocuSignConfig,
   DocuSignTemplate,
@@ -424,6 +425,13 @@ export class DocuSignService {
       updateData.signed_at = completedDateTime;
     }
 
+    // Get the document to find the investor ID
+    const { data: document } = await supabaseAdmin
+      .from('documents')
+      .select('investor_id')
+      .eq('docusign_envelope_id', envelopeId)
+      .single();
+
     const { error } = await supabaseAdmin
       .from('documents')
       .update(updateData)
@@ -432,6 +440,16 @@ export class DocuSignService {
     if (error) {
       console.error('[DocuSign] Error updating document status:', error);
       throw new Error('Failed to update document status');
+    }
+
+    // If signing is complete, check if investor's onboarding is now complete
+    if (signingStatus === 'signed' && document?.investor_id) {
+      try {
+        await onboardingService.checkAndUpdateStatus(document.investor_id);
+      } catch (err) {
+        console.error('[DocuSign] Error checking onboarding status:', err);
+        // Don't throw - document update was successful
+      }
     }
   }
 }

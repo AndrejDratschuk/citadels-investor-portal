@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Check, User, MapPin, FileText, Upload, DollarSign, Building2 } from 'lucide-react';
+import { Check, User, MapPin, FileText, Upload, DollarSign, Building2, KeyRound } from 'lucide-react';
 
 interface OnboardingWizardProps {
   currentStep: number;
@@ -7,12 +7,13 @@ interface OnboardingWizardProps {
 }
 
 const steps = [
-  { number: 1, title: 'Personal Info', icon: User },
-  { number: 2, title: 'Address', icon: MapPin },
-  { number: 3, title: 'Tax & Accreditation', icon: FileText },
-  { number: 4, title: 'Documents', icon: Upload },
-  { number: 5, title: 'Investment', icon: DollarSign },
-  { number: 6, title: 'Banking', icon: Building2 },
+  { number: 1, title: 'Account', icon: KeyRound },
+  { number: 2, title: 'Personal Info', icon: User },
+  { number: 3, title: 'Address', icon: MapPin },
+  { number: 4, title: 'Tax & Accreditation', icon: FileText },
+  { number: 5, title: 'Documents', icon: Upload },
+  { number: 6, title: 'Investment', icon: DollarSign },
+  { number: 7, title: 'Banking', icon: Building2 },
 ];
 
 export function OnboardingWizard({ currentStep, totalSteps }: OnboardingWizardProps) {

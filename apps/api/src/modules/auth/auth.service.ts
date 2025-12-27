@@ -208,5 +208,46 @@ export class AuthService {
 
     return { success: true };
   }
+
+  /**
+   * Create account for onboarding flow
+   * Creates auth user but NOT investor record (that happens on form submission)
+   */
+  async createOnboardingAccount(email: string, password: string) {
+    console.log('[AuthService.createOnboardingAccount] Creating account for:', email);
+    
+    // Create auth user
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+    if (authError || !authData.user) {
+      console.error('[AuthService.createOnboardingAccount] Failed to create auth user:', authError);
+      throw new Error(authError?.message || 'Failed to create account');
+    }
+
+    console.log('[AuthService.createOnboardingAccount] Auth user created:', authData.user.id);
+
+    // Sign in to get tokens
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (sessionError || !sessionData.session) {
+      // Rollback: delete auth user if sign in fails
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      throw new Error(sessionError?.message || 'Failed to sign in after account creation');
+    }
+
+    return {
+      userId: authData.user.id,
+      email: authData.user.email,
+      accessToken: sessionData.session.access_token,
+      refreshToken: sessionData.session.refresh_token,
+    };
+  }
 }
 

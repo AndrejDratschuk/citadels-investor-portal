@@ -18,6 +18,11 @@ export async function authRoutes(fastify: FastifyInstance) {
     return authController.refresh(request, reply);
   });
 
+  // Onboarding account creation (creates auth user but not investor record)
+  fastify.post('/onboarding-signup', async (request, reply) => {
+    return authController.createOnboardingAccount(request, reply);
+  });
+
   // Protected routes
   fastify.get('/me', { preHandler: authenticate }, async (request, reply) => {
     return authController.me(request, reply);

@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import { OnboardingFormData, OnboardingStatus, PendingDocument } from '../types';
 import { onboardingApi } from '@/lib/api/onboarding';
 import { documentsApi } from '@/lib/api/documents';
-import { supabase } from '@/lib/supabase';
+import { authApi } from '@/lib/api/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 interface AccountData {
   email: string;
@@ -95,24 +96,21 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
     setAccountError(null);
 
     try {
-      // Create Supabase Auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error('Failed to create account');
-      }
+      // Create account via API (uses backend Supabase admin client)
+      const result = await authApi.createOnboardingAccount(data.email, data.password);
 
       // Store user ID and password for later use during submission
-      setUserId(authData.user.id);
+      setUserId(result.userId);
       setUserPassword(data.password);
       setAccountCreated(true);
+      
+      // Store auth tokens so user is logged in
+      const { setAuth } = useAuthStore.getState();
+      setAuth(
+        { id: result.userId, email: result.email, role: 'investor', fundId: null, createdAt: new Date().toISOString() },
+        result.accessToken,
+        result.refreshToken
+      );
       
       // Update form data with email
       setFormData((prev) => ({ ...prev, email: data.email }));

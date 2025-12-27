@@ -78,5 +78,30 @@ export class AuthController {
       message: 'Logged out successfully',
     });
   }
+
+  async createOnboardingAccount(request: FastifyRequest, reply: FastifyReply) {
+    const { email, password } = request.body as { email: string; password: string };
+
+    if (!email || !password) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Email and password are required',
+      });
+    }
+
+    try {
+      const result = await authService.createOnboardingAccount(email, password);
+
+      return reply.status(201).send({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      return reply.status(400).send({
+        success: false,
+        error: error.message || 'Failed to create account',
+      });
+    }
+  }
 }
 

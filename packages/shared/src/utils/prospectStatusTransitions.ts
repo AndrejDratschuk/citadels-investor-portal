@@ -286,41 +286,46 @@ export function requiresManagerAction(status: ProspectStatus): boolean {
  * Pure function - no side effects
  */
 export function getStageGroup(status: ProspectStatus): string {
-  if ([
+  const kycStatuses: ProspectStatus[] = [
     PROSPECT_STATUS.KYC_SENT,
     PROSPECT_STATUS.KYC_SUBMITTED,
     PROSPECT_STATUS.PRE_QUALIFIED,
-  ].includes(status)) {
+  ];
+  if (kycStatuses.includes(status)) {
     return 'KYC';
   }
 
-  if ([
+  const meetingStatuses: ProspectStatus[] = [
     PROSPECT_STATUS.MEETING_SCHEDULED,
     PROSPECT_STATUS.MEETING_COMPLETE,
-  ].includes(status)) {
+  ];
+  if (meetingStatuses.includes(status)) {
     return 'Meeting';
   }
 
-  if ([
+  const onboardingStatuses: ProspectStatus[] = [
     PROSPECT_STATUS.ACCOUNT_INVITE_SENT,
     PROSPECT_STATUS.ACCOUNT_CREATED,
     PROSPECT_STATUS.ONBOARDING_SUBMITTED,
-  ].includes(status)) {
+  ];
+  if (onboardingStatuses.includes(status)) {
     return 'Onboarding';
   }
 
-  if ([
+  const documentStatuses: ProspectStatus[] = [
     PROSPECT_STATUS.DOCUMENTS_PENDING,
     PROSPECT_STATUS.DOCUMENTS_APPROVED,
     PROSPECT_STATUS.DOCUMENTS_REJECTED,
-  ].includes(status)) {
+  ];
+  if (documentStatuses.includes(status)) {
     return 'Documents';
   }
 
-  if ([
+  const signingStatuses: ProspectStatus[] = [
     PROSPECT_STATUS.DOCUSIGN_SENT,
     PROSPECT_STATUS.DOCUSIGN_SIGNED,
-  ].includes(status)) {
+  ];
+  if (signingStatuses.includes(status)) {
     return 'Signing';
   }
 

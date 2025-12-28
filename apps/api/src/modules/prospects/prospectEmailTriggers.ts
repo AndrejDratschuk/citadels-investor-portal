@@ -47,7 +47,14 @@ export class ProspectEmailTriggers {
       managerEmail,
     };
 
-    await this.emailService.sendKYCInvite(prospect.email, templateData);
+    console.log(`[Email] Sending KYC invite to ${prospect.email} for fund ${fundName}`);
+    const result = await this.emailService.sendKYCInvite(prospect.email, templateData);
+    
+    if (result.success) {
+      console.log(`[Email] KYC invite sent successfully to ${prospect.email}, messageId: ${result.messageId}`);
+    } else {
+      console.error(`[Email] Failed to send KYC invite to ${prospect.email}: ${result.error}`);
+    }
   }
 
   /**

@@ -17,7 +17,11 @@ import {
 } from './email.templates';
 
 // Initialize Resend with API key from environment
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resendApiKey = process.env.RESEND_API_KEY;
+if (!resendApiKey) {
+  console.warn('[Email] WARNING: RESEND_API_KEY is not set - emails will not be sent');
+}
+const resend = new Resend(resendApiKey);
 
 export interface SendEmailInput {
   to: string;
@@ -42,6 +46,14 @@ export class EmailService {
 
     // Default from address - should be configured in fund settings
     const fromAddress = from || process.env.EMAIL_FROM_ADDRESS || 'noreply@flowveda.com';
+
+    if (!resendApiKey) {
+      console.error('[Email] Cannot send email - RESEND_API_KEY is not configured');
+      return {
+        success: false,
+        error: 'Email service not configured - RESEND_API_KEY is missing',
+      };
+    }
 
     try {
       const { data, error } = await resend.emails.send({

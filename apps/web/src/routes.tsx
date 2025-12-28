@@ -48,7 +48,7 @@ import {
   OnboardingSuccess,
   OnboardingPending,
 } from './features/onboarding/pages';
-import { KYCPage, KYCTypeSelectorPage } from './features/kyc/pages';
+import { KYCPage, KYCTypeSelectorPage, KYCTokenPage } from './features/kyc/pages';
 import { PipelinePage } from './features/manager-dashboard/pages/PipelinePage';
 import { USER_ROLES } from '@flowveda/shared';
 
@@ -84,6 +84,11 @@ export const router = createBrowserRouter([
     element: <OnboardingPending />,
   },
   // KYC pre-qualification form (public)
+  // Token-based access (from email links)
+  {
+    path: '/kyc/token/:token',
+    element: <KYCTokenPage />,
+  },
   // Landing page with investor type selection
   {
     path: '/kyc/:fundCode',

@@ -100,6 +100,7 @@ export function KYCTokenPage(): JSX.Element {
     );
   }
 
-  return null;
+  // This should never be reached, but TypeScript requires a return
+  return <></>;
 }
 

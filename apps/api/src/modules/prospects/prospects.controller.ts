@@ -63,23 +63,36 @@ export class ProspectsController {
     }
 
     // Get manager info
-    const { data: manager } = await supabaseAdmin
+    const { data: manager, error: managerError } = await supabaseAdmin
       .from('users')
       .select('first_name, last_name, email')
       .eq('id', userId)
       .single();
 
+    if (managerError) {
+      console.error('[getManagerFundInfo] Error fetching manager:', managerError);
+    }
+
     // Get fund info
-    const { data: fund } = await supabaseAdmin
+    const { data: fund, error: fundError } = await supabaseAdmin
       .from('funds')
       .select('name, calendly_url')
       .eq('id', fundId)
       .single();
 
+    if (fundError) {
+      console.error('[getManagerFundInfo] Error fetching fund:', fundError);
+    }
+
+    const fundName = fund?.name || 'Fund';
+    const managerName = `${manager?.first_name || ''} ${manager?.last_name || ''}`.trim() || 'Fund Manager';
+
+    console.log(`[getManagerFundInfo] Fund: ${fundName}, Manager: ${managerName}, FundId: ${fundId}`);
+
     return {
       fundId,
-      fundName: fund?.name || 'Fund',
-      managerName: `${manager?.first_name || ''} ${manager?.last_name || ''}`.trim() || 'Fund Manager',
+      fundName,
+      managerName,
       managerEmail: manager?.email || '',
       calendlyUrl: fund?.calendly_url,
     };

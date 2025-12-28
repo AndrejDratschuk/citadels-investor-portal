@@ -19,7 +19,9 @@ import type { Prospect, ProspectStatus } from '@flowveda/shared';
 
 // Base URL for email links - should be configured via environment
 const getBaseUrl = (): string => {
-  return process.env.FRONTEND_URL || 'http://localhost:5173';
+  const url = process.env.FRONTEND_URL || 'http://localhost:5173';
+  console.log(`[Email] Using FRONTEND_URL: ${url}`);
+  return url;
 };
 
 export class ProspectEmailTriggers {

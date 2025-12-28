@@ -31,8 +31,8 @@ import {
   KPITimeFilter,
   getCategoryConfig,
 } from '../components/kpi';
-import type { KpiCategory, KpiDataType } from '@flowveda/shared';
-import { formatCurrency, formatPercentage, calculateChangePercent } from '@flowveda/shared';
+import type { KpiCategory, KpiDataType } from '@altsui/shared';
+import { formatCurrency, formatPercentage, calculateChangePercent } from '@altsui/shared';
 
 // ============================================
 // Icon Mapping for KPIs

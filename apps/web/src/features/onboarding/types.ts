@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ValidationDocumentType } from '@flowveda/shared';
+import type { ValidationDocumentType } from '@altsui/shared';
 
 // Pending document for upload
 export interface PendingDocument {

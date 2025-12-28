@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, Users, ChevronRight, Loader2 } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

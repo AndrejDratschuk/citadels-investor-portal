@@ -12,7 +12,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { KpiCategory } from '@flowveda/shared';
+import type { KpiCategory } from '@altsui/shared';
 
 // ============================================
 // Category Configuration

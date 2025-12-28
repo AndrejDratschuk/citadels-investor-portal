@@ -3,8 +3,8 @@
  * Display badge for prospect status
  */
 
-import { getStatusLabel } from '@flowveda/shared';
-import type { ProspectStatus } from '@flowveda/shared';
+import { getStatusLabel } from '@altsui/shared';
+import type { ProspectStatus } from '@altsui/shared';
 
 interface ProspectStatusBadgeProps {
   status: ProspectStatus | string;

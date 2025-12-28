@@ -24,7 +24,7 @@ import {
   CheckCircle,
   Inbox,
 } from 'lucide-react';
-import { formatDate } from '@flowveda/shared';
+import { formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { investorsApi } from '@/lib/api/investors';

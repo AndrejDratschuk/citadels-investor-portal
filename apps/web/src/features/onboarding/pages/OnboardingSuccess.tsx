@@ -8,7 +8,7 @@ export function OnboardingSuccess() {
       {/* Header */}
       <header className="border-b bg-white">
         <div className="mx-auto max-w-3xl px-4 py-4">
-          <h1 className="text-xl font-bold">FlowVeda</h1>
+          <h1 className="text-xl font-bold">Altsui</h1>
         </div>
       </header>
 
@@ -76,8 +76,8 @@ export function OnboardingSuccess() {
           </p>
           <p className="mt-1 text-sm">
             Contact us at{' '}
-            <a href="mailto:support@flowveda.com" className="text-primary hover:underline">
-              support@flowveda.com
+            <a href="mailto:support@altsui.com" className="text-primary hover:underline">
+              support@altsui.com
             </a>
           </p>
         </div>
@@ -91,6 +91,7 @@ export function OnboardingSuccess() {
     </div>
   );
 }
+
 
 
 

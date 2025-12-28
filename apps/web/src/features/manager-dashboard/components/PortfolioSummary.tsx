@@ -1,5 +1,5 @@
 import { TrendingUp } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 
 interface DealForSummary {
   currentValue: number | null;

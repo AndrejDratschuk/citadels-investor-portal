@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../../common/database/supabase';
-import { USER_ROLES } from '@flowveda/shared';
+import { USER_ROLES } from '@altsui/shared';
 import { webhookService } from '../../common/services/webhook.service';
 
 export interface OnboardingSubmissionData {

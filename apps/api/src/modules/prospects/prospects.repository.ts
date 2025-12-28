@@ -11,8 +11,8 @@ import type {
   PipelineMetrics,
   CreateProspectData,
   CreateInvestorFromProspectData,
-} from '@flowveda/shared';
-import type { ProspectStatus, ProspectSource } from '@flowveda/shared';
+} from '@altsui/shared';
+import type { ProspectStatus, ProspectSource } from '@altsui/shared';
 
 // ============================================
 // Database Row Types (snake_case)

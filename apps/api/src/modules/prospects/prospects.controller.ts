@@ -21,8 +21,8 @@ import {
   RejectDocumentsInputSchema,
   ConvertToInvestorInputSchema,
   ProspectFiltersSchema,
-} from '@flowveda/shared';
-import type { ProspectStatus } from '@flowveda/shared';
+} from '@altsui/shared';
+import type { ProspectStatus } from '@altsui/shared';
 
 export class ProspectsController {
   private repository: ProspectsRepository;

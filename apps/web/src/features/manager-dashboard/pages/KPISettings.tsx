@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { kpiDefinitionsApi, kpiPreferencesApi } from '@/lib/api/kpis';
 import { cn } from '@/lib/utils';
-import type { KpiCategory, KpiDefinition, KpiPreference } from '@flowveda/shared';
+import type { KpiCategory, KpiDefinition, KpiPreference } from '@altsui/shared';
 
 // ============================================
 // Category Config

@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm --filter=@flowveda/shared build"
+    "buildCommand": "npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm --filter=@altsui/shared build"
   },
   "deploy": {
     "startCommand": "cd apps/api && pnpm start",

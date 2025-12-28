@@ -12,8 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { financialStatementsApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@flowveda/shared';
-import type { StatementType, FinancialStatementData } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
+import type { StatementType, FinancialStatementData } from '@altsui/shared';
 
 // ============================================
 // Types

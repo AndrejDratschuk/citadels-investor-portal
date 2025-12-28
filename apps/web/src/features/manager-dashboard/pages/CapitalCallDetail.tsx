@@ -16,7 +16,7 @@ import {
   TrendingUp,
   Mail,
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@flowveda/shared';
+import { formatCurrency, formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { CapitalCallTable, CapitalCallInvestorItem } from '../components/CapitalCallTable';
 import { cn } from '@/lib/utils';

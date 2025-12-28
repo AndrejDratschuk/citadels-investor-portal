@@ -5,7 +5,7 @@ import {
   CreatePhoneCallInput,
   CreateEmailInput,
   CreateMeetingInput,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 interface DbCommunication {
   id: string;

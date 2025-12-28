@@ -6,7 +6,7 @@ import {
   TrendingUp,
   ArrowRight,
 } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 import { StatsCard } from '../components/StatsCard';
 import { ActivityFeed, ActivityItem } from '../components/ActivityFeed';
 import { FundChart } from '../components/FundChart';
@@ -104,7 +104,7 @@ export function ManagerDashboard() {
       <div>
         <h1 className="text-3xl font-bold">Fund Dashboard</h1>
         <p className="mt-1 text-muted-foreground">
-          FlowVeda Growth Fund I Overview
+          Altsui Growth Fund I Overview
         </p>
       </div>
 

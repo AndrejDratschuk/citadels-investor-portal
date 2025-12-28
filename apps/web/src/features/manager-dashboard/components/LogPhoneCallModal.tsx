@@ -3,7 +3,7 @@ import { X, Phone, Mail, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CommunicationType, CallDirection } from '@flowveda/shared';
+import { CommunicationType, CallDirection } from '@altsui/shared';
 import { cn } from '@/lib/utils';
 
 export interface LogCommunicationData {

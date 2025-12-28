@@ -22,7 +22,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
-import { formatDate } from '@flowveda/shared';
+import { formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCommunications, useMarkAsRead, useUpdateTags, suggestedTags, InvestorCommunication } from '../hooks/useCommunications';

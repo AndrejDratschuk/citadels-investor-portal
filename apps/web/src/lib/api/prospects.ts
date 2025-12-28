@@ -13,7 +13,7 @@ import type {
   ApproveDocumentsInput,
   RejectDocumentsInput,
   ConvertToInvestorInput,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 /**
  * Send KYC form to a new prospect

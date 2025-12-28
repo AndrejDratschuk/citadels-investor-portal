@@ -36,8 +36,8 @@ interface TeamMember {
 
 // Mock data
 const mockFund = {
-  name: 'FlowVeda Growth Fund I',
-  legalName: 'FlowVeda Growth Fund I, LP',
+  name: 'Altsui Growth Fund I',
+  legalName: 'Altsui Growth Fund I, LP',
   ein: '**-***1234',
   address: {
     street: '123 Investment Blvd',
@@ -53,8 +53,8 @@ const mockFund = {
 };
 
 const mockTeam: TeamMember[] = [
-  { id: '1', name: 'Jane Manager', email: 'jane@flowveda.com', role: 'manager' },
-  { id: '2', name: 'Bob Accountant', email: 'bob@flowveda.com', role: 'accountant' },
+  { id: '1', name: 'Jane Manager', email: 'jane@altsui.com', role: 'manager' },
+  { id: '2', name: 'Bob Accountant', email: 'bob@altsui.com', role: 'accountant' },
   { id: '3', name: 'Alice Attorney', email: 'alice@lawfirm.com', role: 'attorney' },
 ];
 

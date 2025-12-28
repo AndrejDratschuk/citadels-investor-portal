@@ -6,7 +6,7 @@ import {
   TrendingUp,
   DollarSign,
 } from 'lucide-react';
-import { formatCurrency, formatPercentage, formatDate } from '@flowveda/shared';
+import { formatCurrency, formatPercentage, formatDate } from '@altsui/shared';
 import { useInvestments } from '../hooks/useInvestments';
 import { Button } from '@/components/ui/button';
 

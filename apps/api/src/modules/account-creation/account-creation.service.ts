@@ -15,7 +15,7 @@ import type {
   SendCodeResponse,
   CreateAccountResponse,
   SendInviteResponse,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 interface AccountCreationServiceDeps {
   emailService: {

@@ -17,7 +17,7 @@ import type {
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 // Re-export types for convenience
 export type {

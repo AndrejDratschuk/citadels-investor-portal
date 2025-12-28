@@ -29,7 +29,7 @@ import {
   KPICategoryNav,
   KPITrendChart,
 } from '../components/kpi';
-import type { KpiCategory, KpiCardData, DealKpiSummary } from '@flowveda/shared';
+import type { KpiCategory, KpiCardData, DealKpiSummary } from '@altsui/shared';
 
 // ============================================
 // Icon Mapping for KPIs

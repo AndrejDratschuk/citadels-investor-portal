@@ -6,12 +6,13 @@ cmds = ["pnpm install --no-frozen-lockfile"]
 
 [phases.build]
 cmds = [
-  "pnpm --filter=@flowveda/shared build",
-  "pnpm --filter=@flowveda/api build"
+  "pnpm --filter=@altsui/shared build",
+  "pnpm --filter=@altsui/api build"
 ]
 
 [start]
 cmd = "cd apps/api && pnpm start"
+
 
 
 

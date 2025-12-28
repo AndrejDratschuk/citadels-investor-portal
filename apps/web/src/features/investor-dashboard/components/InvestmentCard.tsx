@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Building2, MapPin, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Investment } from '@/lib/api/investors';
-import { formatCurrency, formatPercentage } from '@flowveda/shared';
+import { formatCurrency, formatPercentage } from '@altsui/shared';
 
 interface InvestmentCardProps {
   investment: Investment;

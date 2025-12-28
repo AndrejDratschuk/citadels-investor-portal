@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { kpiDefinitionsApi } from '@/lib/api/kpis';
 import { cn } from '@/lib/utils';
-import type { KpiDefinition, ColumnMapping, KpiDataType } from '@flowveda/shared';
+import type { KpiDefinition, ColumnMapping, KpiDataType } from '@altsui/shared';
 
 // ============================================
 // Types

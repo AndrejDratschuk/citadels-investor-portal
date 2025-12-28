@@ -3,7 +3,7 @@
  * Pure function that determines which actions are available for a prospect based on status
  */
 
-import type { ProspectStatus } from '@flowveda/shared';
+import type { ProspectStatus } from '@altsui/shared';
 
 export type ProspectActionType =
   | 'approve_kyc'

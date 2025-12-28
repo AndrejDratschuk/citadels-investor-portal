@@ -122,7 +122,7 @@ export function KYCTypeSelectorPage() {
           <p className="text-sm text-muted-foreground">
             Not sure which type applies to you?{' '}
             <a 
-              href="mailto:support@flowveda.com" 
+              href="mailto:support@altsui.com" 
               className="font-medium underline hover:no-underline"
               style={{ color: 'var(--brand-primary, #4f46e5)' }}
             >
@@ -134,6 +134,7 @@ export function KYCTypeSelectorPage() {
     </div>
   );
 }
+
 
 
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '@flowveda/shared';
+import { User } from '@altsui/shared';
 import { authApi } from '@/lib/api/auth';
 
 interface AuthState {

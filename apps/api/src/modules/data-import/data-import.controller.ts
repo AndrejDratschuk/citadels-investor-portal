@@ -9,7 +9,7 @@ import {
   googleSheetsConnectSchema,
   columnMappingUpdateSchema,
   excelImportSchema,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 // ============================================
 // Request Types

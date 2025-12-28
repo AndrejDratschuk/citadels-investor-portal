@@ -12,7 +12,7 @@ import {
   PenTool,
   UserCheck,
 } from 'lucide-react';
-import type { PipelineMetrics } from '@flowveda/shared';
+import type { PipelineMetrics } from '@altsui/shared';
 
 interface PipelineMetricsBarProps {
   stats: PipelineMetrics;

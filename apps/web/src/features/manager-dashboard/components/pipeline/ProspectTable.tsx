@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ProspectStatusBadge } from './ProspectStatusBadge';
 import { useSendReminder, useUpdateProspectStatus } from '../../hooks/useProspects';
-import type { Prospect } from '@flowveda/shared';
+import type { Prospect } from '@altsui/shared';
 
 interface ProspectTableProps {
   prospects: Prospect[];

@@ -1,6 +1,6 @@
 import { FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from './auth.middleware';
-import { USER_ROLES } from '@flowveda/shared';
+import { USER_ROLES } from '@altsui/shared';
 
 export function requireRole(...allowedRoles: string[]) {
   return async (request: AuthenticatedRequest, reply: FastifyReply) => {

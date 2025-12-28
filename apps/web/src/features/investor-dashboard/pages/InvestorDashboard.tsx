@@ -9,7 +9,7 @@ import {
   Bell,
   Filter,
 } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 import { useInvestorStats, useInvestorProfile } from '../hooks/useInvestorData';
 import { useDocuments } from '../hooks/useDocuments';
 import { useNotices } from '../hooks/useNotices';

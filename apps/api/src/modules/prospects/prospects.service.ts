@@ -12,12 +12,12 @@ import type {
   StatusTransitionValidation,
   SendKYCInput,
   ConvertToInvestorInput,
-} from '@flowveda/shared';
-import type { ProspectStatus, ProspectSource } from '@flowveda/shared';
+} from '@altsui/shared';
+import type { ProspectStatus, ProspectSource } from '@altsui/shared';
 import {
   canTransitionTo,
   validateStatusTransition as validateTransition,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 export class ProspectsService {
   /**

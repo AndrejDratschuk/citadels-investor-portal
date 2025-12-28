@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { DataConnection, ColumnMapping } from '@flowveda/shared';
+import type { DataConnection, ColumnMapping } from '@altsui/shared';
 
 // Re-export types for convenience
 export type { DataConnection, ColumnMapping };

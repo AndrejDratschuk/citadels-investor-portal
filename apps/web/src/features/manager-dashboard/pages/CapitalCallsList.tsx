@@ -13,7 +13,7 @@ import {
   TrendingUp,
   Building2,
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@flowveda/shared';
+import { formatCurrency, formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

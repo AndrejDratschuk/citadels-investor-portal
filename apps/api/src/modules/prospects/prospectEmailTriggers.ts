@@ -16,7 +16,7 @@ import type {
   OnboardingReminderTemplateData,
   AccountInviteTemplateData,
 } from '../email/email.templates';
-import type { Prospect, ProspectStatus } from '@flowveda/shared';
+import type { Prospect, ProspectStatus } from '@altsui/shared';
 
 // Base URL for email links - should be configured via environment
 const getBaseUrl = (): string => {

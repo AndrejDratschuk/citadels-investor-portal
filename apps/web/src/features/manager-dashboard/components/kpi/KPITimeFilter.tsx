@@ -4,7 +4,7 @@
  */
 
 import { cn } from '@/lib/utils';
-import type { KpiDataType } from '@flowveda/shared';
+import type { KpiDataType } from '@altsui/shared';
 
 // ============================================
 // Types

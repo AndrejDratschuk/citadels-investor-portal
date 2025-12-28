@@ -1,5 +1,5 @@
 {
-  "name": "@flowveda/web",
+  "name": "@altsui/web",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@flowveda/shared": "workspace:*",
+    "@altsui/shared": "workspace:*",
     "@hookform/resolvers": "^3.3.4",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",

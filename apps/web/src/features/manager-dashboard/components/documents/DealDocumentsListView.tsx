@@ -1,5 +1,5 @@
 import { Search, Building2, ChevronRight } from 'lucide-react';
-import { formatDate, formatCurrency } from '@flowveda/shared';
+import { formatDate, formatCurrency } from '@altsui/shared';
 import { Input } from '@/components/ui/input';
 import { statusLabels } from '@/lib/api/deals';
 import { DocumentsByDeal } from './types';

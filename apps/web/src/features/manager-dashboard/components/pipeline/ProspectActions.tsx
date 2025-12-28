@@ -24,7 +24,7 @@ import {
   useSendReminder,
 } from '../../hooks/useProspects';
 import { getProspectActions, buildOnboardingUrl } from './getProspectActions';
-import type { Prospect, ProspectStatus } from '@flowveda/shared';
+import type { Prospect, ProspectStatus } from '@altsui/shared';
 
 interface ProspectActionsProps {
   prospect: Prospect;

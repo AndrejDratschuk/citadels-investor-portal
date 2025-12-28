@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { CommunicationsService } from './communications.service';
-import { CommunicationType } from '@flowveda/shared';
+import { CommunicationType } from '@altsui/shared';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
 

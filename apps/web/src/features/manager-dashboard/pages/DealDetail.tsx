@@ -19,7 +19,7 @@ import {
   TrendingUp,
   ArrowRight,
 } from 'lucide-react';
-import { formatCurrency, formatDate, formatPercentage } from '@flowveda/shared';
+import { formatCurrency, formatDate, formatPercentage } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

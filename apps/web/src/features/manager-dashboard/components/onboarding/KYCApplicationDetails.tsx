@@ -1,5 +1,5 @@
 import { Mail, Phone, MapPin, DollarSign, Shield, FileText, Users } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 import { KYCApplication, investorTypeLabels } from './types';
 import {
   getAccreditationLabel,

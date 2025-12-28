@@ -1,8 +1,8 @@
 {
-  "name": "flowveda-investor-portal",
+  "name": "altsui-investor-portal",
   "version": "1.0.0",
   "private": true,
-  "description": "FlowVeda Investor Portal - Multi-role SaaS platform",
+  "description": "Altsui Investor Portal - Multi-role SaaS platform",
   "scripts": {
     "dev": "pnpm --filter './apps/*' dev",
     "dev:api": "pnpm --filter './apps/api' dev",

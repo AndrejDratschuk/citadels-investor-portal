@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DollarSign, FileText, Shield, AlertCircle } from 'lucide-react';
 import { InvestmentConsentData, investmentConsentSchema } from '../types';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 
 interface InvestmentConsentStepProps {
   data: Partial<InvestmentConsentData>;
@@ -131,6 +131,7 @@ export function InvestmentConsentStep({ data, onSubmit, onBack, isSubmitting }: 
     </form>
   );
 }
+
 
 
 

@@ -9,7 +9,7 @@ import type {
   DataConnectionProvider,
   SyncStatus,
   ColumnMapping,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 // ============================================
 // Database Row Types (snake_case)

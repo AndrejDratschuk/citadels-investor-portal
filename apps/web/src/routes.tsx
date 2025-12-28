@@ -50,7 +50,7 @@ import {
 } from './features/onboarding/pages';
 import { KYCPage, KYCTypeSelectorPage, KYCTokenPage } from './features/kyc/pages';
 import { PipelinePage } from './features/manager-dashboard/pages/PipelinePage';
-import { USER_ROLES } from '@flowveda/shared';
+import { USER_ROLES } from '@altsui/shared';
 
 export const router = createBrowserRouter([
   {

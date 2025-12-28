@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MessageSquare, Mail, Video, Phone, Filter, Send, Inbox } from 'lucide-react';
-import { Communication, CommunicationType } from '@flowveda/shared';
+import { Communication, CommunicationType } from '@altsui/shared';
 import { CommunicationCard } from './CommunicationCard';
 import { cn } from '@/lib/utils';
 

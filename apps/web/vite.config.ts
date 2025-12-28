@@ -11,7 +11,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@flowveda/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      '@altsui/shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
   build: {

@@ -20,7 +20,7 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react';
-import { formatCurrency, formatDate, Communication } from '@flowveda/shared';
+import { formatCurrency, formatDate, Communication } from '@altsui/shared';
 import { investorsApi } from '@/lib/api/investors';
 import { Button } from '@/components/ui/button';
 import { InvestorStatusBadge } from '../components/InvestorStatusBadge';

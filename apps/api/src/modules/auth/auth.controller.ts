@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
-import { signupSchema, loginSchema } from '@flowveda/shared';
+import { signupSchema, loginSchema } from '@altsui/shared';
 
 const authService = new AuthService();
 

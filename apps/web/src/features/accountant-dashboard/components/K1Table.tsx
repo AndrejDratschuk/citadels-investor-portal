@@ -4,7 +4,7 @@ import { K1StatusBadge, K1Status } from './K1StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Download, Eye, Send, Search, CheckSquare, Square } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 
 export interface K1Record {
   id: string;
@@ -231,6 +231,7 @@ export function K1Table({
     </div>
   );
 }
+
 
 
 

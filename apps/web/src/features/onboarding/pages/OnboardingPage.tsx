@@ -292,8 +292,8 @@ export function OnboardingPage() {
         <div className="mt-8 text-center text-sm text-muted-foreground">
           <p>
             Questions? Contact us at{' '}
-            <a href="mailto:support@flowveda.com" className="text-primary hover:underline">
-              support@flowveda.com
+            <a href="mailto:support@altsui.com" className="text-primary hover:underline">
+              support@altsui.com
             </a>
           </p>
         </div>

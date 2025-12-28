@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { MapPin, TrendingUp, Users, Building2, Factory, Store, Landmark, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 
 export interface Deal {
   id: string;

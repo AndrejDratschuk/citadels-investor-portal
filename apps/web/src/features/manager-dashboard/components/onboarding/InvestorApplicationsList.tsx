@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Search, UserCheck, ChevronDown, ChevronRight, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@flowveda/shared';
+import { formatCurrency, formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';

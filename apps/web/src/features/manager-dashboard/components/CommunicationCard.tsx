@@ -1,6 +1,6 @@
 import { Mail, Video, Phone, MoreHorizontal, Clock, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-import { Communication, CommunicationType } from '@flowveda/shared';
-import { formatDate } from '@flowveda/shared';
+import { Communication, CommunicationType } from '@altsui/shared';
+import { formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -110,6 +110,7 @@ export function CommunicationCard({ communication, onDelete }: CommunicationCard
     </div>
   );
 }
+
 
 
 

@@ -11,7 +11,7 @@ import type {
   ColumnMapping,
   KpiPeriodType,
   KpiDataType,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 // ============================================
 // Service Class

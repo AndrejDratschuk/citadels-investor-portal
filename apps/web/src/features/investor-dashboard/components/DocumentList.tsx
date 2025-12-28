@@ -2,7 +2,7 @@ import { FileText, Download, Clock, CheckCircle2, AlertCircle, XCircle, ShieldCh
 import { cn } from '@/lib/utils';
 import { InvestorDocument } from '@/lib/api/investors';
 import { Button } from '@/components/ui/button';
-import { formatDate } from '@flowveda/shared';
+import { formatDate } from '@altsui/shared';
 
 interface DocumentListProps {
   documents: InvestorDocument[];

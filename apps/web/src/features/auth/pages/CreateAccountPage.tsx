@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { accountCreationApi } from '@/lib/api/account-creation';
 import { useAuthStore } from '@/stores/authStore';
-import type { VerifyTokenResponse } from '@flowveda/shared';
+import type { VerifyTokenResponse } from '@altsui/shared';
 
 // Form schemas
 const passwordSchema = z.object({

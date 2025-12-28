@@ -9,7 +9,7 @@ import {
   User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDate } from '@flowveda/shared';
+import { formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 
 export type CommunicationType = 'email' | 'meeting' | 'phone_call';
@@ -190,6 +190,7 @@ export function CommunicationsPreview({
     </div>
   );
 }
+
 
 
 

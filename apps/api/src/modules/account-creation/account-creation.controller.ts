@@ -5,7 +5,7 @@ import {
   sendVerificationCodeInputSchema,
   createAccountInputSchema,
   sendAccountInviteInputSchema,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 import { ZodError } from 'zod';
 
 /**

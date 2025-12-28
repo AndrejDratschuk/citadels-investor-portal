@@ -13,7 +13,7 @@ import type {
   KpiPeriodType,
   FinancialStatement,
   StatementType,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 // ============================================
 // Database Row Types (snake_case)

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 
 interface CapitalCallProgressProps {
   dealName: string;

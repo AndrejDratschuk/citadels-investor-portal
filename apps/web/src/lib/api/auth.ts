@@ -1,5 +1,5 @@
 import { api } from './client';
-import { SignupInput, LoginInput, User, AuthResponse } from '@flowveda/shared';
+import { SignupInput, LoginInput, User, AuthResponse } from '@altsui/shared';
 
 export interface OnboardingSignupResponse {
   userId: string;

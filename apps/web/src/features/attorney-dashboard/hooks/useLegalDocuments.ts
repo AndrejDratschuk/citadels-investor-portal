@@ -5,7 +5,7 @@ import { LegalDocument } from '../components';
 const mockDocuments: LegalDocument[] = [
   {
     id: '1',
-    name: 'FlowVeda Growth Fund I - PPM',
+    name: 'Altsui Growth Fund I - PPM',
     type: 'ppm',
     status: 'active',
     createdAt: '2024-01-15T10:30:00Z',
@@ -119,6 +119,7 @@ export function useLegalDocuments() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
+
 
 
 

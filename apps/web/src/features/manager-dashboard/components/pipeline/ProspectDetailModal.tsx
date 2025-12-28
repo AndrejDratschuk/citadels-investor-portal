@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import { ProspectStatusBadge } from './ProspectStatusBadge';
 import { ProspectActions } from './ProspectActions';
-import { requiresManagerAction } from '@flowveda/shared';
-import type { Prospect, ProspectStatus } from '@flowveda/shared';
+import { requiresManagerAction } from '@altsui/shared';
+import type { Prospect, ProspectStatus } from '@altsui/shared';
 
 interface ProspectDetailModalProps {
   prospect: Prospect;

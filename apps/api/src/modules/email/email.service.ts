@@ -45,7 +45,7 @@ export class EmailService {
     const { to, subject, body, from, html } = input;
 
     // Default from address - should be configured in fund settings
-    const fromAddress = from || process.env.EMAIL_FROM_ADDRESS || 'noreply@flowveda.com';
+    const fromAddress = from || process.env.EMAIL_FROM_ADDRESS || 'noreply@altsui.com';
 
     if (!resendApiKey) {
       console.error('[Email] Cannot send email - RESEND_API_KEY is not configured');

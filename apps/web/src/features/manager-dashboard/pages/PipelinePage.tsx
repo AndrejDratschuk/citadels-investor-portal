@@ -12,7 +12,7 @@ import { ProspectTable } from '../components/pipeline/ProspectTable';
 import { SendKYCModal } from '../components/pipeline/SendKYCModal';
 import { ShareKYCLinkModal } from '../components/pipeline/ShareKYCLinkModal';
 import { ProspectDetailModal } from '../components/pipeline/ProspectDetailModal';
-import type { Prospect } from '@flowveda/shared';
+import type { Prospect } from '@altsui/shared';
 
 const STATUS_GROUPS = {
   all: 'All',

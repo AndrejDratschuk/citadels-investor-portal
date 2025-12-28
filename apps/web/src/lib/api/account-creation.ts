@@ -4,7 +4,7 @@ import type {
   SendCodeResponse,
   CreateAccountResponse,
   SendInviteResponse,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 export interface CreateAccountInput {
   token: string;

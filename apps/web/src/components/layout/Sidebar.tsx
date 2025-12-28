@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useFund } from '@/hooks/useFund';
-import { USER_ROLES } from '@flowveda/shared';
+import { USER_ROLES } from '@altsui/shared';
 import {
   LayoutDashboard,
   FileText,
@@ -86,7 +86,7 @@ export function Sidebar() {
             className="h-10 max-w-[160px] object-contain"
           />
         ) : (
-          <h1 className="text-xl font-bold">{fund?.name || 'FlowVeda'}</h1>
+          <h1 className="text-xl font-bold">{fund?.name || 'Altsui'}</h1>
         )}
       </div>
       <nav className="flex-1 space-y-1 p-4">

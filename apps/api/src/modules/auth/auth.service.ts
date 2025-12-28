@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '../../common/database/supabase';
-import { SignupInput, LoginInput, USER_ROLES } from '@flowveda/shared';
-import { User } from '@flowveda/shared';
+import { SignupInput, LoginInput, USER_ROLES } from '@altsui/shared';
+import { User } from '@altsui/shared';
 import { webhookService } from '../../common/services/webhook.service';
 
 export class AuthService {

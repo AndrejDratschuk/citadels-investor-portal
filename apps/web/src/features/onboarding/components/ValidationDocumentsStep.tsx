@@ -18,7 +18,7 @@ import {
   allowedFileExtensions,
   MAX_FILE_SIZE,
   type ValidationDocumentType,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 export interface PendingDocument {
   id: string;

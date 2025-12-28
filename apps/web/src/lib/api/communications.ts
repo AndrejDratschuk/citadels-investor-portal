@@ -1,5 +1,5 @@
 import { api } from './client';
-import { Communication, CommunicationType } from '@flowveda/shared';
+import { Communication, CommunicationType } from '@altsui/shared';
 
 export type { Communication, CommunicationType };
 

@@ -14,8 +14,8 @@ import {
   KPI_CATEGORIES,
   KPI_DATA_TYPES,
   STATEMENT_TYPES,
-} from '@flowveda/shared';
-import type { KpiCategory, KpiDataType, StatementType } from '@flowveda/shared';
+} from '@altsui/shared';
+import type { KpiCategory, KpiDataType, StatementType } from '@altsui/shared';
 
 // ============================================
 // Request Types

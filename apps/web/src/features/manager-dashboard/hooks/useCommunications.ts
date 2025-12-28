@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { communicationsApi, CreateCommunicationInput } from '@/lib/api/communications';
-import { CommunicationType } from '@flowveda/shared';
+import { CommunicationType } from '@altsui/shared';
 
 export function useCommunications(investorId: string, type?: CommunicationType) {
   return useQuery({

@@ -1,5 +1,5 @@
 {
-  "name": "@flowveda/api",
+  "name": "@altsui/api",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -17,7 +17,7 @@
     "@fastify/jwt": "^7.2.4",
     "@fastify/swagger": "^8.13.0",
     "@fastify/swagger-ui": "^2.1.0",
-    "@flowveda/shared": "workspace:*",
+    "@altsui/shared": "workspace:*",
     "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^17.2.3",
     "fastify": "^4.25.2",

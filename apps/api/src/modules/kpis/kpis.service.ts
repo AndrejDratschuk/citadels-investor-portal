@@ -8,7 +8,7 @@ import {
   calculateChangePercent,
   formatCurrency,
   formatPercentage,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 import type {
   KpiDefinition,
   KpiPreference,
@@ -23,7 +23,7 @@ import type {
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 // ============================================
 // Service Class

@@ -9,7 +9,7 @@ import {
   Calendar,
   AlertTriangle,
 } from 'lucide-react';
-import { formatCurrency } from '@flowveda/shared';
+import { formatCurrency } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { TaxSummaryCard, TaxYearSelector, K1ActivityFeed, K1ActivityItem } from '../components';
 import { useTaxSummary } from '../hooks';

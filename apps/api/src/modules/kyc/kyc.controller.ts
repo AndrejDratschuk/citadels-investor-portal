@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { KYCService, KYCApplicationData } from './kyc.service';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
-import { InterestFormInputSchema } from '@flowveda/shared';
+import { InterestFormInputSchema } from '@altsui/shared';
 import { prospectsRepository } from '../prospects/prospects.repository';
 import { prospectsService } from '../prospects/prospects.service';
 import { ProspectEmailTriggers } from '../prospects/prospectEmailTriggers';

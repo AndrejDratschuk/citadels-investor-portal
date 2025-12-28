@@ -1,13 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm i -g pnpm && pnpm install",
-  "buildCommand": "pnpm --filter=@flowveda/shared build && pnpm --filter=@flowveda/web build",
+  "buildCommand": "pnpm --filter=@altsui/shared build && pnpm --filter=@altsui/web build",
   "outputDirectory": "apps/web/dist",
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
   ]
 }
+
 
 
 

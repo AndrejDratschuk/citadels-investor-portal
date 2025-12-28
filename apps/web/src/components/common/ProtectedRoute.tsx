@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import type { UserRole } from '@flowveda/shared';
+import type { UserRole } from '@altsui/shared';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

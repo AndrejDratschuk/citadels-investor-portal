@@ -12,7 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatCurrency, formatDate } from '@flowveda/shared';
+import { formatCurrency, formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 
 export type NoticeType =
@@ -311,6 +311,7 @@ export function NoticeCard({ notice, className, onAction }: NoticeCardProps) {
     </div>
   );
 }
+
 
 
 

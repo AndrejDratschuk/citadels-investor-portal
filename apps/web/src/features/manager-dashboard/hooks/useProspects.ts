@@ -12,7 +12,7 @@ import type {
   ApproveDocumentsInput,
   RejectDocumentsInput,
   ConvertToInvestorInput,
-} from '@flowveda/shared';
+} from '@altsui/shared';
 
 const PROSPECTS_KEY = 'prospects';
 const PIPELINE_STATS_KEY = 'pipeline-stats';

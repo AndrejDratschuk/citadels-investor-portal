@@ -27,7 +27,9 @@ export class InvestorsController {
       return reply.status(404).send({ success: false, error: 'Fund not found' });
     }
 
+    console.log('[Investors.getAll] Manager fund_id:', manager.fund_id, 'user_id:', request.user.id);
     const investors = await investorsService.getAllByFundId(manager.fund_id);
+    console.log('[Investors.getAll] Found', investors.length, 'investors for fund');
 
     return reply.send({
       success: true,

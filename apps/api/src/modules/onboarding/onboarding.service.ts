@@ -125,6 +125,7 @@ export class OnboardingService {
 
       // Create investor record with all details
       // Status is 'onboarding' - will change to 'active' when docs approved + agreements signed
+      console.log('[Onboarding] Creating investor record with fund_id:', fundId, 'email:', data.email);
       const { data: investor, error: investorError } = await supabaseAdmin
         .from('investors')
         .insert({
@@ -168,8 +169,11 @@ export class OnboardingService {
         .single();
 
       if (investorError) {
+        console.error('[Onboarding] Error creating investor:', investorError);
         throw new Error(investorError.message);
       }
+
+      console.log('[Onboarding] Successfully created investor:', investor.id, 'in fund:', investor.fund_id);
 
       // Send webhook for new investor
       webhookService.sendWebhook('investor.created', {

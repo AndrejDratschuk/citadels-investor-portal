@@ -62,15 +62,20 @@ export class OnboardingController {
     // Try inviteCode as prospect ID (kyc_applications.id) - this is the most common case
     // when user comes from the email invite link
     if (!fundId) {
-      const { data: prospect } = await supabaseAdmin
+      console.log('[Onboarding] Looking up prospect by inviteCode:', body.inviteCode);
+      const { data: prospect, error: prospectError } = await supabaseAdmin
         .from('kyc_applications')
         .select('fund_id')
         .eq('id', body.inviteCode)
         .single();
       
+      if (prospectError) {
+        console.log('[Onboarding] Prospect lookup error:', prospectError.message);
+      }
+      
       if (prospect?.fund_id) {
         fundId = prospect.fund_id;
-        console.log('Found fund from prospect ID:', body.inviteCode, '-> fund:', fundId);
+        console.log('[Onboarding] Found fund from prospect ID:', body.inviteCode, '-> fund:', fundId);
       }
     }
 

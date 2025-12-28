@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../common/database/supabase';
 import { webhookService } from '../../common/services/webhook.service';
+import { capitalCallEmailTriggers, FundContext } from './capitalCallEmailTriggers';
 
 export interface CreateCapitalCallInput {
   dealId: string;
@@ -101,8 +102,103 @@ export class CapitalCallsService {
       throw new Error('Failed to create capital call');
     }
 
-    // TODO: Create capital_call_items for each investor based on their ownership percentage
-    // This would require fetching investors and their commitments for this deal
+    // Get investors for this deal
+    const { data: dealInvestors, error: investorsError } = await supabaseAdmin
+      .from('investor_deals')
+      .select(`
+        ownership_percentage,
+        investor:investors (
+          id,
+          email,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('deal_id', input.dealId);
+
+    if (investorsError) {
+      console.error('Error fetching deal investors:', investorsError);
+    }
+
+    // Create capital_call_items for each investor
+    const investorItems: Array<{ investorId: string; amountDue: number; email: string; firstName: string; lastName: string }> = [];
+    
+    if (dealInvestors && dealInvestors.length > 0) {
+      for (const di of dealInvestors) {
+        const investor = di.investor as { id: string; email: string; first_name: string; last_name: string } | null;
+        if (!investor) continue;
+
+        const ownershipPct = parseFloat(String(di.ownership_percentage)) || 0;
+        const amountDue = input.totalAmount * ownershipPct;
+
+        // Create the capital call item
+        const { error: itemError } = await supabaseAdmin
+          .from('capital_call_items')
+          .insert({
+            capital_call_id: data.id,
+            investor_id: investor.id,
+            amount_due: amountDue,
+            amount_received: 0,
+            status: 'pending',
+          });
+
+        if (itemError) {
+          console.error(`Error creating capital call item for investor ${investor.id}:`, itemError);
+        } else {
+          investorItems.push({
+            investorId: investor.id,
+            amountDue,
+            email: investor.email,
+            firstName: investor.first_name,
+            lastName: investor.last_name,
+          });
+        }
+      }
+    }
+
+    // Get fund context for emails
+    const fundContext = await this.getFundContext(fundId);
+
+    // Send emails to all investors
+    if (fundContext && investorItems.length > 0) {
+      // Count existing capital calls for this deal to get call number
+      const { count } = await supabaseAdmin
+        .from('capital_calls')
+        .select('*', { count: 'exact', head: true })
+        .eq('deal_id', input.dealId);
+
+      const callNumber = String(count || 1);
+
+      const emailInvestors = investorItems.map(item => ({
+        id: item.investorId,
+        email: item.email,
+        firstName: item.firstName,
+        lastName: item.lastName,
+        amountDue: item.amountDue,
+      }));
+
+      // Send capital call emails
+      capitalCallEmailTriggers.onCapitalCallCreated(
+        {
+          id: data.id,
+          dealName: deal.name,
+          totalAmount: input.totalAmount,
+          deadline: input.deadline,
+          callNumber,
+        },
+        emailInvestors,
+        fundContext,
+        new Date()
+      ).catch(err => {
+        console.error('Error sending capital call emails:', err);
+      });
+
+      // Update status to 'sent' after sending emails
+      await supabaseAdmin
+        .from('capital_calls')
+        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .eq('id', data.id);
+    }
 
     // Send webhook for new capital call
     webhookService.sendWebhook('capital_call.created', {
@@ -112,7 +208,7 @@ export class CapitalCallsService {
       dealName: deal.name,
       totalAmount: input.totalAmount,
       deadline: input.deadline,
-      status: 'pending',
+      status: 'sent',
       createdAt: data.created_at,
     });
 
@@ -122,9 +218,9 @@ export class CapitalCallsService {
       dealId: data.deal_id,
       totalAmount: data.total_amount,
       deadline: data.deadline,
-      status: data.status,
+      status: 'sent',
       percentageOfFund: data.percentage_of_fund || 0,
-      sentAt: data.sent_at,
+      sentAt: new Date().toISOString(),
       createdAt: data.created_at,
       deal: {
         id: deal.id,

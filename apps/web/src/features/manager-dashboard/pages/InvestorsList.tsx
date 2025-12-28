@@ -1,18 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Loader2, AlertCircle, Users, DollarSign, TrendingUp, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { InvestorTable, InvestorRow } from '../components/InvestorTable';
+import { InvestorTable, InvestorRow, InvestorDeal } from '../components/InvestorTable';
 import { useInvestors, useDeleteInvestor } from '../hooks/useInvestors';
+import { investorsApi } from '@/lib/api/investors';
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'exited';
 
 export function InvestorsList() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [investorDeals, setInvestorDeals] = useState<Record<string, InvestorDeal[]>>({});
 
   // Fetch real investors from API
   const { data: apiInvestors, isLoading, error } = useInvestors();
   const deleteInvestorMutation = useDeleteInvestor();
+
+  // Fetch deals for all investors
+  useEffect(() => {
+    async function fetchAllInvestorDeals() {
+      if (!apiInvestors || apiInvestors.length === 0) return;
+
+      const dealsMap: Record<string, InvestorDeal[]> = {};
+      
+      // Fetch deals for each investor in parallel
+      await Promise.all(
+        apiInvestors.map(async (investor) => {
+          try {
+            const investments = await investorsApi.getInvestorDeals(investor.id);
+            dealsMap[investor.id] = investments
+              .filter(inv => inv.deal)
+              .map(inv => ({
+                id: inv.deal!.id,
+                name: inv.deal!.name,
+                ownershipPercentage: inv.ownershipPercentage,
+              }));
+          } catch (err) {
+            // If fetching fails for one investor, just skip
+            dealsMap[investor.id] = [];
+          }
+        })
+      );
+
+      setInvestorDeals(dealsMap);
+    }
+
+    fetchAllInvestorDeals();
+  }, [apiInvestors]);
 
   const handleDeleteInvestor = async (investor: InvestorRow): Promise<void> => {
     await deleteInvestorMutation.mutateAsync(investor.id);
@@ -33,6 +67,7 @@ export function InvestorsList() {
       commitmentAmount: inv.commitmentAmount,
       totalCalled: inv.totalCalled,
       createdAt: inv.createdAt,
+      deals: investorDeals[inv.id] || [],
     }));
 
   const filteredInvestors = investors.filter((investor) => {

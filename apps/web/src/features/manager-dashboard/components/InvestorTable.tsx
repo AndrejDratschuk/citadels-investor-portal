@@ -19,6 +19,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InvestorStatusBadge } from './InvestorStatusBadge';
 
+export interface InvestorDeal {
+  id: string;
+  name: string;
+  ownershipPercentage: number;
+}
+
 export interface InvestorRow {
   id: string;
   firstName: string;
@@ -29,6 +35,7 @@ export interface InvestorRow {
   commitmentAmount: number;
   totalCalled: number;
   createdAt: string;
+  deals?: InvestorDeal[];
 }
 
 interface InvestorTableProps {
@@ -186,6 +193,9 @@ export function InvestorTable({
               <th className="p-4 text-left">
                 <span className="font-medium text-sm">Accreditation</span>
               </th>
+              <th className="p-4 text-left">
+                <span className="font-medium text-sm">Deals</span>
+              </th>
               <th className="p-4 text-right">
                 <button
                   onClick={() => handleSort('commitment')}
@@ -208,7 +218,7 @@ export function InvestorTable({
           <tbody>
             {investors.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                <td colSpan={8} className="p-8 text-center text-muted-foreground">
                   No investors found
                 </td>
               </tr>
@@ -247,6 +257,29 @@ export function InvestorTable({
                       status={investor.accreditationStatus}
                       type="accreditation"
                     />
+                  </td>
+                  <td className="p-4">
+                    {investor.deals && investor.deals.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {investor.deals.slice(0, 2).map((deal) => (
+                          <Link
+                            key={deal.id}
+                            to={`/manager/deals/${deal.id}`}
+                            className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                            title={`${deal.name} (${(deal.ownershipPercentage * 100).toFixed(1)}%)`}
+                          >
+                            {deal.name.length > 15 ? `${deal.name.slice(0, 15)}...` : deal.name}
+                          </Link>
+                        ))}
+                        {investor.deals.length > 2 && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                            +{investor.deals.length - 2} more
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="p-4 text-right font-medium">
                     {formatCurrency(investor.commitmentAmount)}

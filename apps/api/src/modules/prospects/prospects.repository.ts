@@ -435,6 +435,49 @@ export class ProspectsRepository {
     return data;
   }
 
+  /**
+   * Auto-transition prospect to documents_pending when validation documents are uploaded
+   * Only transitions if current status is onboarding_submitted or account_created
+   */
+  async transitionToDocumentsPending(
+    investorId: string,
+    timestamp: Date
+  ): Promise<{ updated: boolean; prospectId?: string }> {
+    // Find the prospect linked to this investor
+    const { data: prospect, error: findError } = await supabaseAdmin
+      .from('kyc_applications')
+      .select('id, status')
+      .eq('investor_id', investorId)
+      .single();
+
+    if (findError || !prospect) {
+      return { updated: false };
+    }
+
+    // Only transition from specific statuses
+    const allowedStatuses = ['onboarding_submitted', 'account_created'];
+    if (!allowedStatuses.includes(prospect.status)) {
+      return { updated: false };
+    }
+
+    // Update to documents_pending
+    const { error: updateError } = await supabaseAdmin
+      .from('kyc_applications')
+      .update({
+        status: 'documents_pending',
+        updated_at: timestamp.toISOString(),
+      })
+      .eq('id', prospect.id);
+
+    if (updateError) {
+      console.error('[ProspectsRepository] Error transitioning to documents_pending:', updateError);
+      return { updated: false };
+    }
+
+    console.log(`[ProspectsRepository] Auto-transitioned prospect ${prospect.id} to documents_pending`);
+    return { updated: true, prospectId: prospect.id };
+  }
+
   // ========== Formatting Helper ==========
 
   private formatProspect(row: ProspectRow, fund: FundRow | null): Prospect {

@@ -15,7 +15,7 @@ import type {
   KYCReminderTemplateData,
   OnboardingReminderTemplateData,
   AccountInviteTemplateData,
-} from '../email/email.templates';
+} from '../email/templates';
 import type { Prospect, ProspectStatus } from '@altsui/shared';
 
 // Base URL for email links - should be configured via environment

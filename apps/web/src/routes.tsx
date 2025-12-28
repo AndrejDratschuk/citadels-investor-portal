@@ -27,6 +27,7 @@ import {
   ManagerCommunications,
   DocumentsManager,
   FundSettings,
+  AutomationLogsPage,
 } from './features/manager-dashboard/pages';
 import { DealFinancials } from './features/manager-dashboard/pages/DealFinancials';
 import { DealKPICategory } from './features/manager-dashboard/pages/DealKPICategory';
@@ -240,6 +241,10 @@ export const router = createBrowserRouter([
       {
         path: 'pipeline',
         element: <PipelinePage />,
+      },
+      {
+        path: 'automation-logs',
+        element: <AutomationLogsPage />,
       },
     ],
   },

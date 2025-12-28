@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { gmailService } from './gmail.service';
 import { outlookService } from './outlook.service';
 import { smtpService, SmtpConfig } from './smtp.service';
+import { emailLogger, AutomationType, EmailStatus } from './emailLogger';
 
 // Frontend URLs
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -432,6 +433,114 @@ export class EmailController {
       success: false,
       error: 'No email account connected. Please connect your email account in Settings.',
     });
+  }
+
+  // ==================== Automation Logs ====================
+
+  /**
+   * Get automation email logs for the fund
+   */
+  async getAutomationLogs(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+
+    if (!fundId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    // Parse query parameters
+    const query = request.query as {
+      automationType?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      investorId?: string;
+      limit?: string;
+      offset?: string;
+    };
+
+    const filters = {
+      automationType: query.automationType as AutomationType | undefined,
+      status: query.status as EmailStatus | undefined,
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
+      investorId: query.investorId,
+      limit: query.limit ? parseInt(query.limit, 10) : 50,
+      offset: query.offset ? parseInt(query.offset, 10) : 0,
+    };
+
+    try {
+      const [logs, total] = await Promise.all([
+        emailLogger.getByFundId(fundId, filters),
+        emailLogger.getCountByFundId(fundId, filters),
+      ]);
+
+      return reply.send({
+        success: true,
+        data: logs,
+        pagination: {
+          total,
+          limit: filters.limit,
+          offset: filters.offset,
+          hasMore: filters.offset + logs.length < total,
+        },
+      });
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error fetching automation logs:', err);
+      return reply.status(500).send({
+        success: false,
+        error: err.message || 'Failed to fetch automation logs',
+      });
+    }
+  }
+
+  /**
+   * Get a single automation log entry by ID
+   */
+  async getAutomationLogById(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const { id } = request.params as { id: string };
+
+    if (!fundId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    try {
+      const log = await emailLogger.getById(id);
+
+      if (!log) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Automation log not found',
+        });
+      }
+
+      // Verify the log belongs to this fund
+      if (log.fundId !== fundId) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Access denied',
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: log,
+      });
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error fetching automation log:', err);
+      return reply.status(500).send({
+        success: false,
+        error: err.message || 'Failed to fetch automation log',
+      });
+    }
   }
 }
 

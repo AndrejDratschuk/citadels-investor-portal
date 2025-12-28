@@ -14,7 +14,10 @@ import {
   WelcomeInvestorTemplateData,
   KYCReminderTemplateData,
   OnboardingReminderTemplateData,
-} from './email.templates';
+  CapitalCallRequestTemplateData,
+  WireConfirmationTemplateData,
+  WireIssueTemplateData,
+} from './templates';
 
 // Initialize Resend with API key from environment
 const resendApiKey = process.env.RESEND_API_KEY;
@@ -76,11 +79,12 @@ export class EmailService {
         success: true,
         messageId: data?.id,
       };
-    } catch (err: any) {
-      console.error('Email send error:', err);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Email send error:', error);
       return {
         success: false,
-        error: err.message || 'Failed to send email',
+        error: error.message || 'Failed to send email',
       };
     }
   }
@@ -244,22 +248,66 @@ export class EmailService {
       html: emailTemplates.onboardingReminder(data),
     });
   }
+
+  // ============================================================
+  // Capital Call Email Methods
+  // ============================================================
+
+  /**
+   * Send capital call request email
+   */
+  async sendCapitalCallRequest(to: string, data: CapitalCallRequestTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Capital Call Notice - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, a capital call of $${data.amountDue} has been issued for ${data.dealName}. Deadline: ${data.deadline}. View wire instructions: ${data.wireInstructionsUrl}`,
+      html: emailTemplates.capitalCallRequest(data),
+    });
+  }
+
+  /**
+   * Send wire confirmation email
+   */
+  async sendWireConfirmation(to: string, data: WireConfirmationTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Wire Transfer Received - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your wire transfer of $${data.amountReceived} has been received. Confirmation: ${data.confirmationNumber}`,
+      html: emailTemplates.wireConfirmation(data),
+    });
+  }
+
+  /**
+   * Send wire issue notification email
+   */
+  async sendWireIssue(to: string, data: WireIssueTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Action Required - Wire Transfer Issue - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, there was an issue with your wire transfer: ${data.issueDescription}. Please contact us to resolve.`,
+      html: emailTemplates.wireIssue(data),
+    });
+  }
 }
 
 export const emailService = new EmailService();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Re-export template types for convenience
+export type {
+  AccountInviteTemplateData,
+  VerificationCodeTemplateData,
+  AccountCreatedTemplateData,
+  DocumentRejectionTemplateData,
+  DocumentApprovedTemplateData,
+  KYCInviteTemplateData,
+  KYCAutoSendTemplateData,
+  MeetingInviteTemplateData,
+  PostMeetingOnboardingTemplateData,
+  DocumentsApprovedDocuSignTemplateData,
+  WelcomeInvestorTemplateData,
+  KYCReminderTemplateData,
+  OnboardingReminderTemplateData,
+  CapitalCallRequestTemplateData,
+  WireConfirmationTemplateData,
+  WireIssueTemplateData,
+};

@@ -12,5 +12,6 @@ export * from './ManagerCommunications';
 export * from './DocumentsManager';
 export * from './FundSettings';
 export * from './PipelinePage';
+export * from './AutomationLogsPage';
 
 

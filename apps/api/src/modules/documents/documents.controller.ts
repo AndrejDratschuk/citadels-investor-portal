@@ -1,9 +1,9 @@
 import { FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { documentsService, CreateDocumentInput, DocumentFilters, DocumentCategory, DocumentDepartment, DocumentStatus, ValidationStatus } from './documents.service';
-import { emailService } from '../email/email.service';
+import { documentEmailTriggers, toInvestorContext, toFundContext } from './documentEmailTriggers';
 import { onboardingService } from '../onboarding/onboarding.service';
-import { supabaseAdmin } from '../../common/database/supabase';
+import { prospectsRepository } from '../prospects/prospects.repository';
 
 export class DocumentsController {
   /**
@@ -46,10 +46,11 @@ export class DocumentsController {
         success: true,
         data: documents,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to fetch documents',
+        error: err.message || 'Failed to fetch documents',
       });
     }
   }
@@ -74,10 +75,11 @@ export class DocumentsController {
         success: true,
         data: deals,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to fetch documents by deal',
+        error: err.message || 'Failed to fetch documents by deal',
       });
     }
   }
@@ -102,10 +104,11 @@ export class DocumentsController {
         success: true,
         data: investors,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to fetch documents by investor',
+        error: err.message || 'Failed to fetch documents by investor',
       });
     }
   }
@@ -131,10 +134,11 @@ export class DocumentsController {
         success: true,
         data: documents,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to fetch documents for deal',
+        error: err.message || 'Failed to fetch documents for deal',
       });
     }
   }
@@ -160,10 +164,11 @@ export class DocumentsController {
         success: true,
         data: documents,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to fetch documents for investor',
+        error: err.message || 'Failed to fetch documents for investor',
       });
     }
   }
@@ -198,10 +203,11 @@ export class DocumentsController {
         success: true,
         data: document,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to create document',
+        error: err.message || 'Failed to create document',
       });
     }
   }
@@ -241,10 +247,11 @@ export class DocumentsController {
         success: true,
         data: { fileUrl },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to upload file',
+        error: err.message || 'Failed to upload file',
       });
     }
   }
@@ -270,10 +277,11 @@ export class DocumentsController {
         success: true,
         data: { message: 'Document deleted successfully' },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to delete document',
+        error: err.message || 'Failed to delete document',
       });
     }
   }
@@ -300,10 +308,11 @@ export class DocumentsController {
         success: true,
         data: documents,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to fetch validation documents',
+        error: err.message || 'Failed to fetch validation documents',
       });
     }
   }
@@ -329,24 +338,21 @@ export class DocumentsController {
     try {
       const document = await documentsService.approveDocument(fundId, id, userId, now);
 
-      // Send approval email to investor using service methods (no direct DB access)
+      // Send approval email via orchestration layer
       let emailSent = false;
       if (document.investorId) {
-        // Get email context from services (proper architecture - no direct DB access in controller)
-        const [investor, fund] = await Promise.all([
+        const [investorCtx, fundCtx] = await Promise.all([
           documentsService.getInvestorEmailContext(document.investorId),
           documentsService.getFundEmailContext(fundId),
         ]);
 
-        if (investor?.email) {
-          const portalUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-          const result = await emailService.sendDocumentApproved(investor.email, {
-            recipientName: `${investor.firstName || ''} ${investor.lastName || ''}`.trim() || 'Investor',
-            fundName: fund?.name || 'Investment Fund',
-            documentName: document.name,
-            documentType: document.type,
-            portalUrl: `${portalUrl}/investor/documents`,
-          });
+        if (investorCtx && fundCtx) {
+          const result = await documentEmailTriggers.onDocumentApproved(
+            { id: document.id, name: document.name, type: document.type },
+            toInvestorContext(investorCtx),
+            toFundContext(fundCtx),
+            now
+          );
           emailSent = result.success;
         }
       }
@@ -366,10 +372,11 @@ export class DocumentsController {
         emailSent,
         onboardingUpdated,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to approve document',
+        error: err.message || 'Failed to approve document',
       });
     }
   }
@@ -403,25 +410,22 @@ export class DocumentsController {
     try {
       const document = await documentsService.rejectDocument(fundId, id, userId, reason, now);
 
-      // Send rejection email to investor using service methods (no direct DB access)
+      // Send rejection email via orchestration layer
       let emailSent = false;
       if (document.investorId) {
-        // Get email context from services (proper architecture - no direct DB access in controller)
-        const [investor, fund] = await Promise.all([
+        const [investorCtx, fundCtx] = await Promise.all([
           documentsService.getInvestorEmailContext(document.investorId),
           documentsService.getFundEmailContext(fundId),
         ]);
 
-        if (investor?.email) {
-          const portalUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-          const result = await emailService.sendDocumentRejection(investor.email, {
-            recipientName: `${investor.firstName || ''} ${investor.lastName || ''}`.trim() || 'Investor',
-            fundName: fund?.name || 'Investment Fund',
-            documentName: document.name,
-            documentType: document.type,
-            rejectionReason: reason,
-            portalUrl: `${portalUrl}/investor/documents`,
-          });
+        if (investorCtx && fundCtx) {
+          const result = await documentEmailTriggers.onDocumentRejected(
+            { id: document.id, name: document.name, type: document.type },
+            toInvestorContext(investorCtx),
+            toFundContext(fundCtx),
+            reason,
+            now
+          );
           emailSent = result.success;
         }
       }
@@ -431,10 +435,11 @@ export class DocumentsController {
         data: document,
         emailSent,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to reject document',
+        error: err.message || 'Failed to reject document',
       });
     }
   }
@@ -469,10 +474,11 @@ export class DocumentsController {
         success: true,
         data: documents,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to fetch validation documents',
+        error: err.message || 'Failed to fetch validation documents',
       });
     }
   }
@@ -522,9 +528,10 @@ export class DocumentsController {
 
       // Get document type from fields - must be one of: ppm, subscription, k1, report, capital_call, kyc, other
       const fields = data.fields as Record<string, { value: string }>;
-      const validTypes = ['ppm', 'subscription', 'k1', 'report', 'capital_call', 'kyc', 'other'];
+      type DocType = 'ppm' | 'subscription' | 'k1' | 'report' | 'capital_call' | 'kyc' | 'other';
+      const validTypes: DocType[] = ['ppm', 'subscription', 'k1', 'report', 'capital_call', 'kyc', 'other'];
       const requestedType = fields.documentType?.value || 'kyc';
-      const documentType = validTypes.includes(requestedType) ? requestedType : 'kyc';
+      const documentType: DocType = validTypes.includes(requestedType as DocType) ? (requestedType as DocType) : 'kyc';
       const documentName = fields.name?.value || data.filename;
 
       const buffer = await data.toBuffer();
@@ -548,39 +555,19 @@ export class DocumentsController {
         validationStatus: 'pending',
       });
 
-      // Auto-transition prospect to documents_pending if they uploaded a validation document
-      // Find the prospect linked to this investor
-      const { data: prospect } = await supabaseAdmin
-        .from('kyc_applications')
-        .select('id, status')
-        .eq('investor_id', investorId)
-        .single();
-
-      if (prospect && ['onboarding_submitted', 'account_created'].includes(prospect.status)) {
-        const { error: updateError } = await supabaseAdmin
-          .from('kyc_applications')
-          .update({ 
-            status: 'documents_pending',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', prospect.id);
-
-        if (updateError) {
-          console.error('Error updating prospect status to documents_pending:', updateError);
-        } else {
-          console.log(`[Pipeline] Auto-transitioned prospect ${prospect.id} to documents_pending`);
-        }
-      }
+      // Auto-transition prospect to documents_pending via repository
+      await prospectsRepository.transitionToDocumentsPending(investorId, new Date());
 
       return reply.send({
         success: true,
         data: document,
       });
-    } catch (error: any) {
-      console.error('Error uploading investor document:', error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error uploading investor document:', err);
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to upload document',
+        error: err.message || 'Failed to upload document',
       });
     }
   }

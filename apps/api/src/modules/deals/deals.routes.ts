@@ -21,6 +21,21 @@ export async function dealsRoutes(fastify: FastifyInstance) {
     return dealsController.getDealInvestors(request as any, reply);
   });
 
+  // Add an investor to a deal
+  fastify.post('/:id/investors', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dealsController.addInvestorToDeal(request as any, reply);
+  });
+
+  // Remove an investor from a deal
+  fastify.delete('/:id/investors/:investorId', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dealsController.removeInvestorFromDeal(request as any, reply);
+  });
+
+  // Update investor's ownership in a deal
+  fastify.patch('/:id/investors/:investorId', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dealsController.updateDealInvestorOwnership(request as any, reply);
+  });
+
   // Create a deal
   fastify.post('/', { preHandler: managerPreHandler }, async (request, reply) => {
     return dealsController.create(request as any, reply);

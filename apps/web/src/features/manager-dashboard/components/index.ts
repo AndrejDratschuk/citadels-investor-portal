@@ -14,4 +14,5 @@ export * from './LogPhoneCallModal';
 export { LogCommunicationModal } from './LogPhoneCallModal';
 export * from './EmailComposeModal';
 export * from './AutomationLog';
+export * from './DealInvestorsModal';
 

@@ -286,6 +286,136 @@ export class DealsController {
       });
     }
   }
+
+  /**
+   * Add an investor to a deal
+   */
+  async addInvestorToDeal(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const { id: dealId } = request.params as { id: string };
+    const { investorId, ownershipPercentage } = request.body as {
+      investorId: string;
+      ownershipPercentage: number;
+    };
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    if (!investorId || ownershipPercentage === undefined) {
+      return reply.status(400).send({
+        success: false,
+        error: 'investorId and ownershipPercentage are required',
+      });
+    }
+
+    if (ownershipPercentage < 0 || ownershipPercentage > 1) {
+      return reply.status(400).send({
+        success: false,
+        error: 'ownershipPercentage must be between 0 and 1',
+      });
+    }
+
+    try {
+      const investor = await dealsService.addInvestorToDeal(
+        fundId,
+        dealId,
+        investorId,
+        ownershipPercentage
+      );
+
+      return reply.status(201).send({
+        success: true,
+        data: investor,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to add investor to deal',
+      });
+    }
+  }
+
+  /**
+   * Remove an investor from a deal
+   */
+  async removeInvestorFromDeal(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const { id: dealId, investorId } = request.params as { id: string; investorId: string };
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    try {
+      await dealsService.removeInvestorFromDeal(fundId, dealId, investorId);
+
+      return reply.send({
+        success: true,
+        data: { message: 'Investor removed from deal' },
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to remove investor from deal',
+      });
+    }
+  }
+
+  /**
+   * Update investor's ownership percentage in a deal
+   */
+  async updateDealInvestorOwnership(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const { id: dealId, investorId } = request.params as { id: string; investorId: string };
+    const { ownershipPercentage } = request.body as { ownershipPercentage: number };
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    if (ownershipPercentage === undefined) {
+      return reply.status(400).send({
+        success: false,
+        error: 'ownershipPercentage is required',
+      });
+    }
+
+    if (ownershipPercentage < 0 || ownershipPercentage > 1) {
+      return reply.status(400).send({
+        success: false,
+        error: 'ownershipPercentage must be between 0 and 1',
+      });
+    }
+
+    try {
+      await dealsService.updateDealInvestorOwnership(
+        fundId,
+        dealId,
+        investorId,
+        ownershipPercentage
+      );
+
+      return reply.send({
+        success: true,
+        data: { message: 'Ownership updated' },
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to update ownership',
+      });
+    }
+  }
 }
 
 export const dealsController = new DealsController();

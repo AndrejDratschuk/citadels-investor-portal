@@ -75,6 +75,21 @@ export const dealsApi = {
     return api.get<DealInvestor[]>(`/deals/${dealId}/investors`);
   },
 
+  // Add an investor to a deal
+  addInvestorToDeal: async (dealId: string, investorId: string, ownershipPercentage: number): Promise<DealInvestor> => {
+    return api.post<DealInvestor>(`/deals/${dealId}/investors`, { investorId, ownershipPercentage });
+  },
+
+  // Remove an investor from a deal
+  removeInvestorFromDeal: async (dealId: string, investorId: string): Promise<void> => {
+    await api.delete(`/deals/${dealId}/investors/${investorId}`);
+  },
+
+  // Update investor's ownership percentage in a deal
+  updateDealInvestorOwnership: async (dealId: string, investorId: string, ownershipPercentage: number): Promise<void> => {
+    await api.patch(`/deals/${dealId}/investors/${investorId}`, { ownershipPercentage });
+  },
+
   // Create a deal
   create: async (input: CreateDealInput): Promise<Deal> => {
     return api.post<Deal>('/deals', input);

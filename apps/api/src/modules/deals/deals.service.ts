@@ -345,6 +345,114 @@ export class DealsService {
       .eq('fund_id', fundId);
   }
 
+  /**
+   * Add an investor to a deal with ownership percentage
+   */
+  async addInvestorToDeal(
+    fundId: string,
+    dealId: string,
+    investorId: string,
+    ownershipPercentage: number
+  ): Promise<DealInvestor> {
+    // Verify the deal belongs to this fund
+    const deal = await this.getById(fundId, dealId);
+    if (!deal) {
+      throw new Error('Deal not found');
+    }
+
+    // Verify investor belongs to this fund
+    const { data: investor, error: investorError } = await supabaseAdmin
+      .from('investors')
+      .select('id, first_name, last_name, email, commitment_amount, fund_id')
+      .eq('id', investorId)
+      .eq('fund_id', fundId)
+      .single();
+
+    if (investorError || !investor) {
+      throw new Error('Investor not found');
+    }
+
+    // Upsert investor-deal relationship
+    const { error } = await supabaseAdmin
+      .from('investor_deals')
+      .upsert({
+        investor_id: investorId,
+        deal_id: dealId,
+        ownership_percentage: ownershipPercentage,
+        joined_at: new Date().toISOString(),
+      }, {
+        onConflict: 'investor_id,deal_id',
+      });
+
+    if (error) {
+      console.error('Error adding investor to deal:', error);
+      throw new Error('Failed to add investor to deal');
+    }
+
+    return {
+      id: investor.id,
+      firstName: investor.first_name,
+      lastName: investor.last_name,
+      email: investor.email,
+      ownershipPercentage,
+      commitmentAmount: investor.commitment_amount || 0,
+      joinedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Remove an investor from a deal
+   */
+  async removeInvestorFromDeal(
+    fundId: string,
+    dealId: string,
+    investorId: string
+  ): Promise<void> {
+    // Verify the deal belongs to this fund
+    const deal = await this.getById(fundId, dealId);
+    if (!deal) {
+      throw new Error('Deal not found');
+    }
+
+    const { error } = await supabaseAdmin
+      .from('investor_deals')
+      .delete()
+      .eq('investor_id', investorId)
+      .eq('deal_id', dealId);
+
+    if (error) {
+      console.error('Error removing investor from deal:', error);
+      throw new Error('Failed to remove investor from deal');
+    }
+  }
+
+  /**
+   * Update investor's ownership percentage in a deal
+   */
+  async updateDealInvestorOwnership(
+    fundId: string,
+    dealId: string,
+    investorId: string,
+    ownershipPercentage: number
+  ): Promise<void> {
+    // Verify the deal belongs to this fund
+    const deal = await this.getById(fundId, dealId);
+    if (!deal) {
+      throw new Error('Deal not found');
+    }
+
+    const { error } = await supabaseAdmin
+      .from('investor_deals')
+      .update({ ownership_percentage: ownershipPercentage })
+      .eq('investor_id', investorId)
+      .eq('deal_id', dealId);
+
+    if (error) {
+      console.error('Error updating investor ownership:', error);
+      throw new Error('Failed to update investor ownership');
+    }
+  }
+
   private formatDeal(data: any): Deal {
     return {
       id: data.id,

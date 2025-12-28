@@ -18,6 +18,7 @@ import {
   Loader2,
   TrendingUp,
   ArrowRight,
+  Plus,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { DealImageUpload } from '../components/DealImageUpload';
-import { dealsApi, Deal, DealKPIs } from '@/lib/api/deals';
+import { DealInvestorsModal } from '../components/DealInvestorsModal';
+import { dealsApi, Deal, DealKPIs, DealInvestor } from '@/lib/api/deals';
 
 // Property type gradients and icons for placeholder
 const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
@@ -127,6 +129,9 @@ export function DealDetail() {
   const [deal, setDeal] = useState<DealWithKpis>(mockDeal);
   const [isRealDeal, setIsRealDeal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [dealInvestors, setDealInvestors] = useState<DealInvestor[]>([]);
+  const [isLoadingInvestors, setIsLoadingInvestors] = useState(false);
+  const [showInvestorsModal, setShowInvestorsModal] = useState(false);
 
   // Fetch real deal from API
   useEffect(() => {
@@ -157,11 +162,32 @@ export function DealDetail() {
     fetchDeal();
   }, [id]);
 
+  // Fetch deal investors
+  const fetchDealInvestors = async () => {
+    if (!id || !isRealDeal) return;
+    
+    setIsLoadingInvestors(true);
+    try {
+      const investors = await dealsApi.getDealInvestors(id);
+      setDealInvestors(investors);
+    } catch (error) {
+      console.error('Failed to fetch deal investors:', error);
+    } finally {
+      setIsLoadingInvestors(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isRealDeal && id) {
+      fetchDealInvestors();
+    }
+  }, [isRealDeal, id]);
+
   const config = propertyTypeConfig[deal.propertyType || 'other'] || propertyTypeConfig.other;
 
   const tabs: { id: TabType; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'investors', label: 'Investors', count: mockInvestors.length },
+    { id: 'investors', label: 'Investors', count: isRealDeal ? dealInvestors.length : mockInvestors.length },
     { id: 'documents', label: 'Documents', count: mockDocuments.length },
     { id: 'financials', label: 'Financials' },
     { id: 'kpis', label: 'KPIs' },
@@ -412,37 +438,98 @@ export function DealDetail() {
       )}
 
       {activeTab === 'investors' && (
-        <div className="rounded-xl border bg-card">
-          <div className="divide-y">
-            {mockInvestors.map((investor) => (
-              <div
-                key={investor.id}
-                className="flex items-center justify-between p-4 hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <Link
-                      to={`/manager/investors/${investor.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {investor.name}
-                    </Link>
-                    <p className="text-sm text-muted-foreground">
-                      {formatPercentage(investor.ownershipPercentage)} ownership
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">{formatCurrency(investor.investedAmount)}</p>
-                  <p className="text-sm text-muted-foreground">Invested</p>
-                </div>
+        <div className="space-y-4">
+          {/* Header with Add Button */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">Deal Investors</h3>
+              <p className="text-sm text-muted-foreground">
+                Investors who are invested in this deal
+              </p>
+            </div>
+            {isRealDeal && (
+              <Button onClick={() => setShowInvestorsModal(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Manage Investors
+              </Button>
+            )}
+          </div>
+
+          {/* Investors List */}
+          <div className="rounded-xl border bg-card">
+            {isLoadingInvestors ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ))}
+            ) : (isRealDeal ? dealInvestors : mockInvestors).length === 0 ? (
+              <div className="p-8 text-center">
+                <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                <p className="mt-3 font-medium">No investors yet</p>
+                <p className="text-sm text-muted-foreground">
+                  {isRealDeal 
+                    ? 'Click "Manage Investors" to add investors to this deal'
+                    : 'Investors will appear here once assigned to this deal'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {(isRealDeal ? dealInvestors : mockInvestors).map((investor) => {
+                  const name = 'firstName' in investor 
+                    ? `${investor.firstName} ${investor.lastName}` 
+                    : investor.name;
+                  const ownership = 'ownershipPercentage' in investor 
+                    ? investor.ownershipPercentage 
+                    : investor.ownershipPercentage;
+                  const invested = 'commitmentAmount' in investor 
+                    ? investor.commitmentAmount * ownership 
+                    : investor.investedAmount;
+                    
+                  return (
+                    <div
+                      key={investor.id}
+                      className="flex items-center justify-between p-4 hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <Link
+                            to={`/manager/investors/${investor.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {name}
+                          </Link>
+                          <p className="text-sm text-muted-foreground">
+                            {formatPercentage(ownership)} ownership
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">{formatCurrency(invested)}</p>
+                        <p className="text-sm text-muted-foreground">Invested</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Investors Modal */}
+      {id && (
+        <DealInvestorsModal
+          isOpen={showInvestorsModal}
+          onClose={() => {
+            setShowInvestorsModal(false);
+            // Refresh investors after modal closes
+            fetchDealInvestors();
+          }}
+          dealId={id}
+          dealName={deal.name}
+        />
       )}
 
       {activeTab === 'documents' && (

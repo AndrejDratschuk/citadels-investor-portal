@@ -60,6 +60,8 @@ export class OnboardingService {
     data: OnboardingSubmissionData,
     password: string
   ) {
+    console.log('[Onboarding.submit] Starting submission for inviteCode:', inviteCode, 'fundId:', fundId, 'email:', data.email);
+    
     let authUserId: string;
     let createdAuthUser = false;
 
@@ -205,33 +207,62 @@ export class OnboardingService {
         // Don't throw - investor is already created
       }
 
-      // Update KYC application status if linked
+      // Update KYC application status if linked via kycApplicationId
       if (data.kycApplicationId) {
+        console.log('[Onboarding] Updating prospect by kycApplicationId:', data.kycApplicationId);
         await supabaseAdmin
           .from('kyc_applications')
           .update({
-            status: 'account_created',
+            status: 'onboarding_submitted',
             investor_id: investor.id,
+            onboarding_submitted_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', data.kycApplicationId);
       }
 
-      // Also try to update prospect by inviteCode (which is often the prospect ID)
-      // This handles the case where inviteCode is the prospect ID from the email link
-      const { error: prospectUpdateError } = await supabaseAdmin
+      // Update prospect (kyc_applications) status to onboarding_submitted
+      // The inviteCode IS the prospect ID when user comes from email link
+      console.log('[Onboarding] Attempting to update prospect status to onboarding_submitted. inviteCode:', inviteCode, 'investor_id:', investor.id);
+      
+      const { data: updatedProspect, error: prospectUpdateError } = await supabaseAdmin
         .from('kyc_applications')
         .update({
-          status: 'account_created',
+          status: 'onboarding_submitted',
           investor_id: investor.id,
+          onboarding_submitted_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', inviteCode);
+        .eq('id', inviteCode)
+        .select()
+        .single();
 
       if (prospectUpdateError) {
-        console.log('Note: Could not update prospect by inviteCode (may not be a prospect ID):', inviteCode);
+        console.error('[Onboarding] Failed to update prospect status:', prospectUpdateError.message);
+        console.log('[Onboarding] inviteCode was:', inviteCode);
+        
+        // Try to find the prospect by email as a fallback
+        const { data: prospectByEmail, error: emailLookupError } = await supabaseAdmin
+          .from('kyc_applications')
+          .select('id')
+          .eq('email', data.email)
+          .eq('fund_id', fundId)
+          .single();
+        
+        if (!emailLookupError && prospectByEmail) {
+          console.log('[Onboarding] Found prospect by email, updating:', prospectByEmail.id);
+          await supabaseAdmin
+            .from('kyc_applications')
+            .update({
+              status: 'onboarding_submitted',
+              investor_id: investor.id,
+              onboarding_submitted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', prospectByEmail.id);
+        }
       } else {
-        console.log('Updated prospect status to account_created for:', inviteCode);
+        console.log('[Onboarding] Successfully updated prospect status to onboarding_submitted:', updatedProspect?.id);
       }
 
       return {

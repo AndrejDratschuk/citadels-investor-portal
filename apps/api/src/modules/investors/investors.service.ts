@@ -100,15 +100,24 @@ export class InvestorsService {
    * Get all investors for a fund (manager view)
    */
   async getAllByFundId(fundId: string) {
-    const { data, error } = await supabaseAdmin
+    console.log('[InvestorsService.getAllByFundId] Querying investors for fund:', fundId);
+    
+    const { data, error, count } = await supabaseAdmin
       .from('investors')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('fund_id', fundId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching investors:', error);
+      console.error('[InvestorsService.getAllByFundId] Error:', error);
       throw new Error('Failed to fetch investors');
+    }
+
+    console.log('[InvestorsService.getAllByFundId] Raw count from DB:', count);
+    console.log('[InvestorsService.getAllByFundId] Data rows returned:', data?.length || 0);
+    
+    if (data && data.length > 0) {
+      console.log('[InvestorsService.getAllByFundId] First investor:', data[0].id, data[0].email);
     }
 
     return data.map((investor) => this.formatInvestor(investor as InvestorDbRow));

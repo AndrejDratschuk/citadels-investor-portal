@@ -30,6 +30,7 @@ const ALLOWED_TRANSITIONS: Record<ProspectStatus, ProspectStatus[]> = {
   ],
   [PROSPECT_STATUS.PRE_QUALIFIED]: [
     PROSPECT_STATUS.MEETING_SCHEDULED,
+    PROSPECT_STATUS.ACCOUNT_INVITE_SENT, // Can skip meeting and send onboarding directly
     PROSPECT_STATUS.NOT_ELIGIBLE,
   ],
   [PROSPECT_STATUS.NOT_ELIGIBLE]: [], // Terminal state

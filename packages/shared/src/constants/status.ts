@@ -121,6 +121,7 @@ export type PropertyType = typeof PROPERTY_TYPE[keyof typeof PROPERTY_TYPE];
 export const PROSPECT_STATUS = {
   KYC_SENT: 'kyc_sent',
   KYC_SUBMITTED: 'kyc_submitted',
+  SUBMITTED: 'submitted', // Legacy status - treat same as kyc_submitted
   PRE_QUALIFIED: 'pre_qualified',
   NOT_ELIGIBLE: 'not_eligible',
   MEETING_SCHEDULED: 'meeting_scheduled',

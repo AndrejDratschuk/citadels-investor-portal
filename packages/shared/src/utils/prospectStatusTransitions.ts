@@ -23,6 +23,11 @@ const ALLOWED_TRANSITIONS: Record<ProspectStatus, ProspectStatus[]> = {
     PROSPECT_STATUS.PRE_QUALIFIED,
     PROSPECT_STATUS.NOT_ELIGIBLE,
   ],
+  // Legacy status - same transitions as kyc_submitted
+  [PROSPECT_STATUS.SUBMITTED]: [
+    PROSPECT_STATUS.PRE_QUALIFIED,
+    PROSPECT_STATUS.NOT_ELIGIBLE,
+  ],
   [PROSPECT_STATUS.PRE_QUALIFIED]: [
     PROSPECT_STATUS.MEETING_SCHEDULED,
     PROSPECT_STATUS.NOT_ELIGIBLE,
@@ -171,6 +176,7 @@ export function getStatusLabel(status: ProspectStatus): string {
   const labels: Record<ProspectStatus, string> = {
     [PROSPECT_STATUS.KYC_SENT]: 'KYC Sent',
     [PROSPECT_STATUS.KYC_SUBMITTED]: 'KYC Submitted',
+    [PROSPECT_STATUS.SUBMITTED]: 'KYC Submitted', // Legacy status label
     [PROSPECT_STATUS.PRE_QUALIFIED]: 'Pre-Qualified',
     [PROSPECT_STATUS.NOT_ELIGIBLE]: 'Not Eligible',
     [PROSPECT_STATUS.MEETING_SCHEDULED]: 'Meeting Scheduled',

@@ -5,7 +5,6 @@ export interface CreateCapitalCallInput {
   dealId: string;
   totalAmount: number;
   deadline: string;
-  notes?: string;
 }
 
 export interface CapitalCall {
@@ -13,11 +12,11 @@ export interface CapitalCall {
   fundId: string;
   dealId: string;
   totalAmount: number;
+  percentageOfFund: number;
   deadline: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  notes: string | null;
+  status: 'draft' | 'sent' | 'partial' | 'funded' | 'closed';
+  sentAt: string | null;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface CapitalCallWithDeal extends CapitalCall {
@@ -90,10 +89,9 @@ export class CapitalCallsService {
         fund_id: fundId,
         deal_id: input.dealId,
         total_amount: input.totalAmount,
+        percentage_of_fund: 0, // Will be calculated based on fund size
         deadline: input.deadline,
-        status: 'pending',
-        notes: input.notes || null,
-        created_by: userId,
+        status: 'draft',
       })
       .select()
       .single();
@@ -125,9 +123,9 @@ export class CapitalCallsService {
       totalAmount: data.total_amount,
       deadline: data.deadline,
       status: data.status,
-      notes: data.notes,
+      percentageOfFund: data.percentage_of_fund || 0,
+      sentAt: data.sent_at,
       createdAt: data.created_at,
-      updatedAt: data.updated_at,
       deal: {
         id: deal.id,
         name: deal.name,
@@ -160,9 +158,9 @@ export class CapitalCallsService {
       totalAmount: item.total_amount,
       deadline: item.deadline,
       status: item.status,
-      notes: item.notes,
+      percentageOfFund: item.percentage_of_fund || 0,
+      sentAt: item.sent_at,
       createdAt: item.created_at,
-      updatedAt: item.updated_at,
       deal: item.deal ? {
         id: item.deal.id,
         name: item.deal.name,
@@ -196,9 +194,9 @@ export class CapitalCallsService {
       totalAmount: data.total_amount,
       deadline: data.deadline,
       status: data.status,
-      notes: data.notes,
+      percentageOfFund: data.percentage_of_fund || 0,
+      sentAt: data.sent_at,
       createdAt: data.created_at,
-      updatedAt: data.updated_at,
       deal: data.deal ? {
         id: data.deal.id,
         name: data.deal.name,

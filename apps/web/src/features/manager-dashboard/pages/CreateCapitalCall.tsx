@@ -6,17 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { dealsApi } from '@/lib/api/deals';
+import { dealsApi, DealInvestor } from '@/lib/api/deals';
 import { capitalCallsApi } from '@/lib/api/capital-calls';
-
-// Mock investors for preview
-const mockInvestorBreakdown = [
-  { id: '1', name: 'John Smith', ownershipPercent: 0.05, amount: 0 },
-  { id: '2', name: 'Sarah Johnson', ownershipPercent: 0.035, amount: 0 },
-  { id: '3', name: 'Michael Chen', ownershipPercent: 0.10, amount: 0 },
-  { id: '4', name: 'Emily Davis', ownershipPercent: 0.075, amount: 0 },
-  { id: '5', name: 'Robert Wilson', ownershipPercent: 0.04, amount: 0 },
-];
 
 type Step = 'deal' | 'amount' | 'preview';
 
@@ -24,6 +15,13 @@ interface DealOption {
   id: string;
   name: string;
   totalCommitment: number;
+}
+
+interface InvestorBreakdownItem {
+  id: string;
+  name: string;
+  ownershipPercent: number;
+  amount: number;
 }
 
 // Fallback mock deals if API fails
@@ -44,6 +42,8 @@ export function CreateCapitalCall() {
   const [selectedDealId, setSelectedDealId] = useState<string>(dealIdFromUrl || '');
   const [amount, setAmount] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [dealInvestors, setDealInvestors] = useState<DealInvestor[]>([]);
+  const [isLoadingInvestors, setIsLoadingInvestors] = useState(false);
 
   // Fetch deals from API
   useEffect(() => {
@@ -80,11 +80,40 @@ export function CreateCapitalCall() {
     fetchDeals();
   }, [dealIdFromUrl]);
 
+  // Fetch investors when deal is selected
+  useEffect(() => {
+    async function fetchDealInvestors() {
+      if (!selectedDealId || selectedDealId.startsWith('mock-')) {
+        setDealInvestors([]);
+        return;
+      }
+
+      setIsLoadingInvestors(true);
+      try {
+        const investors = await dealsApi.getDealInvestors(selectedDealId);
+        setDealInvestors(investors);
+      } catch (error) {
+        console.error('Failed to fetch deal investors:', error);
+        setDealInvestors([]);
+      } finally {
+        setIsLoadingInvestors(false);
+      }
+    }
+
+    fetchDealInvestors();
+  }, [selectedDealId]);
+
   const selectedDeal = deals.find((d) => d.id === selectedDealId);
 
-  const investorBreakdown = mockInvestorBreakdown.map((investor) => ({
-    ...investor,
-    amount: parseFloat(amount || '0') * investor.ownershipPercent,
+  // Calculate total ownership percentage from real investors
+  const totalOwnership = dealInvestors.reduce((sum, inv) => sum + inv.ownershipPercentage, 0);
+
+  // Calculate investor breakdown with amounts
+  const investorBreakdown: InvestorBreakdownItem[] = dealInvestors.map((investor) => ({
+    id: investor.id,
+    name: `${investor.firstName} ${investor.lastName}`,
+    ownershipPercent: investor.ownershipPercentage,
+    amount: parseFloat(amount || '0') * investor.ownershipPercentage,
   }));
 
   const handleNext = () => {
@@ -277,28 +306,51 @@ export function CreateCapitalCall() {
                 Each investor will receive their proportional share based on ownership
               </p>
             </div>
-            <div className="divide-y">
-              {investorBreakdown.map((investor) => (
-                <div
-                  key={investor.id}
-                  className="flex items-center justify-between p-4"
-                >
-                  <div>
-                    <p className="font-medium">{investor.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(investor.ownershipPercent * 100).toFixed(1)}% ownership
-                    </p>
-                  </div>
-                  <p className="font-semibold">{formatCurrency(investor.amount)}</p>
-                </div>
-              ))}
-            </div>
-            <div className="border-t bg-muted/30 p-4">
-              <div className="flex items-center justify-between font-semibold">
-                <span>Total</span>
-                <span>{formatCurrency(parseFloat(amount || '0'))}</span>
+            {isLoadingInvestors ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Loading investors...</span>
               </div>
-            </div>
+            ) : investorBreakdown.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <Users className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                <p className="font-medium">No investors found for this deal</p>
+                <p className="text-sm mt-1">
+                  Add investors to this deal first to create a capital call.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y">
+                  {investorBreakdown.map((investor) => (
+                    <div
+                      key={investor.id}
+                      className="flex items-center justify-between p-4"
+                    >
+                      <div>
+                        <p className="font-medium">{investor.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(investor.ownershipPercent * 100).toFixed(1)}% ownership
+                        </p>
+                      </div>
+                      <p className="font-semibold">{formatCurrency(investor.amount)}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t bg-muted/30 p-4">
+                  <div className="flex items-center justify-between font-semibold">
+                    <span>Total</span>
+                    <span>{formatCurrency(parseFloat(amount || '0'))}</span>
+                  </div>
+                  {totalOwnership < 1 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Note: Investors account for {(totalOwnership * 100).toFixed(1)}% of ownership. 
+                      Remaining {((1 - totalOwnership) * 100).toFixed(1)}% is not allocated.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -16,6 +16,11 @@ export async function dealsRoutes(fastify: FastifyInstance) {
     return dealsController.getById(request as any, reply);
   });
 
+  // Get investors for a deal
+  fastify.get('/:id/investors', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dealsController.getDealInvestors(request as any, reply);
+  });
+
   // Create a deal
   fastify.post('/', { preHandler: managerPreHandler }, async (request, reply) => {
     return dealsController.create(request as any, reply);

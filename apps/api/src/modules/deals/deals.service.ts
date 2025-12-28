@@ -50,6 +50,16 @@ export interface CreateDealInput {
   kpis?: DealKPIs;
 }
 
+export interface DealInvestor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  ownershipPercentage: number;
+  commitmentAmount: number;
+  joinedAt: string;
+}
+
 const statusLabels: Record<string, string> = {
   prospective: 'Prospective',
   under_contract: 'Under Contract',
@@ -257,6 +267,49 @@ export class DealsService {
       .eq('fund_id', fundId);
 
     return imageUrl;
+  }
+
+  /**
+   * Get investors for a specific deal with their ownership percentages
+   */
+  async getDealInvestors(fundId: string, dealId: string): Promise<DealInvestor[]> {
+    // Verify the deal belongs to this fund
+    const deal = await this.getById(fundId, dealId);
+    if (!deal) {
+      throw new Error('Deal not found');
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('investor_deals')
+      .select(`
+        ownership_percentage,
+        joined_at,
+        investor:investors (
+          id,
+          first_name,
+          last_name,
+          email,
+          commitment_amount
+        )
+      `)
+      .eq('deal_id', dealId);
+
+    if (error) {
+      console.error('Error fetching deal investors:', error);
+      throw new Error('Failed to fetch deal investors');
+    }
+
+    return (data || [])
+      .filter((item: any) => item.investor)
+      .map((item: any) => ({
+        id: item.investor.id,
+        firstName: item.investor.first_name,
+        lastName: item.investor.last_name,
+        email: item.investor.email,
+        ownershipPercentage: parseFloat(item.ownership_percentage) || 0,
+        commitmentAmount: item.investor.commitment_amount || 0,
+        joinedAt: item.joined_at,
+      }));
   }
 
   /**

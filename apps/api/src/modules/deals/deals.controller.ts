@@ -68,6 +68,35 @@ export class DealsController {
   }
 
   /**
+   * Get investors for a specific deal
+   */
+  async getDealInvestors(request: AuthenticatedRequest, reply: FastifyReply) {
+    const fundId = request.user?.fundId;
+    const { id } = request.params as { id: string };
+
+    if (!fundId) {
+      return reply.status(400).send({
+        success: false,
+        error: 'No fund associated with this user',
+      });
+    }
+
+    try {
+      const investors = await dealsService.getDealInvestors(fundId, id);
+
+      return reply.send({
+        success: true,
+        data: investors,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to fetch deal investors',
+      });
+    }
+  }
+
+  /**
    * Create a new deal
    */
   async create(request: AuthenticatedRequest, reply: FastifyReply) {

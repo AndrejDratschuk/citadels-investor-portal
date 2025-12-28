@@ -49,6 +49,16 @@ export interface CreateDealInput {
   kpis?: DealKPIs;
 }
 
+export interface DealInvestor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  ownershipPercentage: number;
+  commitmentAmount: number;
+  joinedAt: string;
+}
+
 export const dealsApi = {
   // Get all deals
   getAll: async (): Promise<Deal[]> => {
@@ -58,6 +68,11 @@ export const dealsApi = {
   // Get a single deal
   getById: async (id: string): Promise<Deal> => {
     return api.get<Deal>(`/deals/${id}`);
+  },
+
+  // Get investors for a deal
+  getDealInvestors: async (dealId: string): Promise<DealInvestor[]> => {
+    return api.get<DealInvestor[]>(`/deals/${dealId}/investors`);
   },
 
   // Create a deal

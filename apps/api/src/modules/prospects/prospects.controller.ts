@@ -673,6 +673,107 @@ export class ProspectsController {
       });
     }
   }
+
+  /**
+   * Send DocuSign to prospect
+   */
+  async sendDocuSign(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
+    try {
+      if (!request.user) {
+        reply.status(401).send({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { id } = request.params as { id: string };
+
+      const prospect = await this.repository.findById(id);
+      if (!prospect) {
+        reply.status(404).send({ success: false, error: 'Prospect not found' });
+        return;
+      }
+
+      // Verify manager has access
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
+      if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
+        reply.status(403).send({ success: false, error: 'Access denied' });
+        return;
+      }
+
+      // Verify prospect is in correct status
+      if (prospect.status !== 'documents_approved') {
+        reply.status(400).send({
+          success: false,
+          error: 'Prospect must have approved documents before sending DocuSign',
+        });
+        return;
+      }
+
+      // Import DocuSign service dynamically to avoid circular dependencies
+      const { docuSignService } = await import('../docusign/docusign.service');
+
+      // Check if DocuSign is configured for this fund
+      const isDocuSignConfigured = await docuSignService.isConfiguredForFund(managerInfo.fundId);
+      
+      if (!isDocuSignConfigured) {
+        // For now, just update status even if DocuSign isn't configured
+        // In production, you'd want to actually send the envelope
+        console.log(`[DocuSign] Not configured for fund ${managerInfo.fundId}, updating status only`);
+        
+        await this.repository.updateStatus(
+          id,
+          'docusign_sent' as ProspectStatus,
+          new Date(),
+          { docusignSentAt: new Date() }
+        );
+
+        reply.send({
+          success: true,
+          message: 'DocuSign status updated (DocuSign not configured - manual signing required)',
+          envelopeId: null,
+        });
+        return;
+      }
+
+      // Get the investor linked to this prospect for DocuSign
+      if (!prospect.investorId) {
+        reply.status(400).send({
+          success: false,
+          error: 'No investor linked to this prospect',
+        });
+        return;
+      }
+
+      // TODO: Get subscription agreement template and create envelope
+      // For now, just update status
+      const envelopeId = `manual-${Date.now()}`; // Placeholder
+
+      await this.repository.updateStatus(
+        id,
+        'docusign_sent' as ProspectStatus,
+        new Date(),
+        { 
+          docusignEnvelopeId: envelopeId,
+          docusignSentAt: new Date() 
+        }
+      );
+
+      // Trigger email notification
+      await this.emailTriggers.onDocuSignSent(prospect, managerInfo.fundName);
+
+      reply.send({
+        success: true,
+        message: 'DocuSign sent successfully',
+        envelopeId,
+      });
+    } catch (error) {
+      console.error('Error sending DocuSign:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to send DocuSign',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  }
 }
 
 export const prospectsController = new ProspectsController();

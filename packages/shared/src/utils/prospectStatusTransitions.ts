@@ -244,6 +244,7 @@ export function calculatePipelineMetrics(
       case PROSPECT_STATUS.MEETING_COMPLETE:
         metrics.meetingsCompleted++;
         break;
+      case PROSPECT_STATUS.ACCOUNT_INVITE_SENT:
       case PROSPECT_STATUS.ACCOUNT_CREATED:
       case PROSPECT_STATUS.ONBOARDING_SUBMITTED:
         metrics.onboardingInProgress++;

@@ -13,6 +13,7 @@ export type ProspectActionType =
   | 'send_account_invite'
   | 'approve_documents'
   | 'reject_documents'
+  | 'send_docusign'
   | 'convert_to_investor'
   | 'send_reminder'
   | 'mark_not_eligible';
@@ -120,9 +121,9 @@ export function getProspectActions(status: ProspectStatus): ProspectActionsConfi
     case 'documents_approved':
       return {
         actions: [
-          { type: 'send_reminder', label: 'Send Reminder', variant: 'outline' },
+          { type: 'send_docusign', label: 'Send DocuSign', variant: 'primary' },
         ],
-        infoMessage: 'Documents approved. Waiting for DocuSign to be sent.',
+        infoMessage: 'Documents approved. Send DocuSign for signature.',
       };
 
     case 'documents_rejected':

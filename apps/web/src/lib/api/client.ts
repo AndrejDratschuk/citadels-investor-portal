@@ -1,5 +1,5 @@
 // Use Railway API URL in production, fallback to /api for local dev
-const API_URL = import.meta.env.PROD 
+export const API_URL = import.meta.env.PROD 
   ? 'https://citadel-investor-portal-production.up.railway.app/api'
   : (import.meta.env.VITE_API_URL || '/api');
 

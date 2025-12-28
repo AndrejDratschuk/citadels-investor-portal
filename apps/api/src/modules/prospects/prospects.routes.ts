@@ -61,5 +61,10 @@ export async function prospectsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post('/:id/send-reminder', { preHandler }, async (request, reply) => {
     return prospectsController.sendReminder(request as any, reply);
   });
+
+  // Send DocuSign to prospect
+  fastify.post('/:id/send-docusign', { preHandler }, async (request, reply) => {
+    return prospectsController.sendDocuSign(request as any, reply);
+  });
 }
 

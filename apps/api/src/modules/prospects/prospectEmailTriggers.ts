@@ -139,6 +139,34 @@ export class ProspectEmailTriggers {
   }
 
   /**
+   * Trigger email when DocuSign is sent
+   * Uses the same template as onDocumentsApproved but can be called separately
+   */
+  async onDocuSignSent(
+    prospect: Prospect,
+    fundName: string,
+    docusignUrl?: string
+  ): Promise<void> {
+    // If no docusignUrl provided, use a placeholder message
+    const signingUrl = docusignUrl || `${getBaseUrl()}/investor/documents`;
+    
+    const templateData: DocumentsApprovedDocuSignTemplateData = {
+      recipientName: this.getDisplayName(prospect),
+      fundName,
+      docusignUrl: signingUrl,
+    };
+
+    console.log(`[Email] Sending DocuSign notification to ${prospect.email}`);
+    const result = await this.emailService.sendDocumentsApprovedDocuSign(prospect.email, templateData);
+    
+    if (result.success) {
+      console.log(`[Email] DocuSign notification sent to ${prospect.email}`);
+    } else {
+      console.error(`[Email] Failed to send DocuSign notification: ${result.error}`);
+    }
+  }
+
+  /**
    * Trigger email when documents are rejected
    */
   async onDocumentsRejected(

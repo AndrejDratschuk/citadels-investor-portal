@@ -156,3 +156,18 @@ export function useSendReminder() {
   });
 }
 
+/**
+ * Hook to send DocuSign to prospect
+ */
+export function useSendDocuSign() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => prospectsApi.sendDocuSign(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PROSPECTS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [PIPELINE_STATS_KEY] });
+    },
+  });
+}
+

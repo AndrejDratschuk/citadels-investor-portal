@@ -183,7 +183,7 @@ BEGIN
     'pre_qualified', COUNT(*) FILTER (WHERE status = 'pre_qualified'),
     'meetings_scheduled', COUNT(*) FILTER (WHERE status = 'meeting_scheduled'),
     'meetings_completed', COUNT(*) FILTER (WHERE status = 'meeting_complete'),
-    'onboarding_in_progress', COUNT(*) FILTER (WHERE status IN ('account_created', 'onboarding_submitted')),
+    'onboarding_in_progress', COUNT(*) FILTER (WHERE status IN ('account_invite_sent', 'account_created', 'onboarding_submitted')),
     'documents_pending', COUNT(*) FILTER (WHERE status = 'documents_pending'),
     'documents_approved', COUNT(*) FILTER (WHERE status = 'documents_approved'),
     'docusign_pending', COUNT(*) FILTER (WHERE status = 'docusign_sent'),

@@ -373,7 +373,7 @@ export class ProspectsRepository {
       meetingsScheduled: prospects.filter(p => p.status === 'meeting_scheduled').length,
       meetingsCompleted: prospects.filter(p => p.status === 'meeting_complete').length,
       onboardingInProgress: prospects.filter(p => 
-        ['account_created', 'onboarding_submitted'].includes(p.status)
+        ['account_invite_sent', 'account_created', 'onboarding_submitted'].includes(p.status)
       ).length,
       documentsPending: prospects.filter(p => p.status === 'documents_pending').length,
       documentsApproved: prospects.filter(p => p.status === 'documents_approved').length,

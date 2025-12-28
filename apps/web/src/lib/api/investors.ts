@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, API_URL } from './client';
 
 export interface InvestorProfile {
   id: string;
@@ -211,12 +211,7 @@ export const investorsApi = {
     formData.append('name', documentName);
     formData.append('documentType', documentType);
     
-    // Use the same API URL as other requests
-    const apiUrl = import.meta.env.PROD 
-      ? 'https://citadel-investor-portal-production.up.railway.app/api'
-      : (import.meta.env.VITE_API_URL || '/api');
-    
-    const response = await fetch(`${apiUrl}/documents/my-validation/upload`, {
+    const response = await fetch(`${API_URL}/documents/my-validation/upload`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,

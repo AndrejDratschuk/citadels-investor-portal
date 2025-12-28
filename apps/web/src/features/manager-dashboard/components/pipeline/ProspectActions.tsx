@@ -14,6 +14,7 @@ import {
   Loader2,
   DollarSign,
   Ban,
+  PenTool,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +23,7 @@ import {
   useRejectDocuments,
   useConvertToInvestor,
   useSendReminder,
+  useSendDocuSign,
 } from '../../hooks/useProspects';
 import { getProspectActions, buildOnboardingUrl } from './getProspectActions';
 import type { Prospect, ProspectStatus } from '@altsui/shared';
@@ -48,6 +50,7 @@ export function ProspectActions({
   const rejectDocsMutation = useRejectDocuments();
   const convertMutation = useConvertToInvestor();
   const sendReminderMutation = useSendReminder();
+  const sendDocuSignMutation = useSendDocuSign();
 
   const config = getProspectActions(prospect.status as ProspectStatus);
   const onboardingUrl = buildOnboardingUrl(prospect.id, window.location.origin);
@@ -57,7 +60,8 @@ export function ProspectActions({
     approveDocsMutation.isPending ||
     rejectDocsMutation.isPending ||
     convertMutation.isPending ||
-    sendReminderMutation.isPending;
+    sendReminderMutation.isPending ||
+    sendDocuSignMutation.isPending;
 
   const handleCopyOnboardingLink = async (): Promise<void> => {
     await navigator.clipboard.writeText(onboardingUrl);
@@ -146,6 +150,16 @@ export function ProspectActions({
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to reject documents: ${message}`);
+    }
+  };
+
+  const handleSendDocuSign = async (): Promise<void> => {
+    try {
+      await sendDocuSignMutation.mutateAsync(prospect.id);
+      onRefresh();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to send DocuSign: ${message}`);
     }
   };
 
@@ -407,6 +421,20 @@ export function ProspectActions({
                     disabled={isLoading}
                   >
                     <XCircle className="mr-1 h-4 w-4" />
+                    {action.label}
+                  </Button>
+                );
+
+              case 'send_docusign':
+                return (
+                  <Button
+                    key={action.type}
+                    variant={buttonVariant}
+                    size="sm"
+                    onClick={handleSendDocuSign}
+                    disabled={isLoading}
+                  >
+                    <PenTool className="mr-1 h-4 w-4" />
                     {action.label}
                   </Button>
                 );

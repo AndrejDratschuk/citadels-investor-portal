@@ -126,6 +126,13 @@ export function sendReminder(
 }
 
 /**
+ * Send DocuSign to prospect
+ */
+export function sendDocuSign(id: string): Promise<{ envelopeId: string }> {
+  return api.post<{ envelopeId: string }>(`/prospects/${id}/send-docusign`);
+}
+
+/**
  * Submit interest form (public - no auth)
  */
 export function submitInterestForm(input: {

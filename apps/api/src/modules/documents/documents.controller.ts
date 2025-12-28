@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { documentsService, CreateDocumentInput, DocumentFilters, DocumentCategory, DocumentDepartment, DocumentStatus, ValidationStatus } from './documents.service';
 import { emailService } from '../email/email.service';
 import { onboardingService } from '../onboarding/onboarding.service';
+import { supabaseAdmin } from '../../common/database/supabase';
 
 export class DocumentsController {
   /**
@@ -546,6 +547,30 @@ export class DocumentsController {
         uploadedBy: 'investor',
         validationStatus: 'pending',
       });
+
+      // Auto-transition prospect to documents_pending if they uploaded a validation document
+      // Find the prospect linked to this investor
+      const { data: prospect } = await supabaseAdmin
+        .from('kyc_applications')
+        .select('id, status')
+        .eq('investor_id', investorId)
+        .single();
+
+      if (prospect && ['onboarding_submitted', 'account_created'].includes(prospect.status)) {
+        const { error: updateError } = await supabaseAdmin
+          .from('kyc_applications')
+          .update({ 
+            status: 'documents_pending',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', prospect.id);
+
+        if (updateError) {
+          console.error('Error updating prospect status to documents_pending:', updateError);
+        } else {
+          console.log(`[Pipeline] Auto-transitioned prospect ${prospect.id} to documents_pending`);
+        }
+      }
 
       return reply.send({
         success: true,

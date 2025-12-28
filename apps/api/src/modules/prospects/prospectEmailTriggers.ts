@@ -234,7 +234,7 @@ export class ProspectEmailTriggers {
     const templateData: AccountInviteTemplateData = {
       recipientName: this.getDisplayName(prospect),
       fundName,
-      accountCreationUrl: `${getBaseUrl()}/onboarding/${prospect.id}`,
+      accountCreationUrl: `${getBaseUrl()}/onboard/${prospect.id}`,
       managerName,
     };
 

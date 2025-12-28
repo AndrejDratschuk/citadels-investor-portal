@@ -82,6 +82,11 @@ export async function investorsRoutes(fastify: FastifyInstance) {
     return investorsController.getById(request as any, reply);
   });
 
+  // Get investor's deal investments (manager view)
+  fastify.get('/:id/investments', { preHandler: managerPreHandler }, async (request, reply) => {
+    return investorsController.getInvestorDeals(request as any, reply);
+  });
+
   // Update an investor by ID
   fastify.patch('/:id', { preHandler: managerPreHandler }, async (request, reply) => {
     return investorsController.update(request as any, reply);

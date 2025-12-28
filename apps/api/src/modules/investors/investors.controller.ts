@@ -90,6 +90,31 @@ export class InvestorsController {
   }
 
   /**
+   * Get investor's deal investments (manager view)
+   */
+  async getInvestorDeals(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { id } = request.params as { id: string };
+
+    try {
+      const investments = await investorsService.getInvestorInvestments(id);
+      
+      return reply.send({
+        success: true,
+        data: investments,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to fetch investor deals',
+      });
+    }
+  }
+
+  /**
    * Update an investor by ID (manager view)
    */
   async update(request: AuthenticatedRequest, reply: FastifyReply) {

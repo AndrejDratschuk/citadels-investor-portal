@@ -275,6 +275,11 @@ export const investorsApi = {
     return api.get<InvestorProfile>(`/investors/${investorId}`);
   },
 
+  // Get investor's deal investments (manager only)
+  getInvestorDeals: async (investorId: string): Promise<Investment[]> => {
+    return api.get<Investment[]>(`/investors/${investorId}/investments`);
+  },
+
   // Update investor by ID (manager only)
   update: async (investorId: string, data: UpdateInvestorInput): Promise<InvestorProfile> => {
     return api.patch<InvestorProfile>(`/investors/${investorId}`, data);

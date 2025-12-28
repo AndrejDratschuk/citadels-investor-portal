@@ -211,7 +211,12 @@ export const investorsApi = {
     formData.append('name', documentName);
     formData.append('documentType', documentType);
     
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/documents/my-validation/upload`, {
+    // Use the same API URL as other requests
+    const apiUrl = import.meta.env.PROD 
+      ? 'https://citadel-investor-portal-production.up.railway.app/api'
+      : (import.meta.env.VITE_API_URL || '/api');
+    
+    const response = await fetch(`${apiUrl}/documents/my-validation/upload`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,

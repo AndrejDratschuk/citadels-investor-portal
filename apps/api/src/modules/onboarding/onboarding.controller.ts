@@ -59,7 +59,22 @@ export class OnboardingController {
       }
     }
 
-    // If not found via KYC, try invite code as fund code (e.g., "citadel-2024")
+    // Try inviteCode as prospect ID (kyc_applications.id) - this is the most common case
+    // when user comes from the email invite link
+    if (!fundId) {
+      const { data: prospect } = await supabaseAdmin
+        .from('kyc_applications')
+        .select('fund_id')
+        .eq('id', body.inviteCode)
+        .single();
+      
+      if (prospect?.fund_id) {
+        fundId = prospect.fund_id;
+        console.log('Found fund from prospect ID:', body.inviteCode, '-> fund:', fundId);
+      }
+    }
+
+    // If not found via KYC/prospect, try invite code as fund code (e.g., "citadel-2024")
     if (!fundId) {
       const { data: fundByCode } = await supabaseAdmin
         .from('funds')

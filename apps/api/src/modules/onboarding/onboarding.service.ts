@@ -206,10 +206,28 @@ export class OnboardingService {
         await supabaseAdmin
           .from('kyc_applications')
           .update({
-            status: 'meeting_complete',
+            status: 'account_created',
+            investor_id: investor.id,
             updated_at: new Date().toISOString(),
           })
           .eq('id', data.kycApplicationId);
+      }
+
+      // Also try to update prospect by inviteCode (which is often the prospect ID)
+      // This handles the case where inviteCode is the prospect ID from the email link
+      const { error: prospectUpdateError } = await supabaseAdmin
+        .from('kyc_applications')
+        .update({
+          status: 'account_created',
+          investor_id: investor.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', inviteCode);
+
+      if (prospectUpdateError) {
+        console.log('Note: Could not update prospect by inviteCode (may not be a prospect ID):', inviteCode);
+      } else {
+        console.log('Updated prospect status to account_created for:', inviteCode);
       }
 
       return {

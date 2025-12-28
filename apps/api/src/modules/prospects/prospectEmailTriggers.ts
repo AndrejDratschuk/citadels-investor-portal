@@ -14,6 +14,7 @@ import type {
   WelcomeInvestorTemplateData,
   KYCReminderTemplateData,
   OnboardingReminderTemplateData,
+  AccountInviteTemplateData,
 } from '../email/email.templates';
 import type { Prospect, ProspectStatus } from '@flowveda/shared';
 
@@ -223,6 +224,31 @@ export class ProspectEmailTriggers {
   }
 
   /**
+   * Trigger email when account invite is sent (onboarding link)
+   */
+  async onAccountInviteSent(
+    prospect: Prospect,
+    fundName: string,
+    managerName?: string
+  ): Promise<void> {
+    const templateData: AccountInviteTemplateData = {
+      recipientName: this.getDisplayName(prospect),
+      fundName,
+      accountCreationUrl: `${getBaseUrl()}/onboarding/${prospect.id}`,
+      managerName,
+    };
+
+    console.log(`[Email] Sending account invite to ${prospect.email} for fund ${fundName}`);
+    const result = await this.emailService.sendAccountInvite(prospect.email, templateData);
+
+    if (result.success) {
+      console.log(`[Email] Account invite sent successfully to ${prospect.email}, messageId: ${result.messageId}`);
+    } else {
+      console.error(`[Email] Failed to send account invite to ${prospect.email}: ${result.error}`);
+    }
+  }
+
+  /**
    * Handle status change and trigger appropriate email
    */
   async onStatusChanged(
@@ -242,6 +268,10 @@ export class ProspectEmailTriggers {
 
       case 'meeting_complete':
         // Account invite is typically sent manually, but can auto-trigger
+        break;
+
+      case 'account_invite_sent':
+        await this.onAccountInviteSent(prospect, fundName, managerName);
         break;
 
       case 'documents_approved':

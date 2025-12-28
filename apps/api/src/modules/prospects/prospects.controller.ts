@@ -647,9 +647,12 @@ export class ProspectsController {
         return;
       }
 
-      // Send appropriate reminder
-      if (type === 'kyc' && prospect.status === 'kyc_sent') {
+      // Send appropriate reminder based on status
+      if (type === 'kyc' && (prospect.status === 'kyc_sent' || prospect.status === 'submitted')) {
         await this.emailTriggers.sendKYCReminder(prospect, managerInfo.fundName);
+      } else if (type === 'onboarding' && prospect.status === 'account_invite_sent') {
+        // Resend the account invite email
+        await this.emailTriggers.onAccountInviteSent(prospect, managerInfo.fundName, managerInfo.managerName);
       } else if (type === 'onboarding' && prospect.status === 'account_created') {
         await this.emailTriggers.sendOnboardingReminder(prospect, managerInfo.fundName);
       } else {

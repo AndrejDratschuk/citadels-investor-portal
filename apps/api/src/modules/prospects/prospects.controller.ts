@@ -149,7 +149,11 @@ export class ProspectsController {
         });
       } else {
         console.error('Error sending KYC:', error);
-        throw error;
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to send KYC form',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
       }
     }
   }
@@ -192,7 +196,11 @@ export class ProspectsController {
         });
       } else {
         console.error('Error fetching prospects:', error);
-        throw error;
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to fetch prospects',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
       }
     }
   }
@@ -218,7 +226,11 @@ export class ProspectsController {
       reply.send({ success: true, data: stats });
     } catch (error) {
       console.error('Error fetching stats:', error);
-      throw error;
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to fetch pipeline stats',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
     }
   }
 
@@ -250,7 +262,11 @@ export class ProspectsController {
       reply.send({ success: true, data: prospect });
     } catch (error) {
       console.error('Error fetching prospect:', error);
-      throw error;
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to fetch prospect',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
     }
   }
 
@@ -320,7 +336,11 @@ export class ProspectsController {
         });
       } else {
         console.error('Error updating status:', error);
-        throw error;
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to update prospect status',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
       }
     }
   }
@@ -377,7 +397,11 @@ export class ProspectsController {
         });
       } else {
         console.error('Error approving documents:', error);
-        throw error;
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to approve documents',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
       }
     }
   }
@@ -442,7 +466,11 @@ export class ProspectsController {
         });
       } else {
         console.error('Error rejecting documents:', error);
-        throw error;
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to reject documents',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
       }
     }
   }
@@ -531,7 +559,11 @@ export class ProspectsController {
         });
       } else {
         console.error('Error converting to investor:', error);
-        throw error;
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to convert prospect to investor',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
       }
     }
   }
@@ -568,7 +600,11 @@ export class ProspectsController {
       reply.send({ success: true, data: updated });
     } catch (error) {
       console.error('Error updating notes:', error);
-      throw error;
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to update notes',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
     }
   }
 
@@ -614,7 +650,11 @@ export class ProspectsController {
       reply.send({ success: true, message: 'Reminder sent successfully' });
     } catch (error) {
       console.error('Error sending reminder:', error);
-      throw error;
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to send reminder',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
     }
   }
 }

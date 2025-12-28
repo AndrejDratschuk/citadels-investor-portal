@@ -535,11 +535,11 @@ export class DocumentsController {
       );
 
       // Create document record
-      const document = await documentsService.create(fundId, {
+      const document = await documentsService.create(fundId, userId, {
         name: documentName,
         type: documentType,
         subcategory: 'validation',
-        fileUrl,
+        filePath: fileUrl,
         investorId,
         uploadedBy: 'investor',
         validationStatus: 'pending',

@@ -471,47 +471,67 @@ export function DealDetail() {
                     : 'Investors will appear here once assigned to this deal'}
                 </p>
               </div>
-            ) : (
+            ) : isRealDeal ? (
               <div className="divide-y">
-                {(isRealDeal ? dealInvestors : mockInvestors).map((investor) => {
-                  const name = 'firstName' in investor 
-                    ? `${investor.firstName} ${investor.lastName}` 
-                    : investor.name;
-                  const ownership = 'ownershipPercentage' in investor 
-                    ? investor.ownershipPercentage 
-                    : investor.ownershipPercentage;
-                  const invested = 'commitmentAmount' in investor 
-                    ? investor.commitmentAmount * ownership 
-                    : investor.investedAmount;
-                    
-                  return (
-                    <div
-                      key={investor.id}
-                      className="flex items-center justify-between p-4 hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                          <Users className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <Link
-                            to={`/manager/investors/${investor.id}`}
-                            className="font-medium hover:underline"
-                          >
-                            {name}
-                          </Link>
-                          <p className="text-sm text-muted-foreground">
-                            {formatPercentage(ownership)} ownership
-                          </p>
-                        </div>
+                {dealInvestors.map((investor) => (
+                  <div
+                    key={investor.id}
+                    className="flex items-center justify-between p-4 hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <Users className="h-5 w-5 text-primary" />
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{formatCurrency(invested)}</p>
-                        <p className="text-sm text-muted-foreground">Invested</p>
+                      <div>
+                        <Link
+                          to={`/manager/investors/${investor.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {investor.firstName} {investor.lastName}
+                        </Link>
+                        <p className="text-sm text-muted-foreground">
+                          {formatPercentage(investor.ownershipPercentage)} ownership
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="text-right">
+                      <p className="font-medium">
+                        {formatCurrency(investor.commitmentAmount * investor.ownershipPercentage)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Invested</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="divide-y">
+                {mockInvestors.map((investor) => (
+                  <div
+                    key={investor.id}
+                    className="flex items-center justify-between p-4 hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <Link
+                          to={`/manager/investors/${investor.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {investor.name}
+                        </Link>
+                        <p className="text-sm text-muted-foreground">
+                          {formatPercentage(investor.ownershipPercentage)} ownership
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{formatCurrency(investor.investedAmount)}</p>
+                      <p className="text-sm text-muted-foreground">Invested</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

@@ -45,6 +45,7 @@ export function getProspectActions(status: ProspectStatus): ProspectActionsConfi
         infoMessage: 'Waiting for prospect to complete KYC form.',
       };
 
+    case 'submitted':
     case 'kyc_submitted':
       return {
         actions: [

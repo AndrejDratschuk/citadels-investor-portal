@@ -102,10 +102,10 @@ CHECK (status IN (
 ALTER TABLE investors 
 DROP CONSTRAINT IF EXISTS investors_status_check;
 
--- Add updated constraint with exited status
+-- Add updated constraint with all existing statuses
 ALTER TABLE investors 
 ADD CONSTRAINT investors_status_check 
-CHECK (status IN ('active', 'inactive', 'exited'));
+CHECK (status IN ('active', 'inactive', 'exited', 'prospect', 'onboarding'));
 
 -- Add prospect reference
 ALTER TABLE investors 

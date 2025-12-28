@@ -1,15 +1,24 @@
 import { api } from './client';
 
+export interface InvestorStatusCounts {
+  paid: number;
+  pending: number;
+  partial: number;
+  overdue: number;
+}
+
 export interface CapitalCall {
   id: string;
   fundId: string;
   dealId: string;
   totalAmount: number;
+  receivedAmount: number;
   deadline: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  notes: string | null;
+  status: 'draft' | 'sent' | 'partial' | 'funded' | 'closed';
+  sentAt: string | null;
   createdAt: string;
-  updatedAt: string;
+  investorCount: number;
+  investorStatus: InvestorStatusCounts;
   deal: {
     id: string;
     name: string;

@@ -27,6 +27,19 @@ export interface CapitalCallWithDeal extends CapitalCall {
   };
 }
 
+export interface InvestorStatusCounts {
+  paid: number;
+  pending: number;
+  partial: number;
+  overdue: number;
+}
+
+export interface CapitalCallWithStats extends CapitalCallWithDeal {
+  receivedAmount: number;
+  investorCount: number;
+  investorStatus: InvestorStatusCounts;
+}
+
 export interface CapitalCallItem {
   id: string;
   capitalCallId: string;
@@ -230,14 +243,20 @@ export class CapitalCallsService {
   }
 
   /**
-   * Get all capital calls for a fund
+   * Get all capital calls for a fund with investor status counts
    */
-  async getAllByFundId(fundId: string): Promise<CapitalCallWithDeal[]> {
+  async getAllByFundId(fundId: string): Promise<CapitalCallWithStats[]> {
     const { data, error } = await supabaseAdmin
       .from('capital_calls')
       .select(`
         *,
-        deal:deals (id, name)
+        deal:deals (id, name),
+        capital_call_items (
+          id,
+          amount_due,
+          amount_received,
+          status
+        )
       `)
       .eq('fund_id', fundId)
       .order('created_at', { ascending: false });
@@ -247,21 +266,38 @@ export class CapitalCallsService {
       throw new Error('Failed to fetch capital calls');
     }
 
-    return (data || []).map((item: any) => ({
-      id: item.id,
-      fundId: item.fund_id,
-      dealId: item.deal_id,
-      totalAmount: item.total_amount,
-      deadline: item.deadline,
-      status: item.status,
-      percentageOfFund: item.percentage_of_fund || 0,
-      sentAt: item.sent_at,
-      createdAt: item.created_at,
-      deal: item.deal ? {
-        id: item.deal.id,
-        name: item.deal.name,
-      } : { id: '', name: 'Unknown' },
-    }));
+    return (data || []).map((item: any) => {
+      const items = item.capital_call_items || [];
+      const receivedAmount = items.reduce((sum: number, i: any) => sum + (i.amount_received || 0), 0);
+      const investorCount = items.length;
+      
+      // Calculate investor status counts
+      const investorStatus = {
+        paid: items.filter((i: any) => i.status === 'complete').length,
+        pending: items.filter((i: any) => i.status === 'pending' && i.amount_received === 0).length,
+        partial: items.filter((i: any) => i.status === 'partial').length,
+        overdue: 0, // Would need deadline comparison logic
+      };
+
+      return {
+        id: item.id,
+        fundId: item.fund_id,
+        dealId: item.deal_id,
+        totalAmount: item.total_amount,
+        receivedAmount,
+        deadline: item.deadline,
+        status: item.status,
+        percentageOfFund: item.percentage_of_fund || 0,
+        sentAt: item.sent_at,
+        createdAt: item.created_at,
+        investorCount,
+        investorStatus,
+        deal: item.deal ? {
+          id: item.deal.id,
+          name: item.deal.name,
+        } : { id: '', name: 'Unknown' },
+      };
+    });
   }
 
   /**

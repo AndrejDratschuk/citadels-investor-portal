@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -12,19 +12,14 @@ import {
   Bell,
   TrendingUp,
   Building2,
+  Loader2,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { capitalCallsApi, CapitalCall as ApiCapitalCall } from '@/lib/api/capital-calls';
 
-interface InvestorStatus {
-  paid: number;
-  pending: number;
-  overdue: number;
-  partial: number;
-}
-
-interface CapitalCall {
+interface CapitalCallDisplay {
   id: string;
   dealId: string;
   dealName: string;
@@ -34,96 +29,16 @@ interface CapitalCall {
   callDate: string;
   status: 'draft' | 'sent' | 'partial' | 'funded' | 'closed';
   investorCount: number;
-  investorStatus: InvestorStatus;
+  investorStatus: {
+    paid: number;
+    pending: number;
+    overdue: number;
+    partial: number;
+  };
   sentAt: string | null;
   wireConfirmedCount: number;
   pendingReminderCount: number;
-  lastReminderSent: string | null;
 }
-
-// Mock data with enhanced fields
-const mockCapitalCalls: CapitalCall[] = [
-  {
-    id: '1',
-    dealId: '2',
-    dealName: 'Downtown Office Tower',
-    totalAmount: 2500000,
-    receivedAmount: 1875000,
-    deadline: '2024-03-15',
-    callDate: '2024-02-15',
-    status: 'partial',
-    investorCount: 12,
-    investorStatus: { paid: 7, pending: 2, overdue: 1, partial: 2 },
-    sentAt: '2024-02-15',
-    wireConfirmedCount: 7,
-    pendingReminderCount: 3,
-    lastReminderSent: '2024-03-10',
-  },
-  {
-    id: '2',
-    dealId: '3',
-    dealName: 'Eastside Industrial Park',
-    totalAmount: 3500000,
-    receivedAmount: 875000,
-    deadline: '2024-03-30',
-    callDate: '2024-02-28',
-    status: 'sent',
-    investorCount: 18,
-    investorStatus: { paid: 5, pending: 10, overdue: 0, partial: 3 },
-    sentAt: '2024-02-28',
-    wireConfirmedCount: 5,
-    pendingReminderCount: 0,
-    lastReminderSent: null,
-  },
-  {
-    id: '3',
-    dealId: '4',
-    dealName: 'Riverside Apartments',
-    totalAmount: 1200000,
-    receivedAmount: 1200000,
-    deadline: '2024-01-31',
-    callDate: '2024-01-05',
-    status: 'funded',
-    investorCount: 15,
-    investorStatus: { paid: 15, pending: 0, overdue: 0, partial: 0 },
-    sentAt: '2024-01-05',
-    wireConfirmedCount: 15,
-    pendingReminderCount: 0,
-    lastReminderSent: null,
-  },
-  {
-    id: '4',
-    dealId: '5',
-    dealName: 'Lakefront Retail Center',
-    totalAmount: 800000,
-    receivedAmount: 800000,
-    deadline: '2023-12-15',
-    callDate: '2023-11-20',
-    status: 'closed',
-    investorCount: 10,
-    investorStatus: { paid: 10, pending: 0, overdue: 0, partial: 0 },
-    sentAt: '2023-11-20',
-    wireConfirmedCount: 10,
-    pendingReminderCount: 0,
-    lastReminderSent: null,
-  },
-  {
-    id: '5',
-    dealId: '6',
-    dealName: 'Tech Campus Development',
-    totalAmount: 5000000,
-    receivedAmount: 0,
-    deadline: '2024-04-15',
-    callDate: '2024-03-01',
-    status: 'draft',
-    investorCount: 0,
-    investorStatus: { paid: 0, pending: 0, overdue: 0, partial: 0 },
-    sentAt: null,
-    wireConfirmedCount: 0,
-    pendingReminderCount: 0,
-    lastReminderSent: null,
-  },
-];
 
 type StatusFilter = 'all' | 'draft' | 'sent' | 'partial' | 'funded' | 'closed';
 
@@ -137,35 +52,74 @@ const statusStyles = {
 
 export function CapitalCallsList() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [capitalCalls, setCapitalCalls] = useState<CapitalCallDisplay[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredCalls = mockCapitalCalls.filter((call) => {
+  useEffect(() => {
+    const fetchCapitalCalls = async () => {
+      try {
+        setIsLoading(true);
+        const data = await capitalCallsApi.getAll();
+        
+        // Transform API response to display format
+        const displayCalls: CapitalCallDisplay[] = data.map((call: ApiCapitalCall) => ({
+          id: call.id,
+          dealId: call.dealId,
+          dealName: call.deal?.name || 'Unknown Deal',
+          totalAmount: call.totalAmount,
+          receivedAmount: call.receivedAmount || 0,
+          deadline: call.deadline,
+          callDate: call.sentAt || call.createdAt,
+          status: call.status,
+          investorCount: call.investorCount || 0,
+          investorStatus: call.investorStatus || { paid: 0, pending: 0, overdue: 0, partial: 0 },
+          sentAt: call.sentAt,
+          wireConfirmedCount: call.investorStatus?.paid || 0,
+          pendingReminderCount: call.investorStatus?.pending || 0,
+        }));
+
+        setCapitalCalls(displayCalls);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching capital calls:', err);
+        setError('Failed to load capital calls');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCapitalCalls();
+  }, []);
+
+  const filteredCalls = capitalCalls.filter((call) => {
     if (statusFilter === 'all') return true;
     return call.status === statusFilter;
   });
 
   const statusCounts = {
-    all: mockCapitalCalls.length,
-    draft: mockCapitalCalls.filter((c) => c.status === 'draft').length,
-    sent: mockCapitalCalls.filter((c) => c.status === 'sent').length,
-    partial: mockCapitalCalls.filter((c) => c.status === 'partial').length,
-    funded: mockCapitalCalls.filter((c) => c.status === 'funded').length,
-    closed: mockCapitalCalls.filter((c) => c.status === 'closed').length,
+    all: capitalCalls.length,
+    draft: capitalCalls.filter((c) => c.status === 'draft').length,
+    sent: capitalCalls.filter((c) => c.status === 'sent').length,
+    partial: capitalCalls.filter((c) => c.status === 'partial').length,
+    funded: capitalCalls.filter((c) => c.status === 'funded').length,
+    closed: capitalCalls.filter((c) => c.status === 'closed').length,
   };
 
-  const totalOutstanding = mockCapitalCalls
+  const totalOutstanding = capitalCalls
     .filter((c) => c.status === 'sent' || c.status === 'partial')
     .reduce((sum, c) => sum + (c.totalAmount - c.receivedAmount), 0);
 
   // Count completed calls this year
   const currentYear = new Date().getFullYear();
-  const completedThisYear = mockCapitalCalls.filter(
+  const completedThisYear = capitalCalls.filter(
     (c) =>
       (c.status === 'funded' || c.status === 'closed') &&
       new Date(c.deadline).getFullYear() === currentYear
   ).length;
 
   // Count investors needing reminders
-  const totalOverdueInvestors = mockCapitalCalls.reduce(
+  const totalOverdueInvestors = capitalCalls.reduce(
     (sum, c) => sum + c.investorStatus.overdue,
     0
   );
@@ -259,7 +213,23 @@ export function CapitalCallsList() {
       </div>
 
       {/* Capital Calls List */}
-      {filteredCalls.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
+          <h3 className="mt-4 font-semibold text-red-700">{error}</h3>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : filteredCalls.length === 0 ? (
         <div className="rounded-xl border bg-card p-12 text-center">
           <DollarSign className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <h3 className="mt-4 font-semibold">No capital calls found</h3>

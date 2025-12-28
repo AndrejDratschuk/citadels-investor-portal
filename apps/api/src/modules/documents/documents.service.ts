@@ -600,6 +600,23 @@ export class DocumentsService {
     return data.id;
   }
 
+  /**
+   * Get investor's fund ID
+   */
+  async getInvestorFundId(investorId: string): Promise<{ fundId: string | null }> {
+    const { data, error } = await supabaseAdmin
+      .from('investors')
+      .select('fund_id')
+      .eq('id', investorId)
+      .single();
+
+    if (error || !data) {
+      return { fundId: null };
+    }
+
+    return { fundId: data.fund_id };
+  }
+
   private formatValidationDocument(data: any): ValidationDocument {
     const investorData = data.investors;
 

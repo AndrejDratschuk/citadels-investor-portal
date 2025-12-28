@@ -204,6 +204,30 @@ export const investorsApi = {
     return api.get<InvestorDocument[]>('/documents/my-validation');
   },
 
+  // Upload validation document
+  uploadValidationDocument: async (file: File, documentName: string, documentType: string = 'validation'): Promise<InvestorDocument> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', documentName);
+    formData.append('documentType', documentType);
+    
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/documents/my-validation/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to upload document');
+    }
+    
+    const result = await response.json();
+    return result.data;
+  },
+
   // Get capital calls
   getMyCapitalCalls: async (): Promise<CapitalCallItem[]> => {
     return api.get<CapitalCallItem[]>('/investors/me/capital-calls');

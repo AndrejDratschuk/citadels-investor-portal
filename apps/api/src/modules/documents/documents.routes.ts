@@ -69,6 +69,11 @@ export async function documentsRoutes(fastify: FastifyInstance) {
   fastify.get('/my-validation', { preHandler: [authenticate] }, async (request, reply) => {
     return documentsController.getMyValidationDocuments(request as any, reply);
   });
+
+  // Upload validation document (investor only - authenticated)
+  fastify.post('/my-validation/upload', { preHandler: [authenticate] }, async (request, reply) => {
+    return documentsController.uploadInvestorDocument(request as any, reply);
+  });
 }
 
 

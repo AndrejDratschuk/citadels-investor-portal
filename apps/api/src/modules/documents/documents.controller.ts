@@ -475,6 +475,88 @@ export class DocumentsController {
       });
     }
   }
+
+  /**
+   * Upload validation document (investor)
+   */
+  async uploadInvestorDocument(request: AuthenticatedRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+
+    if (!userId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    try {
+      // Get investor info
+      const investorId = await documentsService.getInvestorIdByUserId(userId);
+
+      if (!investorId) {
+        return reply.status(404).send({
+          success: false,
+          error: 'Investor not found',
+        });
+      }
+
+      // Get investor's fund_id
+      const { fundId } = await documentsService.getInvestorFundId(investorId);
+
+      if (!fundId) {
+        return reply.status(400).send({
+          success: false,
+          error: 'No fund associated with investor',
+        });
+      }
+
+      const data = await request.file();
+
+      if (!data) {
+        return reply.status(400).send({
+          success: false,
+          error: 'No file uploaded',
+        });
+      }
+
+      // Get document type from fields
+      const fields = data.fields as Record<string, { value: string }>;
+      const documentType = fields.documentType?.value || 'validation';
+      const documentName = fields.name?.value || data.filename;
+
+      const buffer = await data.toBuffer();
+      
+      // Upload file to storage
+      const fileUrl = await documentsService.uploadFile(
+        fundId,
+        data.filename,
+        buffer,
+        data.mimetype
+      );
+
+      // Create document record
+      const document = await documentsService.create(fundId, {
+        name: documentName,
+        type: documentType,
+        subcategory: 'validation',
+        fileUrl,
+        investorId,
+        uploadedBy: 'investor',
+        validationStatus: 'pending',
+      });
+
+      return reply.send({
+        success: true,
+        data: document,
+      });
+    } catch (error: any) {
+      console.error('Error uploading investor document:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to upload document',
+      });
+    }
+  }
 }
 
 export const documentsController = new DocumentsController();

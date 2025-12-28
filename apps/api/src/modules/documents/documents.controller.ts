@@ -519,9 +519,11 @@ export class DocumentsController {
         });
       }
 
-      // Get document type from fields
+      // Get document type from fields - must be one of: ppm, subscription, k1, report, capital_call, kyc, other
       const fields = data.fields as Record<string, { value: string }>;
-      const documentType = fields.documentType?.value || 'validation';
+      const validTypes = ['ppm', 'subscription', 'k1', 'report', 'capital_call', 'kyc', 'other'];
+      const requestedType = fields.documentType?.value || 'kyc';
+      const documentType = validTypes.includes(requestedType) ? requestedType : 'kyc';
       const documentName = fields.name?.value || data.filename;
 
       const buffer = await data.toBuffer();

@@ -49,7 +49,7 @@ export const kycApi = {
 
   // Send account creation invite email to KYC applicant
   sendAccountInvite: async (id: string): Promise<{ success: boolean; message: string }> => {
-    return api.post<{ success: boolean; message: string }>(`/kyc/${id}/send-account-invite`);
+    return api.post<{ success: boolean; message: string }>(`/kyc/${id}/send-account-invite`, {});
   },
 
   // Update KYC status (generic status update)

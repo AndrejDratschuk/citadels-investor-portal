@@ -19,7 +19,7 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
-    await api.post('/auth/logout');
+    await api.post('/auth/logout', {});
   },
 
   getCurrentUser: async (): Promise<User> => {

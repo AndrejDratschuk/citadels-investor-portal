@@ -173,7 +173,7 @@ export const documentsApi = {
 
   // Approve a validation document
   approveValidationDocument: async (documentId: string): Promise<Document> => {
-    return api.post<Document>(`/documents/${documentId}/approve`);
+    return api.post<Document>(`/documents/${documentId}/approve`, {});
   },
 
   // Reject a validation document

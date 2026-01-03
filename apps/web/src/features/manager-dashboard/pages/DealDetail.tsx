@@ -312,7 +312,7 @@ export function DealDetail() {
   const [dealInvestors, setDealInvestors] = useState<DealInvestor[]>([]);
   const [isLoadingInvestors, setIsLoadingInvestors] = useState(false);
   const [showInvestorsModal, setShowInvestorsModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<KpiCategory | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<KpiCategoryNavOption>('all');
 
   // Fetch KPI summary for financials tab
   const { data: kpiSummary, isLoading: isKpiLoading } = useQuery({

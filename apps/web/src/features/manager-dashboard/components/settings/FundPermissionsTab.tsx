@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Save, RefreshCw, Loader2, Check, ChevronDown } from 'lucide-react';
+import { Shield, RefreshCw, Loader2, Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +10,7 @@ import {
   type KpiDetailLevel,
   type InvestorTypePermission,
 } from '@altsui/shared';
-import { apiClient } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 
 const INVESTOR_TYPES = Object.values(INVESTOR_TYPE) as InvestorType[];
 const KPI_LEVELS = Object.values(KPI_DETAIL_LEVEL) as KpiDetailLevel[];
@@ -208,12 +208,8 @@ export function FundPermissionsTab() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<{ success: boolean; data: InvestorTypePermission[] }>(
-        '/investors/permissions'
-      );
-      if (response.success && response.data) {
-        setPermissions(response.data);
-      }
+      const data = await api.get<InvestorTypePermission[]>('/investors/permissions');
+      setPermissions(data);
     } catch (err) {
       console.error('Failed to fetch permissions:', err);
       setError('Failed to load permission settings');
@@ -226,12 +222,8 @@ export function FundPermissionsTab() {
     setSaving(true);
     setError(null);
     try {
-      const response = await apiClient.post<{ success: boolean; data: InvestorTypePermission[] }>(
-        '/investors/permissions/seed'
-      );
-      if (response.success && response.data) {
-        setPermissions(response.data);
-      }
+      const data = await api.post<InvestorTypePermission[]>('/investors/permissions/seed');
+      setPermissions(data);
     } catch (err) {
       console.error('Failed to seed permissions:', err);
       setError('Failed to create default permissions');
@@ -244,23 +236,21 @@ export function FundPermissionsTab() {
     setSaving(true);
     setError(null);
     try {
-      const response = await apiClient.put<{ success: boolean; data: InvestorTypePermission }>(
+      const data = await api.put<InvestorTypePermission>(
         `/investors/permissions/${investorType}`,
         updates
       );
-      if (response.success && response.data) {
-        setPermissions((prev) =>
-          prev.map((p) => (p.investorType === investorType ? response.data : p))
-        );
-        setSavedTypes((prev) => new Set(prev).add(investorType));
-        setTimeout(() => {
-          setSavedTypes((prev) => {
-            const next = new Set(prev);
-            next.delete(investorType);
-            return next;
-          });
-        }, 2000);
-      }
+      setPermissions((prev) =>
+        prev.map((p) => (p.investorType === investorType ? data : p))
+      );
+      setSavedTypes((prev) => new Set(prev).add(investorType));
+      setTimeout(() => {
+        setSavedTypes((prev) => {
+          const next = new Set(prev);
+          next.delete(investorType);
+          return next;
+        });
+      }, 2000);
     } catch (err) {
       console.error('Failed to update permission:', err);
       setError('Failed to update permission');

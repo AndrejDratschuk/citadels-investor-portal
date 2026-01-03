@@ -8,10 +8,26 @@ export interface OnboardingSignupResponse {
   refreshToken: string;
 }
 
+export interface EnhancedSignupInput {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+}
+
 export const authApi = {
   signup: async (input: SignupInput): Promise<User> => {
     const data = await api.post<{ user: User }>('/auth/signup', input);
     return data.user;
+  },
+
+  /**
+   * Enhanced signup for fund managers creating a new account
+   * Creates user with onboarding_completed = false
+   * Returns auth tokens so user can proceed to fund creation wizard
+   */
+  enhancedSignup: async (input: EnhancedSignupInput): Promise<AuthResponse> => {
+    return api.post<AuthResponse>('/auth/enhanced-signup', input);
   },
 
   login: async (input: LoginInput): Promise<AuthResponse> => {

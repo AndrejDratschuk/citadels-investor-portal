@@ -49,6 +49,8 @@ import {
   OnboardingSuccess,
   OnboardingPending,
 } from './features/onboarding/pages';
+import { CreateFundWizardPage } from './features/onboarding/pages/CreateFundWizardPage';
+import { AcceptTeamInvitePage } from './features/auth/pages/AcceptTeamInvitePage';
 import { KYCPage, KYCTypeSelectorPage, KYCTokenPage } from './features/kyc/pages';
 import { PipelinePage } from './features/manager-dashboard/pages/PipelinePage';
 import { USER_ROLES } from '@altsui/shared';
@@ -83,6 +85,20 @@ export const router = createBrowserRouter([
   {
     path: '/onboard/pending',
     element: <OnboardingPending />,
+  },
+  // Fund creation wizard (for new signups)
+  {
+    path: '/onboarding/create-fund',
+    element: (
+      <ProtectedRoute requireOnboardingIncomplete>
+        <CreateFundWizardPage />
+      </ProtectedRoute>
+    ),
+  },
+  // Team invite acceptance
+  {
+    path: '/invite/accept',
+    element: <AcceptTeamInvitePage />,
   },
   // KYC pre-qualification form (public)
   // Token-based access (from email links)

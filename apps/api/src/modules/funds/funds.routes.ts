@@ -39,5 +39,15 @@ export async function fundsRoutes(fastify: FastifyInstance) {
   fastify.delete('/logo', { preHandler: managerPreHandler }, async (request, reply) => {
     return fundsController.deleteLogo(request as any, reply);
   });
+
+  // Create a new fund (for onboarding - authenticated but no fund required)
+  fastify.post('/create', { preHandler: authenticate }, async (request, reply) => {
+    return fundsController.createFund(request as any, reply);
+  });
+
+  // Check slug availability (for onboarding)
+  fastify.get('/check-slug', { preHandler: authenticate }, async (request, reply) => {
+    return fundsController.checkSlugAvailability(request, reply);
+  });
 }
 

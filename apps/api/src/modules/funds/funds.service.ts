@@ -28,6 +28,25 @@ export interface UpdateFundProfileInput {
   address?: FundAddress;
 }
 
+export interface CreateFundInput {
+  name: string;
+  fundType: string;
+  displayRole: string;
+  entityName?: string;
+  country: string;
+}
+
+export interface CreateFundResult {
+  success: boolean;
+  fund: {
+    id: string;
+    name: string;
+    slug: string;
+    fundType: string;
+    country: string;
+  };
+}
+
 export class FundsService {
   /**
    * Get fund by ID
@@ -215,6 +234,112 @@ export class FundsService {
         .update({ branding: newBranding })
         .eq('id', fundId);
     }
+  }
+}
+
+  /**
+   * Create a new fund (for onboarding flow)
+   * Also sets user's onboarding_completed = true and assigns them to the fund
+   * Handles race conditions by retrying with new slug on unique constraint violation
+   */
+  async createFund(userId: string, input: CreateFundInput): Promise<CreateFundResult> {
+    // Generate slug from fund name
+    const baseSlug = input.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    let slug = baseSlug;
+    let fundData: Record<string, unknown> | null = null;
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    // Retry loop to handle race conditions on slug uniqueness
+    while (attempts < maxAttempts) {
+      const { data, error: fundError } = await supabaseAdmin
+        .from('funds')
+        .insert({
+          name: input.name,
+          legal_name: input.entityName || input.name,
+          slug,
+          fund_type: input.fundType,
+          country: input.country,
+          created_by_user_id: userId,
+          status: 'active',
+          branding: {
+            primaryColor: '#4f46e5',
+            secondaryColor: '#7c3aed',
+          },
+        })
+        .select()
+        .single();
+
+      if (!fundError && data) {
+        fundData = data;
+        break;
+      }
+
+      // Check if error is unique constraint violation on slug
+      if (fundError?.code === '23505' && fundError?.message?.includes('slug')) {
+        attempts++;
+        // Generate a new unique slug with random suffix
+        slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
+      } else {
+        // Different error - throw immediately
+        throw new Error(`Failed to create fund: ${fundError?.message || 'Unknown error'}`);
+      }
+    }
+
+    if (!fundData) {
+      throw new Error('Failed to create fund: Could not generate unique slug after multiple attempts');
+    }
+
+    // Update user with fund_id and onboarding_completed
+    const { error: userError } = await supabaseAdmin
+      .from('users')
+      .update({
+        fund_id: fundData.id,
+        onboarding_completed: true,
+      })
+      .eq('id', userId);
+
+    if (userError) {
+      // Try to rollback fund creation
+      await supabaseAdmin.from('funds').delete().eq('id', fundData.id);
+      throw new Error(`Failed to update user: ${userError.message}`);
+    }
+
+    return {
+      success: true,
+      fund: {
+        id: fundData.id,
+        name: fundData.name,
+        slug: fundData.slug,
+        fundType: fundData.fund_type,
+        country: fundData.country,
+      },
+    };
+  }
+
+  /**
+   * Check if a fund name/slug is available
+   */
+  async checkSlugAvailability(name: string): Promise<{ available: boolean; slug: string }> {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const { data: existingFund } = await supabaseAdmin
+      .from('funds')
+      .select('id')
+      .eq('slug', slug)
+      .single();
+
+    return {
+      available: !existingFund,
+      slug,
+    };
   }
 }
 

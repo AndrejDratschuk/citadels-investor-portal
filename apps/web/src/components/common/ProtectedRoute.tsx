@@ -5,9 +5,29 @@ import type { UserRole } from '@altsui/shared';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: UserRole;
+  /**
+   * If true, only allow users who have NOT completed onboarding
+   * Used for the fund creation wizard route
+   */
+  requireOnboardingIncomplete?: boolean;
 }
 
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+const ONBOARDING_EXEMPT_PATHS = [
+  '/onboarding/create-fund',
+  '/invite/accept',
+  '/login',
+  '/signup',
+];
+
+function isOnboardingExemptPath(pathname: string): boolean {
+  return ONBOARDING_EXEMPT_PATHS.some(path => pathname.startsWith(path));
+}
+
+export function ProtectedRoute({ 
+  children, 
+  requiredRole,
+  requireOnboardingIncomplete = false,
+}: ProtectedRouteProps): JSX.Element {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
@@ -26,10 +46,33 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // If this route requires onboarding to be incomplete (fund creation wizard)
+  if (requireOnboardingIncomplete) {
+    if (user?.onboardingCompleted) {
+      // User already completed onboarding, redirect to their dashboard
+      const roleRoutes: Record<string, string> = {
+        manager: '/manager',
+        accountant: '/accountant',
+        attorney: '/attorney',
+        investor: '/investor',
+      };
+      const dashboardPath = user?.role ? roleRoutes[user.role] || '/manager' : '/manager';
+      return <Navigate to={dashboardPath} replace />;
+    }
+    // Allow access to fund creation wizard
+    return <>{children}</>;
+  }
+
+  // Check if user needs to complete onboarding
+  // Skip this check for onboarding-exempt paths
+  if (!isOnboardingExemptPath(location.pathname) && user && !user.onboardingCompleted) {
+    // User needs to complete onboarding - redirect to fund creation wizard
+    return <Navigate to="/onboarding/create-fund" replace />;
+  }
+
   if (requiredRole && user?.role !== requiredRole) {
     return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
 }
-

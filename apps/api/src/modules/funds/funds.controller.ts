@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
-import { fundsService, FundBranding, UpdateFundProfileInput } from './funds.service';
+import { fundsService, FundBranding, UpdateFundProfileInput, CreateFundInput } from './funds.service';
+import { createFundSchema } from '@altsui/shared';
 
 export class FundsController {
   /**
@@ -220,10 +221,67 @@ export class FundsController {
         success: true,
         data: { message: 'Logo deleted successfully' },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to delete logo';
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to delete logo',
+        error: message,
+      });
+    }
+  }
+
+  /**
+   * Create a new fund (for onboarding flow)
+   */
+  async createFund(request: AuthenticatedRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+
+    if (!userId) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
+    try {
+      const input = createFundSchema.parse(request.body);
+      const result = await fundsService.createFund(userId, input as CreateFundInput);
+
+      return reply.status(201).send(result);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create fund';
+      return reply.status(400).send({
+        success: false,
+        error: message,
+      });
+    }
+  }
+
+  /**
+   * Check if a fund name/slug is available
+   */
+  async checkSlugAvailability(request: FastifyRequest, reply: FastifyReply) {
+    const { name } = request.query as { name: string };
+
+    if (!name) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Name is required',
+      });
+    }
+
+    try {
+      const result = await fundsService.checkSlugAvailability(name);
+
+      return reply.send({
+        success: true,
+        data: result,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to check slug';
+      return reply.status(500).send({
+        success: false,
+        error: message,
       });
     }
   }

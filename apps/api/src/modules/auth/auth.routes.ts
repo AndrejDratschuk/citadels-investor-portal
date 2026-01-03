@@ -23,6 +23,11 @@ export async function authRoutes(fastify: FastifyInstance) {
     return authController.createOnboardingAccount(request, reply);
   });
 
+  // Enhanced signup for fund managers (with name fields, onboarding_completed = false)
+  fastify.post('/enhanced-signup', async (request, reply) => {
+    return authController.enhancedSignup(request, reply);
+  });
+
   // Protected routes
   fastify.get('/me', { preHandler: authenticate }, async (request, reply) => {
     return authController.me(request, reply);

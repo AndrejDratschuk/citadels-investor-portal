@@ -10,6 +10,8 @@ export * from './schemas/kpi.schema';
 export * from './schemas/account-creation.schema';
 export * from './schemas/validation-document.schema';
 export * from './schemas/prospect.schema';
+export * from './schemas/teamInvite.schema';
+export * from './schemas/fundCreation.schema';
 
 // Types
 export * from './types/auth.types';
@@ -22,6 +24,8 @@ export * from './types/api.types';
 export * from './types/communication.types';
 export * from './types/kpi.types';
 export * from './types/prospect.types';
+export * from './types/teamInvite.types';
+export * from './types/fundCreation.types';
 
 // Constants
 export * from './constants/roles';

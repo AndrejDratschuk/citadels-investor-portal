@@ -74,6 +74,17 @@ export type {
   WireIssueTemplateData,
 } from './capitalCallTemplates';
 
+// Team invite templates
+export {
+  teamInviteTemplate,
+  teamInviteReminderTemplate,
+} from './teamInviteTemplate';
+
+export type {
+  TeamInviteTemplateData,
+  TeamInviteReminderTemplateData,
+} from './teamInviteTemplate';
+
 // Import all templates for the combined object export
 import {
   accountInviteTemplate,
@@ -103,6 +114,11 @@ import {
   wireIssueTemplate,
 } from './capitalCallTemplates';
 
+import {
+  teamInviteTemplate,
+  teamInviteReminderTemplate,
+} from './teamInviteTemplate';
+
 /**
  * Combined emailTemplates object for backwards compatibility
  * Matches the original email.templates.ts export structure
@@ -128,4 +144,7 @@ export const emailTemplates = {
   capitalCallRequest: capitalCallRequestTemplate,
   wireConfirmation: wireConfirmationTemplate,
   wireIssue: wireIssueTemplate,
+  // Team Invites
+  teamInvite: teamInviteTemplate,
+  teamInviteReminder: teamInviteReminderTemplate,
 };

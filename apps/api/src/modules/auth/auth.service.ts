@@ -3,6 +3,13 @@ import { SignupInput, LoginInput, USER_ROLES } from '@altsui/shared';
 import { User } from '@altsui/shared';
 import { webhookService } from '../../common/services/webhook.service';
 
+export interface EnhancedSignupInput {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+}
+
 export class AuthService {
   async signup(input: SignupInput) {
     console.log('[AuthService.signup] Starting signup for:', input.email, 'role:', input.role);
@@ -109,6 +116,75 @@ export class AuthService {
     };
   }
 
+  /**
+   * Enhanced signup for fund managers creating new accounts
+   * Creates user with onboarding_completed = false
+   * User must then complete fund creation wizard
+   */
+  async enhancedSignup(input: EnhancedSignupInput) {
+    console.log('[AuthService.enhancedSignup] Starting signup for:', input.email);
+    
+    // Create auth user
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: input.email,
+      password: input.password,
+      email_confirm: true,
+    });
+
+    if (authError || !authData.user) {
+      console.error('[AuthService.enhancedSignup] Failed to create auth user:', authError);
+      throw new Error(authError?.message || 'Failed to create user');
+    }
+
+    console.log('[AuthService.enhancedSignup] Auth user created:', authData.user.id);
+
+    // Create user record with onboarding_completed = false
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: input.email,
+        role: USER_ROLES.MANAGER,
+        fund_id: null, // Will be set when they create a fund
+        first_name: input.firstName,
+        last_name: input.lastName,
+        onboarding_completed: false,
+      })
+      .select()
+      .single();
+
+    if (userError || !userData) {
+      // Rollback: delete auth user if database insert fails
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      throw new Error(userError?.message || 'Failed to create user record');
+    }
+
+    // Sign in to get tokens
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.signInWithPassword({
+      email: input.email,
+      password: input.password,
+    });
+
+    if (sessionError || !sessionData.session) {
+      throw new Error(sessionError?.message || 'Failed to sign in after account creation');
+    }
+
+    return {
+      user: {
+        id: userData.id,
+        email: userData.email,
+        role: userData.role,
+        fundId: userData.fund_id,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        onboardingCompleted: userData.onboarding_completed,
+        createdAt: userData.created_at,
+      },
+      accessToken: sessionData.session.access_token,
+      refreshToken: sessionData.session.refresh_token,
+    };
+  }
+
   async login(input: LoginInput) {
     // Use admin client but create a regular session
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
@@ -120,11 +196,11 @@ export class AuthService {
       throw new Error(error?.message || 'Invalid credentials');
     }
 
-    // Get user role from database
+    // Get user data from database including new fields
     console.log('Looking for user with ID:', data.user.id);
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, email, role, fund_id, created_at')
+      .select('id, email, role, fund_id, first_name, last_name, onboarding_completed, created_at')
       .eq('id', data.user.id)
       .single();
 
@@ -146,6 +222,9 @@ export class AuthService {
         email: userData.email,
         role: userData.role,
         fundId: userData.fund_id,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        onboardingCompleted: userData.onboarding_completed ?? true, // Default to true for existing users
         createdAt: userData.created_at,
       },
       accessToken: data.session.access_token,
@@ -165,7 +244,7 @@ export class AuthService {
 
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, email, role, fund_id, created_at')
+      .select('id, email, role, fund_id, first_name, last_name, onboarding_completed, created_at')
       .eq('id', user.id)
       .single();
 
@@ -178,6 +257,9 @@ export class AuthService {
       email: userData.email,
       role: userData.role,
       fundId: userData.fund_id,
+      firstName: userData.first_name,
+      lastName: userData.last_name,
+      onboardingCompleted: userData.onboarding_completed ?? true,
       createdAt: userData.created_at,
     };
   }

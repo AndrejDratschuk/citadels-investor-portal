@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
-import { signupSchema, loginSchema } from '@altsui/shared';
+import { signupSchema, loginSchema, enhancedSignupSchema } from '@altsui/shared';
 
 const authService = new AuthService();
 
@@ -96,10 +96,40 @@ export class AuthController {
         success: true,
         data: result,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create account';
       return reply.status(400).send({
         success: false,
-        error: error.message || 'Failed to create account',
+        error: message,
+      });
+    }
+  }
+
+  async enhancedSignup(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      // Skip the password confirmation validation on the server (already done on client)
+      const body = request.body as {
+        email: string;
+        password: string;
+        firstName: string;
+        lastName: string;
+      };
+
+      if (!body.email || !body.password || !body.firstName || !body.lastName) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Email, password, first name, and last name are required',
+        });
+      }
+
+      const result = await authService.enhancedSignup(body);
+
+      return reply.status(201).send(result);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create account';
+      return reply.status(400).send({
+        success: false,
+        error: message,
       });
     }
   }

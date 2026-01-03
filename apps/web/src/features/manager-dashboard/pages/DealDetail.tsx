@@ -853,10 +853,12 @@ export function DealDetail() {
 
       {activeTab === 'financials' && (
         <div className="space-y-6">
-          {/* Header with Time Filter and Compare (for specific categories) */}
-          {selectedCategory !== 'all' && selectedCategory !== 'outliers' && (
+          {/* Header with Time Filter and Compare (for all views except outliers) */}
+          {selectedCategory !== 'outliers' && (
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{getCategoryConfig(selectedCategory).name} KPIs</h2>
+              <h2 className="text-lg font-semibold">
+                {selectedCategory === 'all' ? 'All KPIs' : `${getCategoryConfig(selectedCategory).name} KPIs`}
+              </h2>
               <div className="flex items-center gap-3">
                 <KPITimeFilter selected={dataType} onChange={setDataType} />
                 <Button

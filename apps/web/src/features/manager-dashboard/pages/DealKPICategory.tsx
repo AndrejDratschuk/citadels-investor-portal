@@ -31,6 +31,7 @@ import {
   KPITimeFilter,
   getCategoryConfig,
 } from '../components/kpi';
+import type { KpiCategoryNavOption } from '../components/kpi';
 import type { KpiCategory, KpiDataType } from '@altsui/shared';
 import { formatCurrency, formatPercentage, calculateChangePercent } from '@altsui/shared';
 
@@ -224,9 +225,11 @@ export function DealKPICategory(): JSX.Element {
   });
 
   // Handle category navigation
-  const handleCategoryChange = (newCategory: KpiCategory | 'all') => {
+  const handleCategoryChange = (newCategory: KpiCategoryNavOption): void => {
     if (newCategory === 'all') {
       navigate(`/manager/deals/${dealId}/financials`);
+    } else if (newCategory === 'outliers') {
+      navigate(`/manager/deals/${dealId}/financials/outliers`);
     } else {
       navigate(`/manager/deals/${dealId}/financials/category/${newCategory}`);
     }

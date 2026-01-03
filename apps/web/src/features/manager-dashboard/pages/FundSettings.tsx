@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Building2, Palette, CreditCard, Users, Plug } from 'lucide-react';
+import { Building2, Palette, CreditCard, Users, Plug, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fundsApi, Fund, FundBranding, FundAddress } from '@/lib/api/funds';
 import {
@@ -9,15 +9,17 @@ import {
   FundBankingTab,
   FundTeamTab,
   FundIntegrationsTab,
+  FundPermissionsTab,
 } from '../components/settings';
 
-type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'integrations';
+type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'permissions' | 'integrations';
 
 const TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Fund Profile', icon: Building2 },
   { id: 'branding', label: 'Branding', icon: Palette },
   { id: 'banking', label: 'Banking', icon: CreditCard },
   { id: 'team', label: 'Team', icon: Users },
+  { id: 'permissions', label: 'Permissions', icon: Shield },
   { id: 'integrations', label: 'Integrations', icon: Plug },
 ];
 
@@ -154,6 +156,8 @@ export function FundSettings(): JSX.Element {
       )}
 
       {activeTab === 'team' && <FundTeamTab />}
+
+      {activeTab === 'permissions' && <FundPermissionsTab />}
 
       {activeTab === 'integrations' && (
         <FundIntegrationsTab emailMessage={emailMessage} />

@@ -5,4 +5,5 @@ export * from './useCapitalCalls';
 export * from './useNotices';
 export * from './useCommunications';
 export * from './useRealtimeSubscriptions';
+export * from './useInvestorPermissions';
 

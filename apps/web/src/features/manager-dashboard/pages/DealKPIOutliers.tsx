@@ -19,7 +19,6 @@ import { outliersApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import { KPICategoryNav, OutlierCard } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
-import type { KpiCategory } from '@altsui/shared';
 
 // ============================================
 // Component

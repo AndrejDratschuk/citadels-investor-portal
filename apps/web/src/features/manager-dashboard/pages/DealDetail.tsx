@@ -43,6 +43,7 @@ import {
   KPICategoryNav,
   KPITrendChart,
 } from '../components/kpi';
+import type { KpiCategoryNavOption } from '../components/kpi';
 
 // Property type gradients and icons for placeholder
 const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
@@ -380,8 +381,13 @@ export function DealDetail() {
   };
 
   // Handle category selection (stays in-tab, no navigation)
-  const handleCategoryChange = (category: KpiCategory | 'all') => {
-    setSelectedCategory(category);
+  const handleCategoryChange = (category: KpiCategoryNavOption): void => {
+    if (category === 'outliers') {
+      // Navigate to outliers page
+      navigate(`/manager/deals/${id}/financials/outliers`);
+    } else {
+      setSelectedCategory(category);
+    }
   };
 
   // Fetch real deal from API

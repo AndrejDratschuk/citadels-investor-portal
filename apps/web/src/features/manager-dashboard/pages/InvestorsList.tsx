@@ -62,6 +62,7 @@ export function InvestorsList() {
       firstName: inv.firstName,
       lastName: inv.lastName,
       email: inv.email,
+      investorType: inv.investorType || 'individual',
       status: inv.status as InvestorRow['status'],
       accreditationStatus: inv.accreditationStatus as InvestorRow['accreditationStatus'],
       commitmentAmount: inv.commitmentAmount,

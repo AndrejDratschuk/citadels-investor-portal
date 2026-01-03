@@ -8,12 +8,15 @@ import {
   ArrowRight,
   Bell,
   Filter,
+  BarChart3,
+  Info,
 } from 'lucide-react';
-import { formatCurrency } from '@altsui/shared';
+import { formatCurrency, INVESTOR_TYPE_LABELS } from '@altsui/shared';
 import { useInvestorStats, useInvestorProfile } from '../hooks/useInvestorData';
 import { useDocuments } from '../hooks/useDocuments';
 import { useNotices } from '../hooks/useNotices';
 import { useCommunications } from '../hooks/useCommunications';
+import { useInvestorPermissions, canViewDetailedKpis, canViewOutliers } from '../hooks/useInvestorPermissions';
 import { StatsCard } from '../components/StatsCard';
 import { DocumentList } from '../components/DocumentList';
 import { NoticeCard, NoticeType } from '../components/NoticeCard';
@@ -39,9 +42,14 @@ export function InvestorDashboard() {
   const { data: documents, isLoading: docsLoading } = useDocuments();
   const { data: noticesData, isLoading: noticesLoading } = useNotices();
   const { data: communicationsData, isLoading: commsLoading } = useCommunications();
+  const { data: permissions } = useInvestorPermissions();
   const [noticeFilter, setNoticeFilter] = useState<NoticeFilter>('all');
 
   const isLoading = profileLoading || statsLoading || docsLoading || noticesLoading || commsLoading;
+  
+  // Permission-based feature flags
+  const showDetailedKpis = canViewDetailedKpis(permissions);
+  const showOutliers = canViewOutliers(permissions);
 
   const actionRequiredNotices = noticesData?.actionRequired || [];
   const pendingCapitalCalls = noticesData?.capitalCalls.filter(
@@ -124,6 +132,52 @@ export function InvestorDashboard() {
           description="Your share of current values"
         />
       </div>
+
+      {/* Investor Type Info Banner - Show for limited access investors */}
+      {permissions && !showDetailedKpis && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-blue-800">
+                {INVESTOR_TYPE_LABELS[permissions.investorType]} Dashboard
+              </p>
+              <p className="text-sm text-blue-700">
+                You're viewing a summary of your investments. Detailed financial metrics and KPI breakdowns are available to investors with enhanced access.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced KPI Section - Only for investors with detailed access */}
+      {showDetailedKpis && (
+        <div className="rounded-lg border bg-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Detailed Performance</h2>
+            </div>
+            {showOutliers && (
+              <Link
+                to="/investor/investments"
+                className="flex items-center gap-1 text-sm text-primary hover:underline"
+              >
+                View Outliers <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Access detailed financial KPIs, performance metrics, and investment analysis through your investments page.
+          </p>
+          <Link to="/investor/investments">
+            <Button variant="outline" size="sm">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              View Detailed KPIs
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Action Required Alert */}
       {actionRequiredNotices.length > 0 && (

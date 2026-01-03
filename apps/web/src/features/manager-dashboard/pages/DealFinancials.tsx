@@ -30,7 +30,7 @@ import {
   KPITrendChart,
 } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
-import type { KpiCategory, KpiCardData, DealKpiSummary } from '@altsui/shared';
+import type { KpiCardData, DealKpiSummary } from '@altsui/shared';
 
 // ============================================
 // Icon Mapping for KPIs

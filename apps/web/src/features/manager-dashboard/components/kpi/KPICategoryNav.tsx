@@ -31,14 +31,6 @@ interface CategoryConfig {
 
 const CATEGORIES: CategoryConfig[] = [
   {
-    code: 'outliers',
-    name: 'Outliers',
-    icon: AlertTriangle,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    highlight: true,
-  },
-  {
     code: 'all',
     name: 'All KPIs',
     icon: LayoutGrid,
@@ -79,6 +71,13 @@ const CATEGORIES: CategoryConfig[] = [
     icon: CreditCard,
     color: 'text-orange-600',
     bgColor: 'bg-orange-100',
+  },
+  {
+    code: 'outliers',
+    name: 'Outliers',
+    icon: AlertTriangle,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100',
   },
 ];
 

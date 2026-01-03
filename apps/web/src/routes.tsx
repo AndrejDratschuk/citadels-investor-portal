@@ -31,7 +31,6 @@ import {
 } from './features/manager-dashboard/pages';
 import { DealFinancials } from './features/manager-dashboard/pages/DealFinancials';
 import { DealKPICategory } from './features/manager-dashboard/pages/DealKPICategory';
-import { DealKPIOutliers } from './features/manager-dashboard/pages/DealKPIOutliers';
 import { DealFinancialStatements } from './features/manager-dashboard/pages/DealFinancialStatements';
 import { KPISettings } from './features/manager-dashboard/pages/KPISettings';
 import { CreateInvestor } from './features/manager-dashboard/pages/CreateInvestor';
@@ -222,10 +221,6 @@ export const router = createBrowserRouter([
       {
         path: 'deals/:id/financials/category/:category',
         element: <DealKPICategory />,
-      },
-      {
-        path: 'deals/:id/financials/outliers',
-        element: <DealKPIOutliers />,
       },
       {
         path: 'deals/:id/financials/statements',

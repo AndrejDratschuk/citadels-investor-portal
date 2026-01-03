@@ -381,13 +381,12 @@ export function DealDetail() {
     };
   };
 
-  // Handle category selection (stays in-tab, no navigation)
+  // Handle category selection (outliers and all stay in-tab, others navigate)
   const handleCategoryChange = (category: KpiCategoryNavOption): void => {
-    if (category === 'outliers') {
-      // Navigate to outliers page
-      navigate(`/manager/deals/${id}/financials/outliers`);
-    } else {
+    if (category === 'all' || category === 'outliers') {
       setSelectedCategory(category);
+    } else {
+      navigate(`/manager/deals/${id}/financials/category/${category}`);
     }
   };
 

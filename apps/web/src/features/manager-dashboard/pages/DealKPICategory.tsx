@@ -226,10 +226,9 @@ export function DealKPICategory(): JSX.Element {
 
   // Handle category navigation
   const handleCategoryChange = (newCategory: KpiCategoryNavOption): void => {
-    if (newCategory === 'all') {
+    if (newCategory === 'all' || newCategory === 'outliers') {
+      // All and Outliers are shown inline on financials page
       navigate(`/manager/deals/${dealId}/financials`);
-    } else if (newCategory === 'outliers') {
-      navigate(`/manager/deals/${dealId}/financials/outliers`);
     } else {
       navigate(`/manager/deals/${dealId}/financials/category/${newCategory}`);
     }

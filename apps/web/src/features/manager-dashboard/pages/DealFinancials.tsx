@@ -1,6 +1,6 @@
 /**
  * Deal Financials Page (Level 2)
- * Displays featured KPIs, trend chart, and category navigation
+ * Displays featured KPIs, trend chart, category navigation, and embedded outliers view
  */
 
 import { useState } from 'react';
@@ -11,6 +11,7 @@ import {
   DollarSign,
   Home,
   TrendingUp,
+  TrendingDown,
   BarChart3,
   CreditCard,
   Percent,
@@ -18,16 +19,18 @@ import {
   Wallet,
   PiggyBank,
   FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { dealKpisApi } from '@/lib/api/kpis';
+import { dealKpisApi, outliersApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import {
   KPICard,
   KPICardGrid,
   KPICategoryNav,
   KPITrendChart,
+  OutlierCard,
 } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
 import type { KpiCardData, DealKpiSummary } from '@altsui/shared';
@@ -129,16 +132,26 @@ export function DealFinancials(): JSX.Element {
     enabled: !!dealId,
   });
 
+  // Fetch outliers (only when outliers category is selected)
+  const { data: outliers, isLoading: isOutliersLoading } = useQuery({
+    queryKey: ['deal-outliers', dealId],
+    queryFn: () => outliersApi.getOutliers(dealId!, { topCount: 5 }),
+    enabled: !!dealId && selectedCategory === 'outliers',
+  });
+
   // Use mock data if API returns empty or fails
   const displaySummary = summary?.featured?.length ? summary : MOCK_SUMMARY;
   const isLoading = isDealLoading || isSummaryLoading;
 
-  // Handle category change - navigate to category view
+  // Outliers state
+  const hasTopPerformers = (outliers?.topPerformers?.length ?? 0) > 0;
+  const hasBottomPerformers = (outliers?.bottomPerformers?.length ?? 0) > 0;
+  const hasAnyOutliers = hasTopPerformers || hasBottomPerformers;
+
+  // Handle category change - outliers shown inline, others navigate
   const handleCategoryChange = (category: KpiCategoryNavOption): void => {
-    if (category === 'all') {
-      setSelectedCategory('all');
-    } else if (category === 'outliers') {
-      navigate(`/manager/deals/${dealId}/financials/outliers`);
+    if (category === 'all' || category === 'outliers') {
+      setSelectedCategory(category);
     } else {
       navigate(`/manager/deals/${dealId}/financials/category/${category}`);
     }
@@ -168,45 +181,7 @@ export function DealFinancials(): JSX.Element {
         </span>
       </div>
 
-      {/* Row 1: Featured KPIs */}
-      <KPICardGrid columns={6}>
-        {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card p-4">
-              <Skeleton className="h-8 w-8 rounded-lg mb-2" />
-              <Skeleton className="h-4 w-20 mb-2" />
-              <Skeleton className="h-8 w-24 mb-1" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          ))
-        ) : (
-          displaySummary.featured.map((kpi: KpiCardData) => {
-            const iconConfig = getKpiIcon(kpi.code);
-            return (
-              <KPICard
-                key={kpi.id}
-                title={kpi.name}
-                value={kpi.value}
-                icon={iconConfig.icon}
-                iconColor={iconConfig.color}
-                iconBg={iconConfig.bg}
-                change={kpi.change}
-                changeLabel={kpi.changeLabel}
-              />
-            );
-          })
-        )}
-      </KPICardGrid>
-
-      {/* Row 2: Trend Chart */}
-      <KPITrendChart
-        title="Monthly NOI Performance"
-        data={MOCK_CHART_DATA}
-        isLoading={isLoading}
-        format="currency"
-      />
-
-      {/* Row 3: Category Navigation */}
+      {/* Category Navigation - Always visible */}
       <div className="rounded-xl border bg-card p-5 shadow-sm">
         <h2 className="font-semibold mb-4">Browse by Category</h2>
         <KPICategoryNav
@@ -215,27 +190,189 @@ export function DealFinancials(): JSX.Element {
         />
       </div>
 
-      {/* Row 4: Financial Statements Link */}
-      <Link to={`/manager/deals/${dealId}/financials/statements`}>
-        <div className="rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
-                <FileText className="h-5 w-5 text-slate-600" />
+      {/* Content based on selected category */}
+      {selectedCategory === 'outliers' ? (
+        /* Outliers View */
+        <>
+          {/* Outliers Loading State */}
+          {isOutliersLoading && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[0, 1].map((section) => (
+                <div key={section} className="rounded-xl border bg-card p-5 shadow-sm">
+                  <Skeleton className="h-6 w-40 mb-4" />
+                  <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-32 w-full" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Outliers Empty State */}
+          {!isOutliersLoading && !hasAnyOutliers && (
+            <div className="rounded-xl border bg-card p-10 shadow-sm text-center">
+              <div className="flex justify-center mb-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+                </div>
               </div>
-              <div>
-                <h3 className="font-medium">Financial Statements</h3>
-                <p className="text-sm text-muted-foreground">
-                  View Income Statement, Balance Sheet, and Cash Flow
-                </p>
+              <h3 className="text-lg font-semibold mb-2">No Outliers Detected</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                All metrics are performing within expected ranges. This is good news!
+                Continue monitoring for any future variances.
+              </p>
+            </div>
+          )}
+
+          {/* Outliers Dumbbell Layout */}
+          {!isOutliersLoading && hasAnyOutliers && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Top Performers Section */}
+              <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-4 bg-emerald-50 border-b border-emerald-100">
+                  <TrendingUp className="h-5 w-5 text-emerald-600" />
+                  <h2 className="font-semibold text-emerald-800">Top Performers</h2>
+                  <span className="ml-auto text-sm text-emerald-600 font-medium">
+                    Exceeding Targets
+                  </span>
+                </div>
+                <div className="p-4 space-y-4">
+                  {hasTopPerformers ? (
+                    outliers!.topPerformers.map((outlier, index) => (
+                      <OutlierCard
+                        key={outlier.kpiId}
+                        outlier={outlier}
+                        dealId={dealId!}
+                        rank={index + 1}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">No top performers detected</p>
+                      <p className="text-xs mt-1">
+                        No KPIs are exceeding their targets by the configured threshold
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Performers Section */}
+              <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-4 bg-red-50 border-b border-red-100">
+                  <TrendingDown className="h-5 w-5 text-red-600" />
+                  <h2 className="font-semibold text-red-800">Bottom Performers</h2>
+                  <span className="ml-auto text-sm text-red-600 font-medium">
+                    Missing Targets
+                  </span>
+                </div>
+                <div className="p-4 space-y-4">
+                  {hasBottomPerformers ? (
+                    outliers!.bottomPerformers.map((outlier, index) => (
+                      <OutlierCard
+                        key={outlier.kpiId}
+                        outlier={outlier}
+                        dealId={dealId!}
+                        rank={index + 1}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">No bottom performers detected</p>
+                      <p className="text-xs mt-1">
+                        No KPIs are missing their targets by the configured threshold
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              View Statements
-            </Button>
-          </div>
-        </div>
-      </Link>
+          )}
+
+          {/* Outliers Info Section */}
+          {!isOutliersLoading && hasAnyOutliers && (
+            <div className="rounded-lg border bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>About Outliers:</strong> KPIs shown here have a variance of 20% or more 
+                from their baseline (forecast, budget, or prior period). Configure thresholds and 
+                baselines in{' '}
+                <Link
+                  to="/manager/settings/kpis"
+                  className="text-primary hover:underline font-medium"
+                >
+                  KPI Settings
+                </Link>
+                .
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        /* Default KPIs View (All KPIs) */
+        <>
+          {/* Row 1: Featured KPIs */}
+          <KPICardGrid columns={6}>
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-xl border bg-card p-4">
+                  <Skeleton className="h-8 w-8 rounded-lg mb-2" />
+                  <Skeleton className="h-4 w-20 mb-2" />
+                  <Skeleton className="h-8 w-24 mb-1" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))
+            ) : (
+              displaySummary.featured.map((kpi: KpiCardData) => {
+                const iconConfig = getKpiIcon(kpi.code);
+                return (
+                  <KPICard
+                    key={kpi.id}
+                    title={kpi.name}
+                    value={kpi.value}
+                    icon={iconConfig.icon}
+                    iconColor={iconConfig.color}
+                    iconBg={iconConfig.bg}
+                    change={kpi.change}
+                    changeLabel={kpi.changeLabel}
+                  />
+                );
+              })
+            )}
+          </KPICardGrid>
+
+          {/* Row 2: Trend Chart */}
+          <KPITrendChart
+            title="Monthly NOI Performance"
+            data={MOCK_CHART_DATA}
+            isLoading={isLoading}
+            format="currency"
+          />
+
+          {/* Row 3: Financial Statements Link */}
+          <Link to={`/manager/deals/${dealId}/financials/statements`}>
+            <div className="rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
+                    <FileText className="h-5 w-5 text-slate-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Financial Statements</h3>
+                    <p className="text-sm text-muted-foreground">
+                      View Income Statement, Balance Sheet, and Cash Flow
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  View Statements
+                </Button>
+              </div>
+            </div>
+          </Link>
+        </>
+      )}
     </div>
   );
 }

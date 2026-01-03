@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -202,7 +202,6 @@ interface DealWithKpis extends Deal {
 
 export function DealDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [deal, setDeal] = useState<DealWithKpis>(mockDeal);
   const [isRealDeal, setIsRealDeal] = useState(false);
@@ -222,13 +221,14 @@ export function DealDetail() {
   // Use mock data if API returns empty or fails
   const displayKpiSummary = kpiSummary?.featured?.length ? kpiSummary : MOCK_KPI_SUMMARY;
 
-  // Handle category navigation
+  // Filter KPIs by selected category
+  const filteredKpis = selectedCategory === 'all'
+    ? displayKpiSummary.featured
+    : displayKpiSummary.featured.filter((kpi: KpiCardData) => kpi.category === selectedCategory);
+
+  // Handle category selection (stays in-tab, no navigation)
   const handleCategoryChange = (category: KpiCategory | 'all') => {
-    if (category === 'all') {
-      setSelectedCategory('all');
-    } else {
-      navigate(`/manager/deals/${id}/financials/category/${category}`);
-    }
+    setSelectedCategory(category);
   };
 
   // Fetch real deal from API
@@ -689,19 +689,21 @@ export function DealDetail() {
             />
           </div>
 
-          {/* Row 2: Featured KPIs */}
-          <KPICardGrid columns={6}>
-            {isKpiLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
+          {/* Row 2: Featured KPIs (filtered by category) */}
+          {isKpiLoading ? (
+            <KPICardGrid columns={6}>
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="rounded-xl border bg-card p-4">
                   <Skeleton className="h-8 w-8 rounded-lg mb-2" />
                   <Skeleton className="h-4 w-20 mb-2" />
                   <Skeleton className="h-8 w-24 mb-1" />
                   <Skeleton className="h-3 w-16" />
                 </div>
-              ))
-            ) : (
-              displayKpiSummary.featured.map((kpi: KpiCardData) => {
+              ))}
+            </KPICardGrid>
+          ) : filteredKpis.length > 0 ? (
+            <KPICardGrid columns={filteredKpis.length >= 6 ? 6 : filteredKpis.length as 2 | 4 | 6}>
+              {filteredKpis.map((kpi: KpiCardData) => {
                 const iconConfig = getKpiIcon(kpi.code);
                 return (
                   <KPICard
@@ -715,9 +717,13 @@ export function DealDetail() {
                     changeLabel={kpi.changeLabel}
                   />
                 );
-              })
-            )}
-          </KPICardGrid>
+              })}
+            </KPICardGrid>
+          ) : (
+            <div className="rounded-xl border bg-card p-8 text-center">
+              <p className="text-muted-foreground">No KPIs available for this category</p>
+            </div>
+          )}
 
           {/* Row 3: Trend Chart */}
           <KPITrendChart

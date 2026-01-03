@@ -325,11 +325,11 @@ export function DealDetail() {
   const displayKpiSummary = kpiSummary?.featured?.length ? kpiSummary : MOCK_KPI_SUMMARY;
 
   // Get KPIs based on selected category
-  // When "all" is selected, return empty array (featured KPIs are used instead)
+  // When "all" or "outliers" is selected, return empty array (featured KPIs or outliers view used instead)
   // When a specific category is selected, show ALL KPIs for that category
-  const categoryKpis = selectedCategory === 'all' 
+  const categoryKpis = (selectedCategory === 'all' || selectedCategory === 'outliers')
     ? [] 
-    : (MOCK_CATEGORY_DATA[selectedCategory]?.map((item) => {
+    : (MOCK_CATEGORY_DATA[selectedCategory]?.map((item: { code: string; name: string; value: number; previousValue: number; format: 'number' | 'currency' | 'percentage' | 'ratio' }) => {
         const iconConfig = getKpiIcon(item.code);
         const change = calculateChangePercent(item.value, item.previousValue);
         return {
@@ -347,7 +347,7 @@ export function DealDetail() {
 
   // Get chart data based on selected category
   const getChartData = () => {
-    if (selectedCategory === 'all') return MOCK_CHART_DATA;
+    if (selectedCategory === 'all' || selectedCategory === 'outliers') return MOCK_CHART_DATA;
     const categoryData = MOCK_CATEGORY_DATA[selectedCategory];
     if (!categoryData || categoryData.length === 0) return MOCK_CHART_DATA;
     const primaryKpi = categoryData[0];
@@ -367,7 +367,7 @@ export function DealDetail() {
 
   // Get chart title and format based on category
   const getChartInfo = () => {
-    if (selectedCategory === 'all') {
+    if (selectedCategory === 'all' || selectedCategory === 'outliers') {
       return { title: 'Monthly NOI Performance', format: 'currency' as const };
     }
     const categoryData = MOCK_CATEGORY_DATA[selectedCategory];
@@ -925,7 +925,7 @@ export function DealDetail() {
           />
 
           {/* Additional Metrics (remaining KPIs for category view) */}
-          {selectedCategory !== 'all' && categoryKpis.length > 4 && (
+          {selectedCategory !== 'all' && selectedCategory !== 'outliers' && categoryKpis.length > 4 && (
             <div>
               <h2 className="font-semibold mb-4">Additional Metrics</h2>
               <KPICardGrid columns={4}>

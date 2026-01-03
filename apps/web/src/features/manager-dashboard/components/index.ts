@@ -5,6 +5,7 @@ export * from './FundChart';
 export * from './CapitalCallProgress';
 export * from './InvestorStatusBadge';
 export * from './InvestorTable';
+export * from './InvestorTypeSelect';
 export * from './DealCard';
 export * from './DealForm';
 export * from './CapitalCallTable';

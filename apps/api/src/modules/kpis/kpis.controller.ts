@@ -5,12 +5,14 @@
 
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { kpisService } from './kpis.service';
+import { outliersService } from './outliers.service';
 import {
   kpiDataWriteSchema,
   kpiDataBulkWriteSchema,
   kpiPreferencesUpdateSchema,
   financialStatementWriteSchema,
   kpiDataQuerySchema,
+  outlierConfigUpdateSchema,
   KPI_CATEGORIES,
   KPI_DATA_TYPES,
   STATEMENT_TYPES,
@@ -509,6 +511,94 @@ export class KpisController {
       reply.status(500).send({
         success: false,
         error: 'Failed to save financial statement',
+      });
+    }
+  }
+
+  // ========== KPI Outliers ==========
+
+  async getDealOutliers(
+    request: AuthenticatedRequest & { params: DealParams },
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const { dealId } = request.params;
+      const { fundId } = request.user;
+      const query = request.query as { periodDate?: string; topCount?: string };
+
+      // Use current date if not specified
+      const periodDate = query.periodDate || new Date().toISOString().split('T')[0];
+      const topCount = query.topCount ? parseInt(query.topCount, 10) : 5;
+
+      const outliers = await outliersService.getOutliers(
+        dealId,
+        fundId,
+        periodDate,
+        topCount
+      );
+
+      reply.send({
+        success: true,
+        data: outliers,
+      });
+    } catch (error) {
+      console.error('Error getting deal outliers:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to fetch KPI outliers',
+      });
+    }
+  }
+
+  async getOutlierConfig(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const { fundId } = request.user;
+      const configs = await outliersService.getConfig(fundId);
+
+      reply.send({
+        success: true,
+        data: configs,
+      });
+    } catch (error) {
+      console.error('Error getting outlier config:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to fetch outlier configuration',
+      });
+    }
+  }
+
+  async updateOutlierConfig(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const { fundId } = request.user;
+      const validation = outlierConfigUpdateSchema.safeParse(request.body);
+
+      if (!validation.success) {
+        reply.status(400).send({
+          success: false,
+          error: 'Invalid request body',
+          details: validation.error.issues,
+        });
+        return;
+      }
+
+      const configs = await outliersService.updateConfig(fundId, validation.data.configs);
+
+      reply.send({
+        success: true,
+        data: configs,
+      });
+    } catch (error) {
+      console.error('Error updating outlier config:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to update outlier configuration',
       });
     }
   }

@@ -64,6 +64,11 @@ export async function investorsRoutes(fastify: FastifyInstance) {
     return investorsController.sendEmailToFund(request as any, reply);
   });
 
+  // Get current investor's permissions
+  fastify.get('/me/permissions', { preHandler: investorPreHandler }, async (request, reply) => {
+    return investorsController.getMyPermissions(request as any, reply);
+  });
+
   // Manager routes - require manager role
   const managerPreHandler = [authenticate, requireManager];
 
@@ -95,6 +100,25 @@ export async function investorsRoutes(fastify: FastifyInstance) {
   // Delete an investor by ID
   fastify.delete('/:id', { preHandler: managerPreHandler }, async (request, reply) => {
     return investorsController.delete(request as any, reply);
+  });
+
+  // ============================================
+  // Permission Management Routes (Manager)
+  // ============================================
+
+  // Get all permission configurations for the fund
+  fastify.get('/permissions', { preHandler: managerPreHandler }, async (request, reply) => {
+    return investorsController.getFundPermissions(request as any, reply);
+  });
+
+  // Seed default permissions for the fund
+  fastify.post('/permissions/seed', { preHandler: managerPreHandler }, async (request, reply) => {
+    return investorsController.seedFundPermissions(request as any, reply);
+  });
+
+  // Update permission configuration for an investor type
+  fastify.put('/permissions/:investorType', { preHandler: managerPreHandler }, async (request, reply) => {
+    return investorsController.updateTypePermissions(request as any, reply);
   });
 }
 

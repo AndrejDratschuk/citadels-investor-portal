@@ -18,6 +18,56 @@ export const INVESTOR_STATUS = {
 
 export type InvestorStatus = typeof INVESTOR_STATUS[keyof typeof INVESTOR_STATUS];
 
+// Investor types (controls permissions and dashboard views)
+export const INVESTOR_TYPE = {
+  LIMITED_PARTNER: 'limited_partner',
+  GENERAL_PARTNER: 'general_partner',
+  SERIES_A: 'series_a',
+  SERIES_B: 'series_b',
+  SERIES_C: 'series_c',
+  INSTITUTIONAL: 'institutional',
+  INDIVIDUAL_ACCREDITED: 'individual_accredited',
+  FAMILY_OFFICE: 'family_office',
+  CUSTOM: 'custom',
+} as const;
+
+export type InvestorType = typeof INVESTOR_TYPE[keyof typeof INVESTOR_TYPE];
+
+// Display labels for investor types
+export const INVESTOR_TYPE_LABELS: Record<InvestorType, string> = {
+  [INVESTOR_TYPE.LIMITED_PARTNER]: 'Limited Partner (LP)',
+  [INVESTOR_TYPE.GENERAL_PARTNER]: 'General Partner (GP)',
+  [INVESTOR_TYPE.SERIES_A]: 'Series A Investor',
+  [INVESTOR_TYPE.SERIES_B]: 'Series B Investor',
+  [INVESTOR_TYPE.SERIES_C]: 'Series C Investor',
+  [INVESTOR_TYPE.INSTITUTIONAL]: 'Institutional Investor',
+  [INVESTOR_TYPE.INDIVIDUAL_ACCREDITED]: 'Individual Accredited',
+  [INVESTOR_TYPE.FAMILY_OFFICE]: 'Family Office',
+  [INVESTOR_TYPE.CUSTOM]: 'Custom',
+};
+
+// Short labels for table display
+export const INVESTOR_TYPE_SHORT_LABELS: Record<InvestorType, string> = {
+  [INVESTOR_TYPE.LIMITED_PARTNER]: 'LP',
+  [INVESTOR_TYPE.GENERAL_PARTNER]: 'GP',
+  [INVESTOR_TYPE.SERIES_A]: 'Series A',
+  [INVESTOR_TYPE.SERIES_B]: 'Series B',
+  [INVESTOR_TYPE.SERIES_C]: 'Series C',
+  [INVESTOR_TYPE.INSTITUTIONAL]: 'Institutional',
+  [INVESTOR_TYPE.INDIVIDUAL_ACCREDITED]: 'Individual',
+  [INVESTOR_TYPE.FAMILY_OFFICE]: 'Family Office',
+  [INVESTOR_TYPE.CUSTOM]: 'Custom',
+};
+
+// KPI detail levels for permission-based filtering
+export const KPI_DETAIL_LEVEL = {
+  SUMMARY: 'summary',
+  DETAILED: 'detailed',
+  FULL: 'full',
+} as const;
+
+export type KpiDetailLevel = typeof KPI_DETAIL_LEVEL[keyof typeof KPI_DETAIL_LEVEL];
+
 // Accreditation statuses
 export const ACCREDITATION_STATUS = {
   PENDING: 'pending',

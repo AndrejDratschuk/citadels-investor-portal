@@ -29,6 +29,7 @@ import {
   KPICategoryNav,
   KPITrendChart,
 } from '../components/kpi';
+import type { KpiCategoryNavOption } from '../components/kpi';
 import type { KpiCategory, KpiCardData, DealKpiSummary } from '@altsui/shared';
 
 // ============================================
@@ -112,7 +113,7 @@ const MOCK_CHART_DATA = [
 export function DealFinancials(): JSX.Element {
   const { id: dealId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState<KpiCategory | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<KpiCategoryNavOption>('all');
 
   // Fetch deal info
   const { data: deal, isLoading: isDealLoading } = useQuery({
@@ -133,9 +134,11 @@ export function DealFinancials(): JSX.Element {
   const isLoading = isDealLoading || isSummaryLoading;
 
   // Handle category change - navigate to category view
-  const handleCategoryChange = (category: KpiCategory | 'all') => {
+  const handleCategoryChange = (category: KpiCategoryNavOption): void => {
     if (category === 'all') {
       setSelectedCategory('all');
+    } else if (category === 'outliers') {
+      navigate(`/manager/deals/${dealId}/financials/outliers`);
     } else {
       navigate(`/manager/deals/${dealId}/financials/category/${category}`);
     }

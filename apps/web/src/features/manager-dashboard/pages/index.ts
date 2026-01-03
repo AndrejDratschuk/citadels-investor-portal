@@ -13,5 +13,9 @@ export * from './DocumentsManager';
 export * from './FundSettings';
 export * from './PipelinePage';
 export * from './AutomationLogsPage';
+export * from './DealKPIOutliers';
+export * from './DealFinancials';
+export * from './DealKPICategory';
+export * from './KPISettings';
 
 

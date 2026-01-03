@@ -17,6 +17,9 @@ import type {
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
+  OutliersResponse,
+  KpiOutlierConfig,
+  OutlierComparisonBaseline,
 } from '@altsui/shared';
 
 // Re-export types for convenience
@@ -33,6 +36,9 @@ export type {
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
+  OutliersResponse,
+  KpiOutlierConfig,
+  OutlierComparisonBaseline,
 };
 
 // ============================================
@@ -250,6 +256,55 @@ export const financialStatementsApi = {
 };
 
 // ============================================
+// KPI Outliers API
+// ============================================
+export interface OutliersQueryOptions {
+  periodDate?: string;
+  topCount?: number;
+}
+
+export const outliersApi = {
+  /** Get deal's KPI outliers (top/bottom performers) */
+  getOutliers: async (
+    dealId: string,
+    options?: OutliersQueryOptions
+  ): Promise<OutliersResponse> => {
+    const params = new URLSearchParams();
+    if (options?.periodDate) params.append('periodDate', options.periodDate);
+    if (options?.topCount) params.append('topCount', options.topCount.toString());
+
+    const query = params.toString();
+    const url = `/deals/${dealId}/kpis/outliers${query ? `?${query}` : ''}`;
+    const response = await api.get<ApiResponse<OutliersResponse>>(url);
+    return response.data;
+  },
+
+  /** Get fund's outlier configuration */
+  getConfig: async (): Promise<KpiOutlierConfig[]> => {
+    const response = await api.get<ApiResponse<KpiOutlierConfig[]>>('/kpis/outlier-config');
+    return response.data;
+  },
+
+  /** Update fund's outlier configuration */
+  updateConfig: async (
+    configs: Array<{
+      kpiId: string;
+      alertThreshold?: number;
+      comparisonBaseline?: OutlierComparisonBaseline;
+      greenThreshold?: number;
+      redThreshold?: number;
+      isInverseMetric?: boolean;
+      enabledInOutliers?: boolean;
+    }>
+  ): Promise<KpiOutlierConfig[]> => {
+    const response = await api.put<ApiResponse<KpiOutlierConfig[]>>('/kpis/outlier-config', {
+      configs,
+    });
+    return response.data;
+  },
+};
+
+// ============================================
 // Combined KPIs API (convenience export)
 // ============================================
 export const kpisApi = {
@@ -257,5 +312,6 @@ export const kpisApi = {
   preferences: kpiPreferencesApi,
   deals: dealKpisApi,
   financials: financialStatementsApi,
+  outliers: outliersApi,
 };
 

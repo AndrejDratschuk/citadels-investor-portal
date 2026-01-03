@@ -10,6 +10,7 @@ import {
   BarChart3,
   CreditCard,
   LayoutGrid,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { KpiCategory } from '@altsui/shared';
@@ -17,15 +18,26 @@ import type { KpiCategory } from '@altsui/shared';
 // ============================================
 // Category Configuration
 // ============================================
+export type KpiCategoryNavOption = KpiCategory | 'all' | 'outliers';
+
 interface CategoryConfig {
-  code: KpiCategory | 'all';
+  code: KpiCategoryNavOption;
   name: string;
   icon: React.ElementType;
   color: string;
   bgColor: string;
+  highlight?: boolean;
 }
 
 const CATEGORIES: CategoryConfig[] = [
+  {
+    code: 'outliers',
+    name: 'Outliers',
+    icon: AlertTriangle,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100',
+    highlight: true,
+  },
   {
     code: 'all',
     name: 'All KPIs',
@@ -74,9 +86,10 @@ const CATEGORIES: CategoryConfig[] = [
 // Component Props
 // ============================================
 interface KPICategoryNavProps {
-  selected: KpiCategory | 'all';
-  onChange: (category: KpiCategory | 'all') => void;
-  counts?: Record<KpiCategory | 'all', number>;
+  selected: KpiCategoryNavOption;
+  onChange: (category: KpiCategoryNavOption) => void;
+  counts?: Partial<Record<KpiCategoryNavOption, number>>;
+  showOutliers?: boolean;
   className?: string;
 }
 
@@ -87,11 +100,16 @@ export function KPICategoryNav({
   selected,
   onChange,
   counts,
+  showOutliers = true,
   className,
 }: KPICategoryNavProps): JSX.Element {
+  const visibleCategories = showOutliers 
+    ? CATEGORIES 
+    : CATEGORIES.filter(c => c.code !== 'outliers');
+
   return (
     <div className={cn('flex flex-wrap gap-2', className)}>
-      {CATEGORIES.map((cat) => {
+      {visibleCategories.map((cat) => {
         const Icon = cat.icon;
         const isSelected = selected === cat.code;
         const count = counts?.[cat.code];
@@ -103,8 +121,12 @@ export function KPICategoryNav({
             className={cn(
               'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all',
               isSelected
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+                ? cat.highlight
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'bg-primary text-primary-foreground shadow-sm'
+                : cat.highlight
+                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 hover:text-amber-800 ring-1 ring-amber-300'
+                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
             )}
           >
             <Icon className="h-4 w-4" />
@@ -129,8 +151,8 @@ export function KPICategoryNav({
 // ============================================
 // Helper to get category config
 // ============================================
-export function getCategoryConfig(code: KpiCategory | 'all'): CategoryConfig {
-  return CATEGORIES.find((c) => c.code === code) || CATEGORIES[0];
+export function getCategoryConfig(code: KpiCategoryNavOption): CategoryConfig {
+  return CATEGORIES.find((c) => c.code === code) || CATEGORIES[1]; // Default to 'all'
 }
 
 export { CATEGORIES };

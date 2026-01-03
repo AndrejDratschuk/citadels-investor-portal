@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { kpiDefinitionsApi, kpiPreferencesApi } from '@/lib/api/kpis';
 import { cn } from '@/lib/utils';
+import { OutlierConfigSection } from '../components/kpi/OutlierConfigSection';
 import type { KpiCategory, KpiDefinition, KpiPreference } from '@altsui/shared';
 
 // ============================================
@@ -193,6 +194,9 @@ export function KPISettings(): JSX.Element {
           Featured KPIs appear on the Financials Landing page. We recommend selecting 4-8 KPIs.
         </p>
       </div>
+
+      {/* Outlier Configuration */}
+      <OutlierConfigSection />
 
       {/* Search and Filter */}
       <div className="flex items-center gap-4">

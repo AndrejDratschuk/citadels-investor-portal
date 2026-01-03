@@ -138,6 +138,34 @@ export const kpiDataQuerySchema = z.object({
 });
 
 // ============================================
+// Outlier Configuration Schemas
+// ============================================
+
+export const OUTLIER_COMPARISON_BASELINES = ['forecast', 'budget', 'last_period'] as const;
+
+/** Schema for updating a single outlier config */
+export const outlierConfigItemSchema = z.object({
+  kpiId: z.string().uuid('Invalid KPI ID'),
+  alertThreshold: z.number().min(0).max(100).optional(),
+  comparisonBaseline: z.enum(OUTLIER_COMPARISON_BASELINES).optional(),
+  greenThreshold: z.number().min(0).max(100).optional(),
+  redThreshold: z.number().min(0).max(100).optional(),
+  isInverseMetric: z.boolean().optional(),
+  enabledInOutliers: z.boolean().optional(),
+});
+
+/** Schema for updating outlier configuration */
+export const outlierConfigUpdateSchema = z.object({
+  configs: z.array(outlierConfigItemSchema).min(1, 'At least one config required'),
+});
+
+/** Schema for outliers query parameters */
+export const outliersQuerySchema = z.object({
+  periodDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  topCount: z.coerce.number().int().min(1).max(20).optional().default(5),
+});
+
+// ============================================
 // Type Exports
 // ============================================
 export type KpiDataWriteInput = z.infer<typeof kpiDataWriteSchema>;
@@ -149,4 +177,7 @@ export type GoogleSheetsConnectInput = z.infer<typeof googleSheetsConnectSchema>
 export type ColumnMappingUpdateInput = z.infer<typeof columnMappingUpdateSchema>;
 export type ExcelImportInput = z.infer<typeof excelImportSchema>;
 export type KpiDataQueryInput = z.infer<typeof kpiDataQuerySchema>;
+export type OutlierConfigItemInput = z.infer<typeof outlierConfigItemSchema>;
+export type OutlierConfigUpdateInput = z.infer<typeof outlierConfigUpdateSchema>;
+export type OutliersQueryInput = z.infer<typeof outliersQuerySchema>;
 

@@ -28,6 +28,7 @@ interface InvestorDbRow {
   onboarding_step: number;
   onboarded_at: string | null;
   status: string;
+  investor_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ export class InvestorsService {
       first_name: input.firstName,
       last_name: input.lastName,
       email: input.email,
+      investor_type: input.investorType || 'limited_partner',
     };
 
     if (input.phone) {
@@ -208,6 +210,7 @@ export class InvestorsService {
     if (updates.entityName !== undefined) updateRow.entity_name = updates.entityName;
     if (updates.commitmentAmount !== undefined) updateRow.commitment_amount = updates.commitmentAmount;
     if (updates.status !== undefined) updateRow.status = updates.status;
+    if (updates.investorType !== undefined) updateRow.investor_type = updates.investorType;
 
     const { data, error } = await supabaseAdmin
       .from('investors')
@@ -713,6 +716,7 @@ export class InvestorsService {
       onboardingStep: data.onboarding_step,
       onboardedAt: data.onboarded_at,
       status: data.status,
+      investorType: data.investor_type || 'limited_partner',
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -721,6 +725,7 @@ export class InvestorsService {
 
 type CreateInvestorForFundInput = CreateInvestorDto & {
   fundId: string;
+  investorType?: string;
 };
 
 interface InvestorUpdate {

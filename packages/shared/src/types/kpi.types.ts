@@ -262,3 +262,75 @@ export const KPI_CATEGORY_INFO: KpiCategoryInfo[] = [
   },
 ];
 
+// ============================================
+// KPI Outliers (Exceptions Dashboard)
+// ============================================
+export type OutlierComparisonBaseline = 'forecast' | 'budget' | 'last_period';
+
+export type OutlierStatus = 'green' | 'yellow' | 'red';
+
+/** Per-fund, per-KPI outlier detection configuration */
+export interface KpiOutlierConfig {
+  id: string;
+  fundId: string;
+  kpiId: string;
+  alertThreshold: number;
+  comparisonBaseline: OutlierComparisonBaseline;
+  greenThreshold: number;
+  redThreshold: number;
+  isInverseMetric: boolean;
+  enabledInOutliers: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A single KPI identified as an outlier */
+export interface KpiOutlier {
+  kpiId: string;
+  kpiCode: string;
+  kpiName: string;
+  category: KpiCategory;
+  variancePercent: number;
+  actualValue: number;
+  baselineValue: number;
+  baselineType: OutlierComparisonBaseline;
+  absoluteDifference: number;
+  status: OutlierStatus;
+  format: KpiFormat;
+}
+
+/** API response for deal outliers */
+export interface OutliersResponse {
+  dealId: string;
+  topPerformers: KpiOutlier[];
+  bottomPerformers: KpiOutlier[];
+  lastUpdated: string | null;
+  comparisonPeriod: string;
+}
+
+/** Request to update outlier configuration */
+export interface OutlierConfigUpdateRequest {
+  configs: {
+    kpiId: string;
+    alertThreshold?: number;
+    comparisonBaseline?: OutlierComparisonBaseline;
+    greenThreshold?: number;
+    redThreshold?: number;
+    isInverseMetric?: boolean;
+    enabledInOutliers?: boolean;
+  }[];
+}
+
+/** Default inverse metrics (lower is better) */
+export const DEFAULT_INVERSE_METRIC_CODES = [
+  'operating_expense_ratio',
+  'vacancy_rate',
+  'loss_to_lease',
+  'concessions',
+  'total_expenses',
+  'expense_per_unit',
+  'ltv',
+  'avg_days_vacant',
+  'move_outs',
+];
+

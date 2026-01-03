@@ -14,10 +14,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@altsui/shared';
+import { formatCurrency, type InvestorType } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InvestorStatusBadge } from './InvestorStatusBadge';
+import { InvestorTypeBadge } from './InvestorTypeSelect';
 
 export interface InvestorDeal {
   id: string;
@@ -32,6 +33,7 @@ export interface InvestorRow {
   email: string;
   status: 'prospect' | 'onboarding' | 'active' | 'inactive';
   accreditationStatus: 'pending' | 'approved' | 'rejected' | 'expired';
+  investorType: InvestorType;
   commitmentAmount: number;
   totalCalled: number;
   createdAt: string;
@@ -191,6 +193,9 @@ export function InvestorTable({
                 </button>
               </th>
               <th className="p-4 text-left">
+                <span className="font-medium text-sm">Type</span>
+              </th>
+              <th className="p-4 text-left">
                 <span className="font-medium text-sm">Accreditation</span>
               </th>
               <th className="p-4 text-left">
@@ -218,7 +223,7 @@ export function InvestorTable({
           <tbody>
             {investors.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                <td colSpan={9} className="p-8 text-center text-muted-foreground">
                   No investors found
                 </td>
               </tr>
@@ -251,6 +256,9 @@ export function InvestorTable({
                   </td>
                   <td className="p-4">
                     <InvestorStatusBadge status={investor.status} type="investor" />
+                  </td>
+                  <td className="p-4">
+                    <InvestorTypeBadge type={investor.investorType} />
                   </td>
                   <td className="p-4">
                     <InvestorStatusBadge

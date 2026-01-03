@@ -40,6 +40,18 @@ export async function kpisRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.put('/preferences', { preHandler: managerPreHandler }, async (request, reply) => {
     return kpisController.updatePreferences(request as any, reply);
   });
+
+  // ========== Outlier Configuration (managers only) ==========
+
+  // Get fund's outlier configuration
+  fastify.get('/outlier-config', { preHandler: managerPreHandler }, async (request, reply) => {
+    return kpisController.getOutlierConfig(request as any, reply);
+  });
+
+  // Update fund's outlier configuration
+  fastify.put('/outlier-config', { preHandler: managerPreHandler }, async (request, reply) => {
+    return kpisController.updateOutlierConfig(request as any, reply);
+  });
 }
 
 /**
@@ -60,6 +72,11 @@ export async function dealKpisRoutes(fastify: FastifyInstance): Promise<void> {
   // Get deal's KPI summary (formatted for display)
   fastify.get('/:dealId/kpis/summary', { preHandler: authPreHandler }, async (request, reply) => {
     return kpisController.getDealKpiSummary(request as any, reply);
+  });
+
+  // Get deal's KPI outliers (exceptions dashboard)
+  fastify.get('/:dealId/kpis/outliers', { preHandler: authPreHandler }, async (request, reply) => {
+    return kpisController.getDealOutliers(request as any, reply);
   });
 
   // Get deal's KPIs by category

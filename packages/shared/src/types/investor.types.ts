@@ -2,6 +2,8 @@ import {
   InvestorStatus,
   AccreditationStatus,
   EntityType,
+  InvestorType,
+  KpiDetailLevel,
 } from '../constants/status';
 import type { Address } from './fund.types';
 
@@ -27,7 +29,40 @@ export interface Investor {
   onboardingStep: number;
   onboardedAt: string | null;
   status: InvestorStatus;
+  investorType: InvestorType;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Permission configuration for an investor type within a fund */
+export interface InvestorTypePermission {
+  id: string;
+  fundId: string;
+  investorType: InvestorType;
+  canViewDetailedFinancials: boolean;
+  canViewOutliers: boolean;
+  canViewOtherInvestors: boolean;
+  canViewPipeline: boolean;
+  canViewFundDocuments: boolean;
+  canViewDealDocuments: boolean;
+  canViewOtherInvestorDocs: boolean;
+  canViewAllCommunications: boolean;
+  kpiDetailLevel: KpiDetailLevel;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Effective permissions for an investor (resolved from their type) */
+export interface InvestorPermissions {
+  investorType: InvestorType;
+  canViewDetailedFinancials: boolean;
+  canViewOutliers: boolean;
+  canViewOtherInvestors: boolean;
+  canViewPipeline: boolean;
+  canViewFundDocuments: boolean;
+  canViewDealDocuments: boolean;
+  canViewOtherInvestorDocs: boolean;
+  canViewAllCommunications: boolean;
+  kpiDetailLevel: KpiDetailLevel;
 }
 

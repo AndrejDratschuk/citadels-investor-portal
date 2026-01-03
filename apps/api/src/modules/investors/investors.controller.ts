@@ -1,9 +1,12 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { InvestorsService } from './investors.service';
+import { investorPermissionsService } from './permissions.service';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { createInvestorSchema } from './dtos/createInvestor.dto';
 import { updateInvestorSchema } from './dtos/updateInvestor.dto';
+import { investorTypePermissionSchema } from '@altsui/shared';
+import type { InvestorType } from '@altsui/shared';
 
 const investorsService = new InvestorsService();
 
@@ -421,6 +424,148 @@ export class InvestorsController {
       return reply.status(500).send({
         success: false,
         error: error.message || 'Failed to send email',
+      });
+    }
+  }
+
+  // ============================================
+  // Permission Management Routes
+  // ============================================
+
+  /**
+   * Get current investor's effective permissions
+   */
+  async getMyPermissions(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    try {
+      const investor = await investorsService.getInvestorByUserId(request.user.id);
+      const permissions = await investorPermissionsService.getPermissionsForInvestor(investor.id);
+
+      return reply.send({
+        success: true,
+        data: permissions,
+      });
+    } catch (error: any) {
+      console.error('[getMyPermissions] Error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to get permissions',
+      });
+    }
+  }
+
+  /**
+   * Get all permission configurations for a fund (manager view)
+   */
+  async getFundPermissions(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    // Get the manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    try {
+      const permissions = await investorPermissionsService.getAllPermissionsForFund(manager.fund_id);
+
+      return reply.send({
+        success: true,
+        data: permissions,
+      });
+    } catch (error: any) {
+      console.error('[getFundPermissions] Error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to get fund permissions',
+      });
+    }
+  }
+
+  /**
+   * Update permission configuration for an investor type (manager view)
+   */
+  async updateTypePermissions(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    const { investorType } = request.params as { investorType: string };
+
+    // Get the manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    try {
+      const updates = investorTypePermissionSchema.parse(request.body);
+      const permission = await investorPermissionsService.updatePermissions(
+        manager.fund_id,
+        investorType as InvestorType,
+        updates
+      );
+
+      return reply.send({
+        success: true,
+        data: permission,
+      });
+    } catch (error: any) {
+      console.error('[updateTypePermissions] Error:', error);
+      return reply.status(400).send({
+        success: false,
+        error: error.message || 'Failed to update permissions',
+      });
+    }
+  }
+
+  /**
+   * Seed default permissions for a fund (manager view)
+   */
+  async seedFundPermissions(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    // Get the manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    try {
+      await investorPermissionsService.seedDefaultPermissions(manager.fund_id);
+      const permissions = await investorPermissionsService.getAllPermissionsForFund(manager.fund_id);
+
+      return reply.send({
+        success: true,
+        data: permissions,
+      });
+    } catch (error: any) {
+      console.error('[seedFundPermissions] Error:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error.message || 'Failed to seed permissions',
       });
     }
   }

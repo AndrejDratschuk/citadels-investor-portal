@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { INVESTOR_TYPE } from '@altsui/shared';
 
 const addressSchema = z.object({
   street: z.string().trim().max(200).optional(),
@@ -7,6 +8,8 @@ const addressSchema = z.object({
   zip: z.string().trim().max(20).optional(),
   country: z.string().trim().max(100).optional(),
 });
+
+const investorTypeValues = Object.values(INVESTOR_TYPE) as [string, ...string[]];
 
 export const updateInvestorSchema = z.object({
   firstName: z.string().trim().min(1).max(100).optional(),
@@ -18,6 +21,7 @@ export const updateInvestorSchema = z.object({
   entityName: z.string().trim().max(200).optional().nullable(),
   commitmentAmount: z.number().nonnegative().optional(),
   status: z.enum(['pending', 'active', 'inactive']).optional(),
+  investorType: z.enum(investorTypeValues).optional(),
 });
 
 export type UpdateInvestorDto = z.infer<typeof updateInvestorSchema>;

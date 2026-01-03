@@ -243,8 +243,25 @@ export class FundsService {
    * @param accessToken - User's access token for RLS-aware fund creation
    */
   async createFund(userId: string, input: CreateFundInput, accessToken: string): Promise<CreateFundResult> {
+    console.log('[createFund] Starting fund creation for user:', userId);
+    console.log('[createFund] Access token present:', !!accessToken, 'length:', accessToken?.length);
+    
+    // First, check the user's current state in the database
+    const { data: userData, error: userCheckError } = await supabaseAdmin
+      .from('users')
+      .select('id, email, role, fund_id, onboarding_completed')
+      .eq('id', userId)
+      .single();
+    
+    console.log('[createFund] User data from DB:', JSON.stringify(userData, null, 2));
+    console.log('[createFund] User check error:', userCheckError);
+    
     // Create user-context client for RLS-aware operations
     const supabaseUser = createSupabaseClient(accessToken);
+    
+    // Verify auth.uid() is set correctly
+    const { data: authData } = await supabaseUser.auth.getUser();
+    console.log('[createFund] auth.getUser() result:', authData?.user?.id, authData?.user?.email);
     
     // Generate slug from fund name
     const baseSlug = input.name
@@ -260,6 +277,8 @@ export class FundsService {
     // Retry loop to handle race conditions on slug uniqueness
     // Use user-context client so RLS policies can evaluate auth.uid()
     while (attempts < maxAttempts) {
+      console.log('[createFund] Attempting insert with slug:', slug, 'attempt:', attempts + 1);
+      
       const { data, error: fundError } = await supabaseUser
         .from('funds')
         .insert({
@@ -278,6 +297,8 @@ export class FundsService {
         .select()
         .single();
 
+      console.log('[createFund] Insert result - data:', !!data, 'error:', JSON.stringify(fundError, null, 2));
+
       if (!fundError && data) {
         fundData = data;
         break;
@@ -290,6 +311,7 @@ export class FundsService {
         slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
       } else {
         // Different error - throw immediately
+        console.error('[createFund] Fund creation failed with error:', fundError);
         throw new Error(`Failed to create fund: ${fundError?.message || 'Unknown error'}`);
       }
     }

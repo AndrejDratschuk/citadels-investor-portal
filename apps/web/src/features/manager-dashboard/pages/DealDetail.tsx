@@ -18,6 +18,7 @@ import {
   Save,
   Loader2,
   TrendingUp,
+  TrendingDown,
   Plus,
   BarChart3,
   CreditCard,
@@ -25,9 +26,10 @@ import {
   Wallet,
   PiggyBank,
   RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage, calculateChangePercent } from '@altsui/shared';
-import type { KpiCategory, KpiCardData, DealKpiSummary } from '@altsui/shared';
+import type { KpiCategory, KpiCardData, DealKpiSummary, KpiDataType } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,12 +38,15 @@ import { cn } from '@/lib/utils';
 import { DealImageUpload } from '../components/DealImageUpload';
 import { DealInvestorsModal } from '../components/DealInvestorsModal';
 import { dealsApi, Deal, DealKPIs, DealInvestor } from '@/lib/api/deals';
-import { dealKpisApi } from '@/lib/api/kpis';
+import { dealKpisApi, outliersApi } from '@/lib/api/kpis';
 import {
   KPICard,
   KPICardGrid,
   KPICategoryNav,
   KPITrendChart,
+  KPITimeFilter,
+  OutlierCard,
+  getCategoryConfig,
 } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
 
@@ -313,6 +318,8 @@ export function DealDetail() {
   const [isLoadingInvestors, setIsLoadingInvestors] = useState(false);
   const [showInvestorsModal, setShowInvestorsModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<KpiCategoryNavOption>('all');
+  const [dataType, setDataType] = useState<KpiDataType>('actual');
+  const [showComparison, setShowComparison] = useState(false);
 
   // Fetch KPI summary for financials tab
   const { data: kpiSummary, isLoading: isKpiLoading } = useQuery({
@@ -320,6 +327,18 @@ export function DealDetail() {
     queryFn: () => dealKpisApi.getSummary(id!, deal?.name),
     enabled: !!id && activeTab === 'financials',
   });
+
+  // Fetch outliers data (only when outliers category is selected)
+  const { data: outliers, isLoading: isOutliersLoading } = useQuery({
+    queryKey: ['deal-outliers', id],
+    queryFn: () => outliersApi.getOutliers(id!, { topCount: 5 }),
+    enabled: !!id && activeTab === 'financials' && selectedCategory === 'outliers',
+  });
+
+  // Outliers state
+  const hasTopPerformers = (outliers?.topPerformers?.length ?? 0) > 0;
+  const hasBottomPerformers = (outliers?.bottomPerformers?.length ?? 0) > 0;
+  const hasAnyOutliers = hasTopPerformers || hasBottomPerformers;
 
   // Use mock data if API returns empty or fails
   const displayKpiSummary = kpiSummary?.featured?.length ? kpiSummary : MOCK_KPI_SUMMARY;
@@ -381,13 +400,9 @@ export function DealDetail() {
     };
   };
 
-  // Handle category selection (outliers and all stay in-tab, others navigate)
+  // Handle category selection - ALL categories stay inline
   const handleCategoryChange = (category: KpiCategoryNavOption): void => {
-    if (category === 'all' || category === 'outliers') {
-      setSelectedCategory(category);
-    } else {
-      navigate(`/manager/deals/${id}/financials/category/${category}`);
-    }
+    setSelectedCategory(category);
   };
 
   // Fetch real deal from API
@@ -839,7 +854,24 @@ export function DealDetail() {
 
       {activeTab === 'financials' && (
         <div className="space-y-6">
-          {/* Row 1: Category Navigation (at top for easy navigation) */}
+          {/* Header with Time Filter and Compare (for specific categories) */}
+          {selectedCategory !== 'all' && selectedCategory !== 'outliers' && (
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{getCategoryConfig(selectedCategory).name} KPIs</h2>
+              <div className="flex items-center gap-3">
+                <KPITimeFilter selected={dataType} onChange={setDataType} />
+                <Button
+                  variant={showComparison ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowComparison(!showComparison)}
+                >
+                  Compare
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Category Navigation */}
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <h2 className="font-semibold mb-4">Browse by Category</h2>
             <KPICategoryNav
@@ -848,8 +880,126 @@ export function DealDetail() {
             />
           </div>
 
-          {/* KPIs Display - different views for "All" vs specific category */}
-          {selectedCategory === 'all' ? (
+          {/* Content based on selected category */}
+          {selectedCategory === 'outliers' ? (
+            /* Outliers View - Dumbbell Layout */
+            <>
+              {/* Outliers Loading State */}
+              {isOutliersLoading && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {[0, 1].map((section) => (
+                    <div key={section} className="rounded-xl border bg-card p-5 shadow-sm">
+                      <Skeleton className="h-6 w-40 mb-4" />
+                      <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <Skeleton key={i} className="h-32 w-full" />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Outliers Empty State */}
+              {!isOutliersLoading && !hasAnyOutliers && (
+                <div className="rounded-xl border bg-card p-10 shadow-sm text-center">
+                  <div className="flex justify-center mb-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No Outliers Detected</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    All metrics are performing within expected ranges. This is good news!
+                    Continue monitoring for any future variances.
+                  </p>
+                </div>
+              )}
+
+              {/* Outliers Dumbbell Layout */}
+              {!isOutliersLoading && hasAnyOutliers && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Top Performers Section */}
+                  <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-5 py-4 bg-emerald-50 border-b border-emerald-100">
+                      <TrendingUp className="h-5 w-5 text-emerald-600" />
+                      <h2 className="font-semibold text-emerald-800">Top Performers</h2>
+                      <span className="ml-auto text-sm text-emerald-600 font-medium">
+                        Exceeding Targets
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {hasTopPerformers ? (
+                        outliers!.topPerformers.map((outlier, index) => (
+                          <OutlierCard
+                            key={outlier.kpiId}
+                            outlier={outlier}
+                            dealId={id!}
+                            rank={index + 1}
+                          />
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p className="text-sm">No top performers detected</p>
+                          <p className="text-xs mt-1">
+                            No KPIs are exceeding their targets by the configured threshold
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Performers Section */}
+                  <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-5 py-4 bg-red-50 border-b border-red-100">
+                      <TrendingDown className="h-5 w-5 text-red-600" />
+                      <h2 className="font-semibold text-red-800">Bottom Performers</h2>
+                      <span className="ml-auto text-sm text-red-600 font-medium">
+                        Missing Targets
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {hasBottomPerformers ? (
+                        outliers!.bottomPerformers.map((outlier, index) => (
+                          <OutlierCard
+                            key={outlier.kpiId}
+                            outlier={outlier}
+                            dealId={id!}
+                            rank={index + 1}
+                          />
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p className="text-sm">No bottom performers detected</p>
+                          <p className="text-xs mt-1">
+                            No KPIs are missing their targets by the configured threshold
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Outliers Info Section */}
+              {!isOutliersLoading && hasAnyOutliers && (
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>About Outliers:</strong> KPIs shown here have a variance of 20% or more 
+                    from their baseline (forecast, budget, or prior period). Configure thresholds and 
+                    baselines in{' '}
+                    <Link
+                      to="/manager/settings/kpis"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      KPI Settings
+                    </Link>
+                    .
+                  </p>
+                </div>
+              )}
+            </>
+          ) : selectedCategory === 'all' ? (
             /* All KPIs View - Show featured KPIs */
             <>
               <KPICardGrid columns={6}>
@@ -880,6 +1030,14 @@ export function DealDetail() {
                   })
                 )}
               </KPICardGrid>
+
+              {/* Trend Chart */}
+              <KPITrendChart
+                title={getChartInfo().title}
+                data={getChartData()}
+                isLoading={isKpiLoading}
+                format={getChartInfo().format}
+              />
             </>
           ) : (
             /* Category-Specific View - Show Key Metrics + Additional Metrics */
@@ -907,42 +1065,42 @@ export function DealDetail() {
                         iconColor={kpi.iconColor}
                         iconBg={kpi.iconBg}
                         change={kpi.change}
-                        changeLabel="vs Last Period"
+                        changeLabel={showComparison ? 'vs Budget' : 'vs Last Period'}
                       />
                     ))
                   )}
                 </KPICardGrid>
               </div>
+
+              {/* Trend Chart */}
+              <KPITrendChart
+                title={getChartInfo().title}
+                data={getChartData()}
+                isLoading={isKpiLoading}
+                format={getChartInfo().format}
+              />
+
+              {/* Additional Metrics (remaining KPIs for category view) */}
+              {categoryKpis.length > 4 && (
+                <div>
+                  <h2 className="font-semibold mb-4">Additional Metrics</h2>
+                  <KPICardGrid columns={4}>
+                    {categoryKpis.slice(4).map((kpi) => (
+                      <KPICard
+                        key={kpi.code}
+                        title={kpi.name}
+                        value={kpi.value}
+                        icon={kpi.icon}
+                        iconColor={kpi.iconColor}
+                        iconBg={kpi.iconBg}
+                        change={kpi.change}
+                        changeLabel={showComparison ? 'vs Budget' : 'vs Last Period'}
+                      />
+                    ))}
+                  </KPICardGrid>
+                </div>
+              )}
             </>
-          )}
-
-          {/* Trend Chart */}
-          <KPITrendChart
-            title={getChartInfo().title}
-            data={getChartData()}
-            isLoading={isKpiLoading}
-            format={getChartInfo().format}
-          />
-
-          {/* Additional Metrics (remaining KPIs for category view) */}
-          {selectedCategory !== 'all' && selectedCategory !== 'outliers' && categoryKpis.length > 4 && (
-            <div>
-              <h2 className="font-semibold mb-4">Additional Metrics</h2>
-              <KPICardGrid columns={4}>
-                {categoryKpis.slice(4).map((kpi) => (
-                  <KPICard
-                    key={kpi.code}
-                    title={kpi.name}
-                    value={kpi.value}
-                    icon={kpi.icon}
-                    iconColor={kpi.iconColor}
-                    iconBg={kpi.iconBg}
-                    change={kpi.change}
-                    changeLabel="vs Last Period"
-                  />
-                ))}
-              </KPICardGrid>
-            </div>
           )}
 
           {/* Financial Statements Link */}

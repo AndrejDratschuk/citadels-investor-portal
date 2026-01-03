@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { authMiddleware } from '../../common/middleware/auth.middleware';
+import { authenticate } from '../../common/middleware/auth.middleware';
 import {
   createTeamInviteHandler,
   listTeamHandler,
@@ -18,7 +18,7 @@ export async function teamInvitesRoutes(fastify: FastifyInstance): Promise<void>
 
   // Protected routes (auth required)
   fastify.register(async (protectedRoutes) => {
-    protectedRoutes.addHook('preHandler', authMiddleware);
+    protectedRoutes.addHook('preHandler', authenticate);
 
     // List team members and pending invites
     protectedRoutes.get('/team', listTeamHandler);

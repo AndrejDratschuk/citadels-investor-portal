@@ -243,11 +243,25 @@ export class FundsController {
       });
     }
 
+    // Get user's access token for RLS-aware operations
+    const authHeader = request.headers.authorization;
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+    if (!accessToken) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Unauthorized',
+      });
+    }
+
     try {
       const input = createFundWizardSchema.parse(request.body);
-      const result = await fundsService.createFund(userId, input as CreateFundInput);
+      const result = await fundsService.createFund(userId, input as CreateFundInput, accessToken);
 
-      return reply.status(201).send(result);
+      return reply.status(201).send({
+        success: true,
+        data: result,
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create fund';
       return reply.status(400).send({

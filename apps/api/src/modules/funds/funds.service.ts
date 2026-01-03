@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../../common/database/supabase';
+import { supabaseAdmin, createSupabaseClient } from '../../common/database/supabase';
 
 export interface FundBranding {
   logoUrl?: string;
@@ -240,8 +240,12 @@ export class FundsService {
    * Create a new fund (for onboarding flow)
    * Also sets user's onboarding_completed = true and assigns them to the fund
    * Handles race conditions by retrying with new slug on unique constraint violation
+   * @param accessToken - User's access token for RLS-aware fund creation
    */
-  async createFund(userId: string, input: CreateFundInput): Promise<CreateFundResult> {
+  async createFund(userId: string, input: CreateFundInput, accessToken: string): Promise<CreateFundResult> {
+    // Create user-context client for RLS-aware operations
+    const supabaseUser = createSupabaseClient(accessToken);
+    
     // Generate slug from fund name
     const baseSlug = input.name
       .toLowerCase()
@@ -254,8 +258,9 @@ export class FundsService {
     const maxAttempts = 5;
 
     // Retry loop to handle race conditions on slug uniqueness
+    // Use user-context client so RLS policies can evaluate auth.uid()
     while (attempts < maxAttempts) {
-      const { data, error: fundError } = await supabaseAdmin
+      const { data, error: fundError } = await supabaseUser
         .from('funds')
         .insert({
           name: input.name,
@@ -293,7 +298,7 @@ export class FundsService {
       throw new Error('Failed to create fund: Could not generate unique slug after multiple attempts');
     }
 
-    // Update user with fund_id and onboarding_completed
+    // Update user with fund_id and onboarding_completed (use admin client)
     const { error: userError } = await supabaseAdmin
       .from('users')
       .update({
@@ -311,11 +316,11 @@ export class FundsService {
     return {
       success: true,
       fund: {
-        id: fundData.id,
-        name: fundData.name,
-        slug: fundData.slug,
-        fundType: fundData.fund_type,
-        country: fundData.country,
+        id: fundData.id as string,
+        name: fundData.name as string,
+        slug: fundData.slug as string,
+        fundType: fundData.fund_type as string,
+        country: fundData.country as string,
       },
     };
   }

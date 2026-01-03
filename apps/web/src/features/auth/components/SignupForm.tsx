@@ -76,7 +76,7 @@ export function SignupForm(): JSX.Element {
 
   // Form values type that allows boolean for acceptTerms (validated to true by schema)
   type SignupFormValues = Omit<EnhancedSignupInput, 'acceptTerms'> & { acceptTerms: boolean };
-  
+
   const {
     register,
     handleSubmit,
@@ -178,15 +178,15 @@ export function SignupForm(): JSX.Element {
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <div className="relative">
-          <Input
-            id="password"
+        <Input
+          id="password"
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
             className="pr-10"
-            {...register('password')}
-            autoComplete="new-password"
+          {...register('password')}
+          autoComplete="new-password"
             disabled={isLoading}
-          />
+        />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
@@ -247,7 +247,7 @@ export function SignupForm(): JSX.Element {
         </label>
         {errors.acceptTerms && (
           <p className="text-sm text-destructive">{errors.acceptTerms.message}</p>
-        )}
+      )}
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>

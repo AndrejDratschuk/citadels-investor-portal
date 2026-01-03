@@ -95,7 +95,7 @@ export function FundSettings(): JSX.Element {
       searchParams.delete('email_error');
       setSearchParams(searchParams);
     }
-
+    
     if (tabParam === 'integrations') {
       setActiveTab('integrations');
     } else if (tabParam === 'team') {
@@ -137,7 +137,7 @@ export function FundSettings(): JSX.Element {
         <FundProfileTab 
           initialData={profileData} 
           onRefresh={fetchFund}
-        />
+                />
       )}
 
       {activeTab === 'branding' && (

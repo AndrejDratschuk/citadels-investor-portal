@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   MapPin,
@@ -19,15 +20,29 @@ import {
   TrendingUp,
   ArrowRight,
   Plus,
+  BarChart3,
+  CreditCard,
+  Percent,
+  Wallet,
+  PiggyBank,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage } from '@altsui/shared';
+import type { KpiCategory, KpiCardData, DealKpiSummary } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { DealImageUpload } from '../components/DealImageUpload';
 import { DealInvestorsModal } from '../components/DealInvestorsModal';
 import { dealsApi, Deal, DealKPIs, DealInvestor } from '@/lib/api/deals';
+import { dealKpisApi } from '@/lib/api/kpis';
+import {
+  KPICard,
+  KPICardGrid,
+  KPICategoryNav,
+  KPITrendChart,
+} from '../components/kpi';
 
 // Property type gradients and icons for placeholder
 const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
@@ -99,6 +114,69 @@ const mockDocuments = [
   { id: '3', name: 'Q3 2024 Report', type: 'report', createdAt: '2024-10-15' },
 ];
 
+// KPI Icon Mapping
+const KPI_ICONS: Record<string, { icon: typeof DollarSign; color: string; bg: string }> = {
+  gpr: { icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+  egi: { icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-100' },
+  total_revenue: { icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+  revenue_per_unit: { icon: Building2, color: 'text-cyan-600', bg: 'bg-cyan-100' },
+  revenue_per_sqft: { icon: Building2, color: 'text-cyan-600', bg: 'bg-cyan-100' },
+  physical_occupancy: { icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
+  economic_occupancy: { icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
+  vacancy_rate: { icon: Home, color: 'text-orange-600', bg: 'bg-orange-100' },
+  noi: { icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-100' },
+  cap_rate: { icon: Percent, color: 'text-pink-600', bg: 'bg-pink-100' },
+  cash_on_cash: { icon: PiggyBank, color: 'text-green-600', bg: 'bg-green-100' },
+  ebitda: { icon: BarChart3, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+  roi: { icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+  irr: { icon: Percent, color: 'text-pink-600', bg: 'bg-pink-100' },
+  dscr: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
+  ltv: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
+  principal_balance: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
+};
+
+const DEFAULT_ICON = { icon: BarChart3, color: 'text-slate-600', bg: 'bg-slate-100' };
+
+function getKpiIcon(code: string) {
+  return KPI_ICONS[code] || DEFAULT_ICON;
+}
+
+// Mock KPI Summary Data
+const MOCK_KPI_SUMMARY: DealKpiSummary = {
+  dealId: '1',
+  dealName: 'Riverside Apartments',
+  featured: [
+    { id: '1', code: 'noi', name: 'NOI', value: '$985K', rawValue: 985000, change: 12, changeLabel: 'vs Last Month', format: 'currency', category: 'property_performance' },
+    { id: '2', code: 'cap_rate', name: 'Cap Rate', value: '6.93%', rawValue: 0.0693, change: 5, changeLabel: 'vs Last Month', format: 'percentage', category: 'property_performance' },
+    { id: '3', code: 'physical_occupancy', name: 'Occupancy', value: '94%', rawValue: 0.94, change: -2, changeLabel: 'vs Last Month', format: 'percentage', category: 'occupancy' },
+    { id: '4', code: 'dscr', name: 'DSCR', value: '1.45x', rawValue: 1.45, change: 8, changeLabel: 'vs Last Month', format: 'ratio', category: 'debt_service' },
+    { id: '5', code: 'gpr', name: 'GPR', value: '$125K', rawValue: 125000, change: 10, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue' },
+    { id: '6', code: 'egi', name: 'EGI', value: '$118K', rawValue: 118000, change: 9, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue' },
+  ],
+  byCategory: {
+    rent_revenue: [],
+    occupancy: [],
+    property_performance: [],
+    financial: [],
+    debt_service: [],
+  },
+  lastUpdated: new Date().toISOString(),
+};
+
+// Mock Chart Data for NOI Trend
+const MOCK_CHART_DATA = [
+  { date: '2024-01', label: 'Jan', actual: 920000, forecast: null, budget: null },
+  { date: '2024-02', label: 'Feb', actual: 935000, forecast: null, budget: null },
+  { date: '2024-03', label: 'Mar', actual: 948000, forecast: null, budget: null },
+  { date: '2024-04', label: 'Apr', actual: 955000, forecast: null, budget: null },
+  { date: '2024-05', label: 'May', actual: 960000, forecast: null, budget: null },
+  { date: '2024-06', label: 'Jun', actual: 945000, forecast: null, budget: null },
+  { date: '2024-07', label: 'Jul', actual: 968000, forecast: null, budget: null },
+  { date: '2024-08', label: 'Aug', actual: 975000, forecast: null, budget: null },
+  { date: '2024-09', label: 'Sep', actual: 980000, forecast: null, budget: null },
+  { date: '2024-10', label: 'Oct', actual: 985000, forecast: null, budget: null },
+];
+
 const statusStyles: Record<string, string> = {
   prospective: 'bg-gray-100 text-gray-700',
   under_contract: 'bg-yellow-100 text-yellow-700',
@@ -125,6 +203,7 @@ interface DealWithKpis extends Deal {
 
 export function DealDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [deal, setDeal] = useState<DealWithKpis>(mockDeal);
   const [isRealDeal, setIsRealDeal] = useState(false);
@@ -132,6 +211,26 @@ export function DealDetail() {
   const [dealInvestors, setDealInvestors] = useState<DealInvestor[]>([]);
   const [isLoadingInvestors, setIsLoadingInvestors] = useState(false);
   const [showInvestorsModal, setShowInvestorsModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<KpiCategory | 'all'>('all');
+
+  // Fetch KPI summary for financials tab
+  const { data: kpiSummary, isLoading: isKpiLoading } = useQuery({
+    queryKey: ['deal-kpi-summary', id],
+    queryFn: () => dealKpisApi.getSummary(id!, deal?.name),
+    enabled: !!id && activeTab === 'financials',
+  });
+
+  // Use mock data if API returns empty or fails
+  const displayKpiSummary = kpiSummary?.featured?.length ? kpiSummary : MOCK_KPI_SUMMARY;
+
+  // Handle category navigation
+  const handleCategoryChange = (category: KpiCategory | 'all') => {
+    if (category === 'all') {
+      setSelectedCategory('all');
+    } else {
+      navigate(`/manager/deals/${id}/financials/category/${category}`);
+    }
+  };
 
   // Fetch real deal from API
   useEffect(() => {
@@ -582,99 +681,74 @@ export function DealDetail() {
 
       {activeTab === 'financials' && (
         <div className="space-y-6">
-          {/* Quick KPI Summary */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">NOI</p>
-              <p className="mt-1 text-2xl font-bold">{deal.kpis?.noi ? formatCurrency(deal.kpis.noi) : '—'}</p>
-              <p className="mt-1 text-xs text-green-600">+12% vs last month</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Cap Rate</p>
-              <p className="mt-1 text-2xl font-bold">{deal.kpis?.capRate ? `${(deal.kpis.capRate * 100).toFixed(2)}%` : '—'}</p>
-              <p className="mt-1 text-xs text-green-600">+5% vs last month</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Occupancy</p>
-              <p className="mt-1 text-2xl font-bold">{deal.kpis?.occupancyRate ? `${(deal.kpis.occupancyRate * 100).toFixed(0)}%` : '—'}</p>
-              <p className="mt-1 text-xs text-red-600">-2% vs last month</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Cash on Cash</p>
-              <p className="mt-1 text-2xl font-bold">{deal.kpis?.cashOnCash ? `${(deal.kpis.cashOnCash * 100).toFixed(2)}%` : '—'}</p>
-              <p className="mt-1 text-xs text-green-600">+8% vs last month</p>
-            </div>
+          {/* Row 1: Category Navigation (at top for easy navigation) */}
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h2 className="font-semibold mb-4">Browse by Category</h2>
+            <KPICategoryNav
+              selected={selectedCategory}
+              onChange={handleCategoryChange}
+            />
           </div>
 
-          {/* CTA to Full Financials Page */}
-          <Link to={`/manager/deals/${id}/financials`}>
-            <div className="rounded-xl border bg-gradient-to-r from-primary/5 to-primary/10 p-6 hover:shadow-md transition-shadow cursor-pointer">
+          {/* Row 2: Featured KPIs */}
+          <KPICardGrid columns={6}>
+            {isKpiLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-xl border bg-card p-4">
+                  <Skeleton className="h-8 w-8 rounded-lg mb-2" />
+                  <Skeleton className="h-4 w-20 mb-2" />
+                  <Skeleton className="h-8 w-24 mb-1" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))
+            ) : (
+              displayKpiSummary.featured.map((kpi: KpiCardData) => {
+                const iconConfig = getKpiIcon(kpi.code);
+                return (
+                  <KPICard
+                    key={kpi.id}
+                    title={kpi.name}
+                    value={kpi.value}
+                    icon={iconConfig.icon}
+                    iconColor={iconConfig.color}
+                    iconBg={iconConfig.bg}
+                    change={kpi.change}
+                    changeLabel={kpi.changeLabel}
+                  />
+                );
+              })
+            )}
+          </KPICardGrid>
+
+          {/* Row 3: Trend Chart */}
+          <KPITrendChart
+            title="Monthly NOI Performance"
+            data={MOCK_CHART_DATA}
+            isLoading={isKpiLoading}
+            format="currency"
+          />
+
+          {/* Row 4: Financial Statements Link */}
+          <Link to={`/manager/deals/${id}/financials/statements`}>
+            <div className="rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                    <TrendingUp className="h-6 w-6 text-primary" />
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
+                    <FileText className="h-5 w-5 text-slate-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Full Financial Dashboard</h3>
+                    <h3 className="font-medium">Financial Statements</h3>
                     <p className="text-sm text-muted-foreground">
-                      View detailed KPIs, financial statements, and performance trends
+                      View Income Statement, Balance Sheet, and Cash Flow
                     </p>
                   </div>
                 </div>
-                <Button className="gap-2">
-                  View Financials
-                  <ArrowRight className="h-4 w-4" />
+                <Button variant="outline" size="sm">
+                  View Statements
                 </Button>
               </div>
             </div>
           </Link>
-
-          {/* Category Quick Links */}
-          <div className="rounded-xl border bg-card p-5">
-            <h3 className="font-semibold mb-4">Browse by Category</h3>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <Link to={`/manager/deals/${id}/financials/category/rent_revenue`}>
-                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
-                    <DollarSign className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <span className="text-sm font-medium">Rent/Revenue</span>
-                </div>
-              </Link>
-              <Link to={`/manager/deals/${id}/financials/category/occupancy`}>
-                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
-                    <Home className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <span className="text-sm font-medium">Occupancy</span>
-                </div>
-              </Link>
-              <Link to={`/manager/deals/${id}/financials/category/property_performance`}>
-                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
-                    <TrendingUp className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <span className="text-sm font-medium">Performance</span>
-                </div>
-              </Link>
-              <Link to={`/manager/deals/${id}/financials/category/financial`}>
-                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
-                    <Building2 className="h-4 w-4 text-indigo-600" />
-                  </div>
-                  <span className="text-sm font-medium">Financial</span>
-                </div>
-              </Link>
-              <Link to={`/manager/deals/${id}/financials/category/debt_service`}>
-                <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100">
-                    <DollarSign className="h-4 w-4 text-orange-600" />
-                  </div>
-                  <span className="text-sm font-medium">Debt Service</span>
-                </div>
-              </Link>
-            </div>
-          </div>
         </div>
       )}
 

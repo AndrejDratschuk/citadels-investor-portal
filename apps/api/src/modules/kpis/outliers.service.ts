@@ -33,14 +33,21 @@ export class OutliersService {
     dealId: string,
     fundId: string,
     periodDate: string,
-    topCount: number = 5
+    topCount: number = 5,
+    startDate?: string,
+    endDate?: string
   ): Promise<OutliersResponse> {
     try {
+      // Build date filter options
+      const dateFilter = startDate && endDate 
+        ? { startDate, endDate } 
+        : undefined;
+
       // Fetch all required data in parallel
       const [configs, definitions, kpiData] = await Promise.all([
         outliersRepository.getConfigsByFundId(fundId),
         kpisRepository.getAllDefinitions(),
-        kpisRepository.getKpiDataByDeal(dealId),
+        kpisRepository.getKpiDataByDeal(dealId, dateFilter),
       ]);
 
       // Build config lookup map

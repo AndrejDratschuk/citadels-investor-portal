@@ -524,7 +524,12 @@ export class KpisController {
     try {
       const { dealId } = request.params;
       const { fundId } = request.user;
-      const query = request.query as { periodDate?: string; topCount?: string };
+      const query = request.query as { 
+        periodDate?: string; 
+        topCount?: string;
+        startDate?: string;
+        endDate?: string;
+      };
 
       // Use current date if not specified
       const periodDate = query.periodDate || new Date().toISOString().split('T')[0];
@@ -534,7 +539,9 @@ export class KpisController {
         dealId,
         fundId,
         periodDate,
-        topCount
+        topCount,
+        query.startDate,
+        query.endDate
       );
 
       reply.send({

@@ -69,6 +69,42 @@ export async function acceptTeamInvite({
       throw new Error(`Failed to update user: ${updateError.message}`);
     }
 
+    // If role is investor, check if they need an investors record
+    if (invite.role === 'investor') {
+      // Check if they already have an investor record for this fund
+      const { data: existingInvestor } = await supabaseAdmin
+        .from('investors')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('fund_id', invite.fundId)
+        .single();
+
+      if (!existingInvestor) {
+        // Get user's name for the investor record
+        const { data: userData } = await supabaseAdmin
+          .from('users')
+          .select('first_name, last_name')
+          .eq('id', userId)
+          .single();
+
+        const { error: investorError } = await supabaseAdmin
+          .from('investors')
+          .insert({
+            user_id: userId,
+            fund_id: invite.fundId,
+            first_name: userData?.first_name || '',
+            last_name: userData?.last_name || '',
+            email: invite.email,
+            status: 'active',
+          });
+
+        if (investorError) {
+          console.error('Failed to create investor record for existing user:', investorError);
+          // Don't throw - user is already updated, they can be added to investors later
+        }
+      }
+    }
+
     // Existing users don't get tokens - they need to log in separately
     // accessToken and refreshToken remain empty strings
   } else {
@@ -107,6 +143,28 @@ export async function acceptTeamInvite({
       // Rollback: delete auth user
       await supabaseAdmin.auth.admin.deleteUser(userId);
       throw new Error(`Failed to create user record: ${userError.message}`);
+    }
+
+    // If role is investor, also create an investors record
+    // This is needed for RLS policies on investments, documents, etc.
+    if (invite.role === 'investor') {
+      const { error: investorError } = await supabaseAdmin
+        .from('investors')
+        .insert({
+          user_id: userId,
+          fund_id: invite.fundId,
+          first_name: input.firstName,
+          last_name: input.lastName,
+          email: invite.email,
+          status: 'active',
+        });
+
+      if (investorError) {
+        // Rollback: delete user record and auth user
+        await supabaseAdmin.from('users').delete().eq('id', userId);
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        throw new Error(`Failed to create investor record: ${investorError.message}`);
+      }
     }
 
     // Sign in to get tokens

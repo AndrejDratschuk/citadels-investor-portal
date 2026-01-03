@@ -62,7 +62,7 @@ export function InvestorsList() {
       firstName: inv.firstName,
       lastName: inv.lastName,
       email: inv.email,
-      investorType: 'individual' as const, // Default until InvestorProfile includes investorType
+      investorType: 'limited_partner' as const, // Default LP until InvestorProfile includes investorType
       status: inv.status as InvestorRow['status'],
       accreditationStatus: inv.accreditationStatus as InvestorRow['accreditationStatus'],
       commitmentAmount: inv.commitmentAmount,

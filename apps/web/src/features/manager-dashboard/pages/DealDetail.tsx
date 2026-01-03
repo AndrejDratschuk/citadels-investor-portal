@@ -323,11 +323,11 @@ export function DealDetail() {
   const displayKpiSummary = kpiSummary?.featured?.length ? kpiSummary : MOCK_KPI_SUMMARY;
 
   // Get KPIs based on selected category
-  // When "all" is selected, show featured KPIs
+  // When "all" is selected, return empty array (featured KPIs are used instead)
   // When a specific category is selected, show ALL KPIs for that category
   const categoryKpis = selectedCategory === 'all' 
-    ? null 
-    : MOCK_CATEGORY_DATA[selectedCategory]?.map((item) => {
+    ? [] 
+    : (MOCK_CATEGORY_DATA[selectedCategory]?.map((item) => {
         const iconConfig = getKpiIcon(item.code);
         const change = calculateChangePercent(item.value, item.previousValue);
         return {
@@ -341,7 +341,7 @@ export function DealDetail() {
           iconBg: iconConfig.bg,
           format: item.format,
         };
-      }) || [];
+      }) ?? []);
 
   // Get chart data based on selected category
   const getChartData = () => {

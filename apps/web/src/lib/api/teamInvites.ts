@@ -4,8 +4,7 @@ import type {
   CreateTeamInviteResponse,
   TeamRole,
 } from '@altsui/shared';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_URL } from './client';
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const token = localStorage.getItem('accessToken');

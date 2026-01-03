@@ -44,7 +44,6 @@ export function CreateFundWizardPage(): JSX.Element {
 
   const {
     register,
-    handleSubmit,
     watch,
     setValue,
     formState: { errors },
@@ -92,11 +91,16 @@ export function CreateFundWizardPage(): JSX.Element {
     }
   };
 
-  const onSubmit = async (data: CreateFundWizardInput): Promise<void> => {
+  const onSubmit = async (): Promise<void> => {
+    // Validate all fields before submission
+    const isValid = await trigger();
+    if (!isValid) return;
+
     setIsSubmitting(true);
     setError(null);
 
     try {
+      const data = formValues as CreateFundWizardInput;
       const result = await fundCreationApi.createFund(data);
       
       // Update user state with completed onboarding
@@ -172,7 +176,7 @@ export function CreateFundWizardPage(): JSX.Element {
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={(e) => e.preventDefault()}>
             {/* Step 1: Fund Info */}
             {currentStep === 'fund-info' && (
               <div className="space-y-6">
@@ -358,7 +362,7 @@ export function CreateFundWizardPage(): JSX.Element {
                   <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="button" onClick={onSubmit} disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -131,7 +131,7 @@ export function CreateFundWizardPage(): JSX.Element {
           </div>
           <h1 className="text-3xl font-bold text-slate-900">Set Up Your Fund</h1>
           <p className="mt-2 text-slate-600">
-            Welcome, {user?.firstName}! Let's get your fund configured in a few quick steps.
+            Welcome{user?.firstName ? `, ${user.firstName}` : ''}! Let's get your fund configured in a few quick steps.
           </p>
         </div>
 

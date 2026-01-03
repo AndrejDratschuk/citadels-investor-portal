@@ -124,7 +124,10 @@ export class AuthController {
 
       const result = await authService.enhancedSignup(body);
 
-      return reply.status(201).send(result);
+      return reply.status(201).send({
+        success: true,
+        data: result,
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create account';
       return reply.status(400).send({

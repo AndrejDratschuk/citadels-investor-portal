@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { createInvestorSchema } from './dtos/createInvestor.dto';
 import { updateInvestorSchema } from './dtos/updateInvestor.dto';
-import { investorTypePermissionSchema } from '@altsui/shared';
+import { investorTypePermissionSchema, investorTypeSchema } from '@altsui/shared';
 import type { InvestorType } from '@altsui/shared';
 
 const investorsService = new InvestorsService();
@@ -500,7 +500,17 @@ export class InvestorsController {
       return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
-    const { investorType } = request.params as { investorType: string };
+    const { investorType: rawInvestorType } = request.params as { investorType: string };
+
+    // Validate investorType URL parameter
+    const investorTypeResult = investorTypeSchema.safeParse(rawInvestorType);
+    if (!investorTypeResult.success) {
+      return reply.status(400).send({
+        success: false,
+        error: `Invalid investor type: ${rawInvestorType}`,
+      });
+    }
+    const investorType = investorTypeResult.data as InvestorType;
 
     // Get the manager's fund
     const { data: manager, error: managerError } = await supabaseAdmin
@@ -517,7 +527,7 @@ export class InvestorsController {
       const updates = investorTypePermissionSchema.parse(request.body);
       const permission = await investorPermissionsService.updatePermissions(
         manager.fund_id,
-        investorType as InvestorType,
+        investorType,
         updates
       );
 

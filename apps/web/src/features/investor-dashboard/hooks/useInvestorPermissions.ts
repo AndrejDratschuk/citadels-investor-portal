@@ -1,18 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import type { InvestorPermissions } from '@altsui/shared';
 
-interface PermissionsResponse {
-  success: boolean;
-  data: InvestorPermissions;
-}
-
+/**
+ * Fetch investor permissions from API.
+ * Note: api.get<T> already unwraps the { success, data } response and returns data directly.
+ */
 async function fetchInvestorPermissions(): Promise<InvestorPermissions> {
-  const response = await apiClient.get<PermissionsResponse>('/investors/me/permissions');
-  if (!response.success || !response.data) {
-    throw new Error('Failed to fetch permissions');
-  }
-  return response.data;
+  return api.get<InvestorPermissions>('/investors/me/permissions');
 }
 
 export function useInvestorPermissions() {

@@ -258,7 +258,7 @@ export function InvestorTable({
                     <InvestorStatusBadge status={investor.status} type="investor" />
                   </td>
                   <td className="p-4">
-                    <InvestorTypeBadge type={investor.investorType} />
+                    <InvestorTypeBadge type={investor.investorType || 'limited_partner'} />
                   </td>
                   <td className="p-4">
                     <InvestorStatusBadge

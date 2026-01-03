@@ -15,8 +15,8 @@ export async function fundsRoutes(fastify: FastifyInstance) {
 
   // ==================== Authenticated Routes ====================
 
-  // Get current fund
-  fastify.get('/current', { preHandler: managerPreHandler }, async (request, reply) => {
+  // Get current fund (all authenticated users can view their fund)
+  fastify.get('/current', { preHandler: authenticate }, async (request, reply) => {
     return fundsController.getCurrent(request as any, reply);
   });
 

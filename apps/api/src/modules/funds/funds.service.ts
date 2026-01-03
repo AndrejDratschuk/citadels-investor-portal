@@ -235,7 +235,6 @@ export class FundsService {
         .eq('id', fundId);
     }
   }
-}
 
   /**
    * Create a new fund (for onboarding flow)

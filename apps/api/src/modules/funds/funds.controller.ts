@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { fundsService, FundBranding, UpdateFundProfileInput, CreateFundInput } from './funds.service';
-import { createFundSchema } from '@altsui/shared';
+import { createFundWizardSchema } from '@altsui/shared';
 
 export class FundsController {
   /**
@@ -244,7 +244,7 @@ export class FundsController {
     }
 
     try {
-      const input = createFundSchema.parse(request.body);
+      const input = createFundWizardSchema.parse(request.body);
       const result = await fundsService.createFund(userId, input as CreateFundInput);
 
       return reply.status(201).send(result);

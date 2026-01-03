@@ -17,14 +17,14 @@ import { Label } from '@/components/ui/label';
 import { fundCreationApi } from '@/lib/api/fundCreation';
 import { useAuthStore } from '@/stores/authStore';
 import { 
-  createFundSchema, 
+  createFundWizardSchema, 
   FUND_TYPE_OPTIONS, 
   DISPLAY_ROLE_OPTIONS,
   COUNTRY_OPTIONS,
   type FundType,
   type DisplayRole,
+  type CreateFundWizardInput,
 } from '@altsui/shared';
-import type { CreateFundInput } from '@altsui/shared';
 
 type Step = 'fund-info' | 'fund-type' | 'your-role' | 'review';
 
@@ -49,8 +49,8 @@ export function CreateFundWizardPage(): JSX.Element {
     setValue,
     formState: { errors },
     trigger,
-  } = useForm<CreateFundInput>({
-    resolver: zodResolver(createFundSchema),
+  } = useForm<CreateFundWizardInput>({
+    resolver: zodResolver(createFundWizardSchema),
     defaultValues: {
       name: '',
       fundType: 'vc',
@@ -68,7 +68,7 @@ export function CreateFundWizardPage(): JSX.Element {
 
   const goToNextStep = async (): Promise<void> => {
     // Validate current step fields
-    const fieldsToValidate: (keyof CreateFundInput)[] = 
+    const fieldsToValidate: (keyof CreateFundWizardInput)[] = 
       currentStep === 'fund-info' ? ['name', 'country'] :
       currentStep === 'fund-type' ? ['fundType'] :
       currentStep === 'your-role' ? ['displayRole'] :
@@ -92,7 +92,7 @@ export function CreateFundWizardPage(): JSX.Element {
     }
   };
 
-  const onSubmit = async (data: CreateFundInput): Promise<void> => {
+  const onSubmit = async (data: CreateFundWizardInput): Promise<void> => {
     setIsSubmitting(true);
     setError(null);
 

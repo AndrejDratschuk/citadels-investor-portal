@@ -19,6 +19,7 @@ export interface Fund {
   legalName: string;
   address: FundAddress;
   branding: FundBranding;
+  wireInstructions?: string;
   status: string;
 }
 

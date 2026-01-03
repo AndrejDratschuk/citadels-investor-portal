@@ -74,12 +74,15 @@ export function SignupForm(): JSX.Element {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
+  // Form values type that allows boolean for acceptTerms (validated to true by schema)
+  type SignupFormValues = Omit<EnhancedSignupInput, 'acceptTerms'> & { acceptTerms: boolean };
+  
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<EnhancedSignupInput>({
+  } = useForm<SignupFormValues>({
     resolver: zodResolver(enhancedSignupSchema),
     defaultValues: {
       email: '',
@@ -93,7 +96,7 @@ export function SignupForm(): JSX.Element {
 
   const password = watch('password');
 
-  const onSubmit = async (data: EnhancedSignupInput): Promise<void> => {
+  const onSubmit = async (data: SignupFormValues): Promise<void> => {
     setError(null);
     setIsLoading(true);
 

@@ -1,6 +1,4 @@
 import type { 
-  TeamInvite, 
-  TeamMember, 
   CreateTeamInviteInput,
   ListTeamMembersResponse,
   CreateTeamInviteResponse,

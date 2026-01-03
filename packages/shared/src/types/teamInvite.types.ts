@@ -30,17 +30,8 @@ export interface TeamMember {
   joinedAt: string;
 }
 
-export interface CreateTeamInviteInput {
-  email: string;
-  role: TeamRole;
-}
-
-export interface AcceptTeamInviteInput {
-  token: string;
-  password?: string;
-  firstName?: string;
-  lastName?: string;
-}
+// Note: CreateTeamInviteInput and AcceptTeamInviteInput are exported from
+// '../schemas/teamInvite.schema' as Zod-inferred types
 
 export interface TeamInviteTokenData {
   valid: boolean;

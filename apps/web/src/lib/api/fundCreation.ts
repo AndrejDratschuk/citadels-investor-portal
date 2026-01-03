@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { CreateFundInput, CreateFundResponse, FundType, DisplayRole } from '@altsui/shared';
+import type { CreateFundWizardInput, CreateFundResponse, FundType, DisplayRole } from '@altsui/shared';
 
 export const fundCreationApi = {
   /**
@@ -7,7 +7,7 @@ export const fundCreationApi = {
    * This is called from the fund creation wizard
    * Sets the user's onboarding_completed = true
    */
-  createFund: async (input: CreateFundInput): Promise<CreateFundResponse> => {
+  createFund: async (input: CreateFundWizardInput): Promise<CreateFundResponse> => {
     return api.post<CreateFundResponse>('/funds/create', input);
   },
 
@@ -21,5 +21,5 @@ export const fundCreationApi = {
   },
 };
 
-export type { CreateFundInput, CreateFundResponse, FundType, DisplayRole };
+export type { CreateFundWizardInput, CreateFundResponse, FundType, DisplayRole };
 

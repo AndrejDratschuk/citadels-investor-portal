@@ -53,7 +53,7 @@ export const enhancedSignupSchema = z
  * Schema for creating a new fund
  * Used in the fund creation wizard after signup
  */
-export const createFundSchema = z.object({
+export const createFundWizardSchema = z.object({
   name: z
     .string()
     .min(2, 'Fund name must be at least 2 characters')
@@ -72,13 +72,13 @@ export const createFundSchema = z.object({
  */
 export const signupWithFundSchema = enhancedSignupSchema.and(
   z.object({
-    fund: createFundSchema,
+    fund: createFundWizardSchema,
   })
 );
 
 // Export inferred types
 export type EnhancedSignupInput = z.infer<typeof enhancedSignupSchema>;
-export type CreateFundInput = z.infer<typeof createFundSchema>;
+export type CreateFundWizardInput = z.infer<typeof createFundWizardSchema>;
 export type SignupWithFundInput = z.infer<typeof signupWithFundSchema>;
 export type FundType = z.infer<typeof fundTypeSchema>;
 export type DisplayRole = z.infer<typeof displayRoleSchema>;

@@ -107,7 +107,16 @@ export function useOnboarding(inviteCode: string): UseOnboardingReturn {
       // Store auth tokens so user is logged in
       const { setAuth } = useAuthStore.getState();
       setAuth(
-        { id: result.userId, email: result.email, role: 'investor', fundId: null, createdAt: new Date().toISOString() },
+        { 
+          id: result.userId, 
+          email: result.email, 
+          role: 'investor', 
+          fundId: null, 
+          firstName: null,
+          lastName: null,
+          onboardingCompleted: false,
+          createdAt: new Date().toISOString() 
+        },
         result.accessToken,
         result.refreshToken
       );

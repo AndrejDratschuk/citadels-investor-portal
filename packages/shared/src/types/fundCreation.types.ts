@@ -1,41 +1,12 @@
 /**
  * Fund Creation Types
  * Types for the multi-tenant fund creation wizard
+ * 
+ * Note: FundType, DisplayRole, CreateFundWizardInput, and EnhancedSignupInput
+ * are exported from '../schemas/fundCreation.schema' as Zod-inferred types
  */
 
-export type FundType = 
-  | 'vc' 
-  | 'pe' 
-  | 'real_estate' 
-  | 'hedge_fund' 
-  | 'family_office' 
-  | 'search_fund' 
-  | 'other';
-
-export type DisplayRole = 
-  | 'general_partner'
-  | 'managing_partner'
-  | 'fund_manager'
-  | 'fund_administrator'
-  | 'cfo'
-  | 'other';
-
-export interface CreateFundInput {
-  name: string;
-  fundType: FundType;
-  displayRole: DisplayRole;
-  entityName?: string;
-  country: string;
-}
-
-export interface EnhancedSignupInput {
-  email: string;
-  password: string;
-  confirmPassword: string;
-  firstName: string;
-  lastName: string;
-  acceptTerms: boolean;
-}
+import type { FundType, DisplayRole } from '../schemas/fundCreation.schema';
 
 export interface CreateFundResponse {
   success: boolean;

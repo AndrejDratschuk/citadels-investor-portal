@@ -1,4 +1,4 @@
-import { supabaseAdmin, createSupabaseClient } from '../../common/database/supabase';
+import { supabaseAdmin } from '../../common/database/supabase';
 
 export interface FundBranding {
   logoUrl?: string;
@@ -238,111 +238,56 @@ export class FundsService {
 
   /**
    * Create a new fund (for onboarding flow)
+   * Uses a SECURITY DEFINER function to bypass RLS for this bootstrap operation
    * Also sets user's onboarding_completed = true and assigns them to the fund
-   * Handles race conditions by retrying with new slug on unique constraint violation
-   * @param accessToken - User's access token for RLS-aware fund creation
    */
-  async createFund(userId: string, input: CreateFundInput, accessToken: string): Promise<CreateFundResult> {
+  async createFund(userId: string, input: CreateFundInput, _accessToken: string): Promise<CreateFundResult> {
     console.log('[createFund] Starting fund creation for user:', userId);
-    console.log('[createFund] Access token present:', !!accessToken, 'length:', accessToken?.length);
-    
-    // First, check the user's current state in the database
-    const { data: userData, error: userCheckError } = await supabaseAdmin
-      .from('users')
-      .select('id, email, role, fund_id, onboarding_completed')
-      .eq('id', userId)
-      .single();
-    
-    console.log('[createFund] User data from DB:', JSON.stringify(userData, null, 2));
-    console.log('[createFund] User check error:', userCheckError);
-    
-    // Create user-context client for RLS-aware operations
-    const supabaseUser = createSupabaseClient(accessToken);
-    
-    // Verify auth.uid() is set correctly
-    const { data: authData } = await supabaseUser.auth.getUser();
-    console.log('[createFund] auth.getUser() result:', authData?.user?.id, authData?.user?.email);
     
     // Generate slug from fund name
-    const baseSlug = input.name
+    const slug = input.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
-    let slug = baseSlug;
-    let fundData: Record<string, unknown> | null = null;
-    let attempts = 0;
-    const maxAttempts = 5;
+    console.log('[createFund] Calling RPC create_fund_for_user with slug:', slug);
 
-    // Retry loop to handle race conditions on slug uniqueness
-    // Use user-context client so RLS policies can evaluate auth.uid()
-    while (attempts < maxAttempts) {
-      console.log('[createFund] Attempting insert with slug:', slug, 'attempt:', attempts + 1);
-      
-      const { data, error: fundError } = await supabaseUser
-        .from('funds')
-        .insert({
-          name: input.name,
-          legal_name: input.entityName || input.name,
-          slug,
-          fund_type: input.fundType,
-          country: input.country,
-          created_by_user_id: userId,
-          status: 'active',
-          branding: {
-            primaryColor: '#4f46e5',
-            secondaryColor: '#7c3aed',
-          },
-        })
-        .select()
-        .single();
+    // Call the SECURITY DEFINER function that bypasses RLS
+    const { data: fundId, error: rpcError } = await supabaseAdmin
+      .rpc('create_fund_for_user', {
+        p_user_id: userId,
+        p_name: input.name,
+        p_slug: slug,
+        p_fund_type: input.fundType || null,
+        p_country: input.country || null,
+      });
 
-      console.log('[createFund] Insert result - data:', !!data, 'error:', JSON.stringify(fundError, null, 2));
-
-      if (!fundError && data) {
-        fundData = data;
-        break;
-      }
-
-      // Check if error is unique constraint violation on slug
-      if (fundError?.code === '23505' && fundError?.message?.includes('slug')) {
-        attempts++;
-        // Generate a new unique slug with random suffix
-        slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
-      } else {
-        // Different error - throw immediately
-        console.error('[createFund] Fund creation failed with error:', fundError);
-        throw new Error(`Failed to create fund: ${fundError?.message || 'Unknown error'}`);
-      }
+    if (rpcError) {
+      console.error('[createFund] RPC error:', rpcError);
+      throw new Error(`Failed to create fund: ${rpcError.message}`);
     }
 
-    if (!fundData) {
-      throw new Error('Failed to create fund: Could not generate unique slug after multiple attempts');
-    }
+    console.log('[createFund] Fund created successfully with ID:', fundId);
 
-    // Update user with fund_id and onboarding_completed (use admin client)
-    const { error: userError } = await supabaseAdmin
-      .from('users')
-      .update({
-        fund_id: fundData.id,
-        onboarding_completed: true,
-      })
-      .eq('id', userId);
+    // Fetch the created fund details
+    const { data: fundData, error: fetchError } = await supabaseAdmin
+      .from('funds')
+      .select('id, name, slug, fund_type, country')
+      .eq('id', fundId)
+      .single();
 
-    if (userError) {
-      // Try to rollback fund creation
-      await supabaseAdmin.from('funds').delete().eq('id', fundData.id);
-      throw new Error(`Failed to update user: ${userError.message}`);
+    if (fetchError || !fundData) {
+      throw new Error('Fund created but failed to fetch details');
     }
 
     return {
       success: true,
       fund: {
-        id: fundData.id as string,
-        name: fundData.name as string,
-        slug: fundData.slug as string,
-        fundType: fundData.fund_type as string,
-        country: fundData.country as string,
+        id: fundData.id,
+        name: fundData.name,
+        slug: fundData.slug,
+        fundType: fundData.fund_type,
+        country: fundData.country,
       },
     };
   }

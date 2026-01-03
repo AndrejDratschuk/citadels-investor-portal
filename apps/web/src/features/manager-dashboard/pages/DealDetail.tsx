@@ -18,7 +18,6 @@ import {
   Save,
   Loader2,
   TrendingUp,
-  ArrowRight,
   Plus,
   BarChart3,
   CreditCard,

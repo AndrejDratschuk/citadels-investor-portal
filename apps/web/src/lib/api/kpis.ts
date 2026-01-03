@@ -261,6 +261,8 @@ export const financialStatementsApi = {
 export interface OutliersQueryOptions {
   periodDate?: string;
   topCount?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const outliersApi = {
@@ -272,6 +274,8 @@ export const outliersApi = {
     const params = new URLSearchParams();
     if (options?.periodDate) params.append('periodDate', options.periodDate);
     if (options?.topCount) params.append('topCount', options.topCount.toString());
+    if (options?.startDate) params.append('startDate', options.startDate);
+    if (options?.endDate) params.append('endDate', options.endDate);
 
     const query = params.toString();
     const url = `/deals/${dealId}/kpis/outliers${query ? `?${query}` : ''}`;

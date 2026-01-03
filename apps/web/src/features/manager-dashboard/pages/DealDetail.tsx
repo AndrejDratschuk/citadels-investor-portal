@@ -45,10 +45,12 @@ import {
   KPICategoryNav,
   KPITrendChart,
   KPITimeFilter,
+  TimePeriodFilter,
+  getDateRangeFromPreset,
   OutlierCard,
   getCategoryConfig,
 } from '../components/kpi';
-import type { KpiCategoryNavOption } from '../components/kpi';
+import type { KpiCategoryNavOption, TimePeriodPreset, DateRange } from '../components/kpi';
 
 // Property type gradients and icons for placeholder
 const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
@@ -319,18 +321,32 @@ export function DealDetail() {
   const [selectedCategory, setSelectedCategory] = useState<KpiCategoryNavOption>('all');
   const [dataType, setDataType] = useState<KpiDataType>('actual');
   const [showComparison, setShowComparison] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriodPreset>('30d');
+  const [dateRange, setDateRange] = useState<DateRange>(() => 
+    getDateRangeFromPreset('30d', new Date())
+  );
+
+  // Handle time period change
+  const handleTimePeriodChange = (preset: TimePeriodPreset, range: DateRange): void => {
+    setTimePeriod(preset);
+    setDateRange(range);
+  };
 
   // Fetch KPI summary for financials tab
   const { data: kpiSummary, isLoading: isKpiLoading } = useQuery({
-    queryKey: ['deal-kpi-summary', id],
+    queryKey: ['deal-kpi-summary', id, dateRange.startDate, dateRange.endDate],
     queryFn: () => dealKpisApi.getSummary(id!, deal?.name),
     enabled: !!id && activeTab === 'financials',
   });
 
   // Fetch outliers data (only when outliers category is selected)
   const { data: outliers, isLoading: isOutliersLoading } = useQuery({
-    queryKey: ['deal-outliers', id],
-    queryFn: () => outliersApi.getOutliers(id!, { topCount: 5 }),
+    queryKey: ['deal-outliers', id, dateRange.startDate, dateRange.endDate],
+    queryFn: () => outliersApi.getOutliers(id!, { 
+      topCount: 5,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+    }),
     enabled: !!id && activeTab === 'financials' && selectedCategory === 'outliers',
   });
 
@@ -853,7 +869,16 @@ export function DealDetail() {
 
       {activeTab === 'financials' && (
         <div className="space-y-6">
-          {/* Header with Time Filter and Compare (for all views except outliers) */}
+          {/* Time Period Filter - applies to all views */}
+          <div className="flex items-center justify-between">
+            <TimePeriodFilter
+              selected={timePeriod}
+              customRange={timePeriod === 'custom' ? dateRange : undefined}
+              onChange={handleTimePeriodChange}
+            />
+          </div>
+
+          {/* Header with Data Type Filter and Compare (for all views except outliers) */}
           {selectedCategory !== 'outliers' && (
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">
@@ -1073,33 +1098,33 @@ export function DealDetail() {
                 </KPICardGrid>
               </div>
 
-              {/* Trend Chart */}
-              <KPITrendChart
-                title={getChartInfo().title}
-                data={getChartData()}
-                isLoading={isKpiLoading}
-                format={getChartInfo().format}
-              />
+          {/* Trend Chart */}
+          <KPITrendChart
+            title={getChartInfo().title}
+            data={getChartData()}
+            isLoading={isKpiLoading}
+            format={getChartInfo().format}
+          />
 
-              {/* Additional Metrics (remaining KPIs for category view) */}
+          {/* Additional Metrics (remaining KPIs for category view) */}
               {categoryKpis.length > 4 && (
-                <div>
-                  <h2 className="font-semibold mb-4">Additional Metrics</h2>
-                  <KPICardGrid columns={4}>
-                    {categoryKpis.slice(4).map((kpi) => (
-                      <KPICard
-                        key={kpi.code}
-                        title={kpi.name}
-                        value={kpi.value}
-                        icon={kpi.icon}
-                        iconColor={kpi.iconColor}
-                        iconBg={kpi.iconBg}
-                        change={kpi.change}
+            <div>
+              <h2 className="font-semibold mb-4">Additional Metrics</h2>
+              <KPICardGrid columns={4}>
+                {categoryKpis.slice(4).map((kpi) => (
+                  <KPICard
+                    key={kpi.code}
+                    title={kpi.name}
+                    value={kpi.value}
+                    icon={kpi.icon}
+                    iconColor={kpi.iconColor}
+                    iconBg={kpi.iconBg}
+                    change={kpi.change}
                         changeLabel={showComparison ? 'vs Budget' : 'vs Last Period'}
-                      />
-                    ))}
-                  </KPICardGrid>
-                </div>
+                  />
+                ))}
+              </KPICardGrid>
+            </div>
               )}
             </>
           )}

@@ -231,7 +231,10 @@ export function InvestorTable({
                 </td>
               </tr>
             ) : (
-              investors.map((investor) => (
+              investors.map((investor, index) => {
+                // Open menu downward for first 2 rows, upward for rest
+                const openDownward = index < 2;
+                return (
                 <tr
                   key={investor.id}
                   className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
@@ -315,7 +318,10 @@ export function InvestorTable({
                             className="fixed inset-0 z-10" 
                             onClick={() => setOpenMenuId(null)}
                           />
-                          <div className="absolute right-0 bottom-full mb-1 z-20 min-w-[120px] rounded-md border bg-popover p-1 shadow-lg">
+                          <div className={cn(
+                            "absolute right-0 z-20 min-w-[120px] rounded-md border bg-popover p-1 shadow-lg",
+                            openDownward ? "top-full mt-1" : "bottom-full mb-1"
+                          )}>
                             <Link
                               to={`/manager/investors/${investor.id}`}
                               className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
@@ -345,7 +351,8 @@ export function InvestorTable({
                     </div>
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>

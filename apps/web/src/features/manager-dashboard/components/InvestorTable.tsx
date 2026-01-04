@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
   ChevronDown,
   ChevronUp,
@@ -64,6 +65,24 @@ export function InvestorTable({
   
   // Actions menu state
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  // Update menu position when openMenuId changes
+  useEffect(() => {
+    if (openMenuId) {
+      const buttonEl = menuButtonRefs.current.get(openMenuId);
+      if (buttonEl) {
+        const rect = buttonEl.getBoundingClientRect();
+        setMenuPosition({
+          top: rect.bottom + 4,
+          left: rect.right - 120, // menu width ~120px, align right edge
+        });
+      }
+    } else {
+      setMenuPosition(null);
+    }
+  }, [openMenuId]);
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<InvestorRow | null>(null);
@@ -231,10 +250,7 @@ export function InvestorTable({
                 </td>
               </tr>
             ) : (
-              investors.map((investor, index) => {
-                // Open menu downward for first 2 rows, upward for rest
-                const openDownward = index < 2;
-                return (
+              investors.map((investor) => (
                 <tr
                   key={investor.id}
                   className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
@@ -302,57 +318,20 @@ export function InvestorTable({
                     {formatCurrency(investor.totalCalled)}
                   </td>
                   <td className="p-4">
-                    <div className="relative">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0"
-                        onClick={() => setOpenMenuId(openMenuId === investor.id ? null : investor.id)}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                      {openMenuId === investor.id && (
-                        <>
-                          {/* Backdrop to close menu when clicking outside */}
-                          <div 
-                            className="fixed inset-0 z-10" 
-                            onClick={() => setOpenMenuId(null)}
-                          />
-                          <div className={cn(
-                            "absolute right-0 z-20 min-w-[120px] rounded-md border bg-popover p-1 shadow-lg",
-                            openDownward ? "top-full mt-1" : "bottom-full mb-1"
-                          )}>
-                            <Link
-                              to={`/manager/investors/${investor.id}`}
-                              className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
-                              onClick={() => setOpenMenuId(null)}
-                            >
-                              <Eye className="h-4 w-4" /> View
-                            </Link>
-                            <Link
-                              to={`/manager/investors/${investor.id}`}
-                              className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
-                              onClick={() => setOpenMenuId(null)}
-                            >
-                              <Edit className="h-4 w-4" /> Edit
-                            </Link>
-                            <button
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                handleDeleteClick(investor);
-                              }}
-                              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" /> Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    <Button 
+                      ref={(el) => {
+                        if (el) menuButtonRefs.current.set(investor.id, el);
+                      }}
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => setOpenMenuId(openMenuId === investor.id ? null : investor.id)}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
-              );
-              })
+              ))
             )}
           </tbody>
         </table>
@@ -372,6 +351,48 @@ export function InvestorTable({
           </Button>
         </div>
       </div>
+
+      {/* Actions Dropdown Menu - rendered via portal to escape overflow */}
+      {openMenuId && menuPosition && createPortal(
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-[100]" 
+            onClick={() => setOpenMenuId(null)}
+          />
+          {/* Menu */}
+          <div 
+            className="fixed z-[101] min-w-[120px] rounded-md border bg-popover p-1 shadow-lg"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+          >
+            <Link
+              to={`/manager/investors/${openMenuId}`}
+              className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
+              onClick={() => setOpenMenuId(null)}
+            >
+              <Eye className="h-4 w-4" /> View
+            </Link>
+            <Link
+              to={`/manager/investors/${openMenuId}`}
+              className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
+              onClick={() => setOpenMenuId(null)}
+            >
+              <Edit className="h-4 w-4" /> Edit
+            </Link>
+            <button
+              onClick={() => {
+                const investor = investors.find(i => i.id === openMenuId);
+                setOpenMenuId(null);
+                if (investor) handleDeleteClick(investor);
+              }}
+              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (

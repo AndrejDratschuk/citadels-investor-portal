@@ -15,7 +15,7 @@ import {
   FileDown,
   ChevronDown,
 } from 'lucide-react';
-import { formatCurrency, formatPercentage } from '@altsui/shared';
+import { formatCurrency } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Users, Loader2 } from 'lucide-react';
+import { Plus, Users, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { teamInvitesApi } from '@/lib/api/teamInvites';
@@ -23,6 +23,9 @@ export function FundTeamTab(): JSX.Element {
   // Action states
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  
+  // Toast/notification state
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const fetchTeam = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -58,13 +61,20 @@ export function FundTeamTab(): JSX.Element {
     }
   };
 
+  const showToast = (type: 'success' | 'error', message: string): void => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const handleResendInvite = async (inviteId: string): Promise<void> => {
     setResendingId(inviteId);
     try {
       await teamInvitesApi.resendInvite(inviteId);
+      showToast('success', 'Invite email sent successfully!');
       await fetchTeam();
     } catch (err) {
       console.error('Failed to resend invite:', err);
+      showToast('error', err instanceof Error ? err.message : 'Failed to send invite email');
     } finally {
       setResendingId(null);
     }
@@ -125,6 +135,24 @@ export function FundTeamTab(): JSX.Element {
 
   return (
     <div className="space-y-6">
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg transition-all ${
+            toast.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle className="h-5 w-5 text-green-600" />
+          ) : (
+            <XCircle className="h-5 w-5 text-red-600" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Team Members</h3>
         <Button onClick={() => setShowInviteModal(true)}>

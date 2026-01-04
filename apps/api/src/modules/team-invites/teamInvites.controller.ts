@@ -62,11 +62,18 @@ export async function createTeamInviteHandler(
     const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/invite/accept?token=${invite.token}`;
     
     // Use Resend to send invite email
-    await emailService.sendEmail({
+    const emailResult = await emailService.sendEmail({
       to: invite.email,
       subject: `You've been invited to join ${fund?.name || 'a fund'} on Altsui`,
       body: `You've been invited to join ${fund?.name || 'a fund'} as a ${invite.role}. Click here to accept: ${inviteUrl}`,
     });
+
+    if (!emailResult.success) {
+      console.error('[Team Invites] Failed to send invite email:', emailResult.error);
+      // Still return success with invite - the invite was created, email just failed
+      reply.send({ success: true, invite, emailError: emailResult.error });
+      return;
+    }
 
     reply.send({ success: true, invite });
   } catch (error) {
@@ -154,11 +161,17 @@ export async function resendInviteHandler(
     // Send invite email again
     const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/invite/accept?token=${token}`;
     
-    await emailService.sendEmail({
+    const emailResult = await emailService.sendEmail({
       to: email,
       subject: `Reminder: You've been invited to join ${fundName} on Altsui`,
       body: `You've been invited to join ${fundName}. Click here to accept: ${inviteUrl}`,
     });
+
+    if (!emailResult.success) {
+      console.error('[Team Invites] Failed to send resend email:', emailResult.error);
+      reply.status(500).send({ error: emailResult.error || 'Failed to send email' });
+      return;
+    }
 
     reply.send({ success: true });
   } catch (error) {

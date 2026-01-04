@@ -7,24 +7,37 @@ import {
   TrendingUp,
   Wallet,
   PiggyBank,
-  Home,
   Percent,
   Download,
   RefreshCw,
+  FileText,
+  FileSpreadsheet,
+  FileDown,
+  ChevronDown,
 } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatsCard } from '../components/StatsCard';
-import { FundChart } from '../components/FundChart';
-import { DealSelector } from '../components/reports';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  DealSelector,
+  MetricCard,
+  PortfolioChart,
+  GaugeChart,
+  exportReport,
+  type ExportFormat,
+} from '../components/reports';
 import { reportsApi } from '@/lib/api/reports';
 
 export function ReportsPage() {
-  // Track selected deals (default: all deals selected)
   const [selectedDealIds, setSelectedDealIds] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Fetch fund metrics
   const {
     data: fundMetrics,
     isLoading: isMetricsLoading,
@@ -34,20 +47,17 @@ export function ReportsPage() {
     queryFn: reportsApi.getFundMetrics,
   });
 
-  // Fetch deal summaries for selector
   const { data: dealSummaries, isLoading: isDealsLoading } = useQuery({
     queryKey: ['deal-summaries'],
     queryFn: reportsApi.getDealSummaries,
   });
 
-  // Auto-select all deals when summaries load
   useEffect(() => {
     if (dealSummaries && dealSummaries.length > 0 && selectedDealIds.length === 0) {
       setSelectedDealIds(dealSummaries.map((d) => d.id));
     }
   }, [dealSummaries, selectedDealIds.length]);
 
-  // Fetch deal rollups based on selection
   const {
     data: dealRollup,
     isLoading: isRollupLoading,
@@ -63,22 +73,49 @@ export function ReportsPage() {
     refetchRollup();
   };
 
-  // Build chart data for portfolio allocation
+  const handleExport = async (format: ExportFormat) => {
+    setIsExporting(true);
+    try {
+      const selectedDeals = dealSummaries?.filter((d) => selectedDealIds.includes(d.id)) || [];
+      await exportReport(format, {
+        fundMetrics,
+        dealRollup,
+        selectedDeals,
+        fundName: 'Portfolio',
+        exportDate: new Date(),
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Generate mock sparkline data for demo (in production, this would come from API)
+  const generateSparklineData = (baseValue: number, volatility: number = 0.1) => {
+    const points = 12;
+    return Array.from({ length: points }, (_, i) => ({
+      value: baseValue * (1 + (Math.sin(i * 0.8) * volatility) + (i / points) * volatility),
+    }));
+  };
+
   const portfolioChartData = dealSummaries
     ?.filter((d) => selectedDealIds.includes(d.id) && d.currentValue)
     .map((d) => ({
-      label: d.name,
+      name: d.name,
       value: d.currentValue || 0,
     })) || [];
+
+  const deploymentRate = fundMetrics && fundMetrics.totalCommitments > 0
+    ? (fundMetrics.capitalDeployed / fundMetrics.totalCommitments) * 100
+    : 0;
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Fund Reports</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Fund Reports</h1>
           <p className="mt-1 text-muted-foreground">
-            Overview of fund metrics and aggregated deal performance
+            Performance overview and aggregated deal metrics
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -86,86 +123,127 @@ export function ReportsPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" disabled title="Export coming soon">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={isExporting}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('docx')}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export as DOCX
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('markdown')}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export as Markdown
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Fund-Level Metrics Section */}
+      {/* Fund Metrics - Hero Section */}
       <section>
-        <h2 className="mb-4 text-lg font-semibold">Fund Metrics</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {isMetricsLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-xl border bg-card p-6">
-                <Skeleton className="h-10 w-10 rounded-lg" />
-                <Skeleton className="mt-4 h-4 w-20" />
-                <Skeleton className="mt-2 h-8 w-32" />
+        <h2 className="mb-4 text-lg font-semibold">Fund Overview</h2>
+
+        {isMetricsLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-48 rounded-2xl border bg-card p-6">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="mt-4 h-10 w-32" />
+                <Skeleton className="mt-6 h-16 w-full" />
               </div>
-            ))
-          ) : fundMetrics ? (
-            <>
-              <StatsCard
+            ))}
+          </div>
+        ) : fundMetrics ? (
+          <>
+            {/* Primary metrics with sparklines */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <MetricCard
                 title="Assets Under Management"
                 value={formatCurrency(fundMetrics.aum)}
                 icon={DollarSign}
-                description="Total portfolio value"
+                sparklineData={generateSparklineData(fundMetrics.aum, 0.08)}
+                sparklineColor="#6366f1"
+                size="large"
+                subtitle="Total portfolio value"
               />
-              <StatsCard
-                title="Net Asset Value"
-                value={formatCurrency(fundMetrics.nav)}
-                icon={TrendingUp}
-                description="AUM minus liabilities"
-              />
-              <StatsCard
+              <MetricCard
                 title="Total Commitments"
                 value={formatCurrency(fundMetrics.totalCommitments)}
                 icon={Wallet}
-                description={`From ${fundMetrics.investorCount} investors`}
+                sparklineData={generateSparklineData(fundMetrics.totalCommitments, 0.05)}
+                sparklineColor="#10b981"
+                size="large"
+                subtitle={`From ${fundMetrics.investorCount} investors`}
               />
-              <StatsCard
+              <MetricCard
                 title="Capital Deployed"
                 value={formatCurrency(fundMetrics.capitalDeployed)}
                 icon={PiggyBank}
-                description={formatCurrency(fundMetrics.uncommittedCapital) + ' uncommitted'}
+                trend={deploymentRate > 50 ? { value: Math.round(deploymentRate), isPositive: true } : undefined}
+                sparklineData={generateSparklineData(fundMetrics.capitalDeployed, 0.12)}
+                sparklineColor="#f59e0b"
+                size="large"
+                subtitle={`${formatCurrency(fundMetrics.uncommittedCapital)} uncommitted`}
               />
-            </>
-          ) : null}
-        </div>
+            </div>
 
-        {/* Secondary metrics row */}
-        {!isMetricsLoading && fundMetrics && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <StatsCard
-              title="Active Deals"
-              value={fundMetrics.dealCount}
-              icon={Building2}
-              description="Properties in portfolio"
-            />
-            <StatsCard
-              title="Total Investors"
-              value={fundMetrics.investorCount}
-              icon={Users}
-              description={`${fundMetrics.activeInvestorCount} active`}
-            />
-            <StatsCard
-              title="Deployment Rate"
-              value={fundMetrics.totalCommitments > 0
-                ? formatPercentage(fundMetrics.capitalDeployed / fundMetrics.totalCommitments)
-                : '0%'}
-              icon={Percent}
-              description="Capital deployed / committed"
-            />
-          </div>
-        )}
+            {/* Secondary metrics row with gauges */}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <GaugeChart
+                title="Deployment Rate"
+                value={deploymentRate}
+                maxValue={100}
+                format="percent"
+                color="#6366f1"
+                subtitle="Capital deployed vs committed"
+              />
+              <MetricCard
+                title="Active Deals"
+                value={fundMetrics.dealCount}
+                icon={Building2}
+                sparklineColor="#8b5cf6"
+                subtitle="Properties in portfolio"
+              />
+              <MetricCard
+                title="Total Investors"
+                value={fundMetrics.investorCount}
+                icon={Users}
+                sparklineColor="#06b6d4"
+                subtitle={`${fundMetrics.activeInvestorCount} active`}
+              />
+              <GaugeChart
+                title="Active Investor Rate"
+                value={fundMetrics.investorCount > 0 
+                  ? (fundMetrics.activeInvestorCount / fundMetrics.investorCount) * 100 
+                  : 0}
+                maxValue={100}
+                format="percent"
+                color="#10b981"
+                subtitle={`${fundMetrics.activeInvestorCount} of ${fundMetrics.investorCount}`}
+              />
+            </div>
+          </>
+        ) : null}
       </section>
 
-      {/* Deal Selection & Rollups Section */}
+      {/* Deal Selection & Rollups */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Deal Roll-ups</h2>
+          <h2 className="text-lg font-semibold">Deal Performance</h2>
           <DealSelector
             deals={dealSummaries || []}
             selectedDealIds={selectedDealIds}
@@ -174,41 +252,43 @@ export function ReportsPage() {
           />
         </div>
 
-        {/* Rollup Metrics */}
         {selectedDealIds.length === 0 ? (
-          <div className="rounded-xl border bg-card p-10 text-center">
-            <Building2 className="mx-auto h-12 w-12 text-muted-foreground/50" />
-            <h3 className="mt-4 text-lg font-medium">No Deals Selected</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+          <div className="rounded-2xl border bg-card p-12 text-center">
+            <Building2 className="mx-auto h-16 w-16 text-muted-foreground/30" />
+            <h3 className="mt-4 text-xl font-semibold">No Deals Selected</h3>
+            <p className="mt-2 text-muted-foreground">
               Select one or more deals above to see aggregated metrics
             </p>
           </div>
         ) : isRollupLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl border bg-card p-6">
-                <Skeleton className="h-10 w-10 rounded-lg" />
-                <Skeleton className="mt-4 h-4 w-20" />
-                <Skeleton className="mt-2 h-8 w-32" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-36 rounded-2xl border bg-card p-6">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="mt-4 h-8 w-28" />
+                <Skeleton className="mt-2 h-4 w-20" />
               </div>
             ))}
           </div>
         ) : dealRollup ? (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatsCard
+          <div className="space-y-4">
+            {/* Value metrics with visual emphasis */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <MetricCard
                 title="Total Current Value"
                 value={formatCurrency(dealRollup.totalCurrentValue)}
                 icon={DollarSign}
-                description={`${dealRollup.dealCount} deal${dealRollup.dealCount !== 1 ? 's' : ''} selected`}
+                sparklineColor="#6366f1"
+                subtitle={`${dealRollup.dealCount} deal${dealRollup.dealCount !== 1 ? 's' : ''}`}
               />
-              <StatsCard
+              <MetricCard
                 title="Total Acquisition Cost"
                 value={formatCurrency(dealRollup.totalAcquisitionCost)}
                 icon={Wallet}
-                description="Original investment"
+                sparklineColor="#64748b"
+                subtitle="Original investment"
               />
-              <StatsCard
+              <MetricCard
                 title="Total Appreciation"
                 value={formatCurrency(dealRollup.totalAppreciation)}
                 icon={TrendingUp}
@@ -216,62 +296,69 @@ export function ReportsPage() {
                   value: Math.round(dealRollup.appreciationPercent),
                   isPositive: dealRollup.appreciationPercent > 0,
                 } : undefined}
-                description="Value gain since acquisition"
+                sparklineColor={dealRollup.appreciationPercent > 0 ? '#10b981' : '#ef4444'}
+                subtitle="Value gain since acquisition"
               />
-              <StatsCard
+              <MetricCard
                 title="Total NOI"
                 value={formatCurrency(dealRollup.totalNoi)}
                 icon={PiggyBank}
-                description="Net Operating Income"
+                sparklineColor="#f59e0b"
+                subtitle="Net Operating Income"
               />
             </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatsCard
+            {/* Property metrics with gauges */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <GaugeChart
+                title="Average Occupancy"
+                value={dealRollup.avgOccupancy}
+                maxValue={100}
+                format="percent"
+                color={dealRollup.avgOccupancy >= 90 ? '#10b981' : dealRollup.avgOccupancy >= 75 ? '#f59e0b' : '#ef4444'}
+                subtitle="Weighted by unit count"
+              />
+              <GaugeChart
+                title="Weighted Cap Rate"
+                value={dealRollup.weightedCapRate}
+                maxValue={15}
+                format="percent"
+                color="#8b5cf6"
+                subtitle="Weighted by value"
+              />
+              <MetricCard
                 title="Total Units"
                 value={dealRollup.totalUnits.toLocaleString()}
                 icon={Building2}
-                description="Across all selected deals"
+                sparklineColor="#06b6d4"
+                subtitle="Across selected deals"
               />
-              <StatsCard
+              <MetricCard
                 title="Total Sq Ft"
                 value={dealRollup.totalSqFt.toLocaleString()}
-                icon={Home}
-                description="Total square footage"
-              />
-              <StatsCard
-                title="Average Occupancy"
-                value={dealRollup.avgOccupancy > 0 
-                  ? formatPercentage(dealRollup.avgOccupancy)
-                  : 'N/A'}
-                icon={Users}
-                description="Weighted by unit count"
-              />
-              <StatsCard
-                title="Weighted Cap Rate"
-                value={dealRollup.weightedCapRate > 0
-                  ? formatPercentage(dealRollup.weightedCapRate)
-                  : 'N/A'}
                 icon={Percent}
-                description="Weighted by value"
+                sparklineColor="#ec4899"
+                subtitle="Total square footage"
               />
             </div>
-          </>
+          </div>
         ) : null}
       </section>
 
-      {/* Portfolio Allocation Chart */}
+      {/* Portfolio Charts */}
       {portfolioChartData.length > 0 && (
         <section>
           <h2 className="mb-4 text-lg font-semibold">Portfolio Allocation</h2>
           <div className="grid gap-6 lg:grid-cols-2">
-            <FundChart
+            <PortfolioChart
               title="Value by Deal"
+              subtitle="Current market value distribution"
               data={portfolioChartData}
               type="bar"
             />
-            <FundChart
+            <PortfolioChart
               title="Portfolio Distribution"
+              subtitle="Percentage allocation by deal"
               data={portfolioChartData}
               type="donut"
             />
@@ -281,4 +368,3 @@ export function ReportsPage() {
     </div>
   );
 }
-

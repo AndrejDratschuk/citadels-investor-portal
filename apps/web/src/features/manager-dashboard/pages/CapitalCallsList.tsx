@@ -83,7 +83,8 @@ export function CapitalCallsList() {
         setError(null);
       } catch (err) {
         console.error('Error fetching capital calls:', err);
-        setError('Failed to load capital calls');
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Failed to load capital calls: ${errorMessage}`);
       } finally {
         setIsLoading(false);
       }

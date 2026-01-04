@@ -181,28 +181,21 @@ export async function acceptTeamInvite({
     refreshToken = signInData.session.refresh_token;
   }
 
-  // Mark invite as accepted using the token from verification (which we know is valid)
-  console.log('[Accept Invite] Attempting to update invite. ID:', invite.id, 'Token:', invite.token.substring(0, 8) + '...');
+  // Mark invite as accepted using database function (bypasses any client/RLS issues)
+  console.log('[Accept Invite] Updating invite status via RPC. ID:', invite.id);
   
-  // Use the token from the invite object (retrieved during verification) for the update
-  const { data: updatedInvites, error: inviteUpdateError } = await supabaseAdmin
-    .from('team_invites')
-    .update({
-      status: 'accepted',
-      accepted_at: timestamp.toISOString(),
-    })
-    .eq('token', invite.token)
-    .eq('status', 'pending') // Only update if still pending
-    .select();
+  const { data: updated, error: rpcError } = await supabaseAdmin
+    .rpc('accept_team_invite', {
+      p_invite_id: invite.id,
+      p_accepted_at: timestamp.toISOString(),
+    });
 
-  console.log('[Accept Invite] Update result - rows:', updatedInvites?.length, 'error:', inviteUpdateError);
-
-  if (inviteUpdateError) {
-    console.error('[Accept Invite] Failed to update invite status:', inviteUpdateError);
-  } else if (!updatedInvites || updatedInvites.length === 0) {
-    console.error('[Accept Invite] No rows updated - invite may already be accepted or token mismatch');
+  if (rpcError) {
+    console.error('[Accept Invite] RPC error:', rpcError);
+  } else if (!updated) {
+    console.error('[Accept Invite] Invite not updated (may already be accepted)');
   } else {
-    console.log('[Accept Invite] Successfully updated invite:', updatedInvites[0].id, 'to status:', updatedInvites[0].status);
+    console.log('[Accept Invite] Successfully updated invite status to accepted');
   }
 
   return {

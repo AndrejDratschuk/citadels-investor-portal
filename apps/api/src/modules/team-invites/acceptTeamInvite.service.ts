@@ -182,18 +182,27 @@ export async function acceptTeamInvite({
   }
 
   // Mark invite as accepted
-  const { error: inviteUpdateError } = await supabaseAdmin
+  const { data: updatedInvite, error: inviteUpdateError } = await supabaseAdmin
     .from('team_invites')
     .update({
       status: 'accepted',
       accepted_at: timestamp.toISOString(),
     })
-    .eq('token', input.token);
+    .eq('token', input.token)
+    .select()
+    .single();
 
   if (inviteUpdateError) {
-    console.error('Failed to update invite status:', inviteUpdateError);
-    // Don't throw - user is already created
+    console.error('[Accept Invite] Failed to update invite status:', inviteUpdateError);
+    throw new Error(`Failed to update invite status: ${inviteUpdateError.message}`);
   }
+
+  if (!updatedInvite) {
+    console.error('[Accept Invite] No invite found with token:', input.token.substring(0, 8) + '...');
+    throw new Error('Invite not found or already processed');
+  }
+
+  console.log('[Accept Invite] Successfully updated invite:', updatedInvite.id, 'to status:', updatedInvite.status);
 
   return {
     user: {

@@ -1,4 +1,4 @@
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Building2, BarChart3 } from 'lucide-react';
 import { formatCurrency } from '@altsui/shared';
 
 interface DealForSummary {
@@ -16,37 +16,48 @@ export function PortfolioSummary({ deals, className }: PortfolioSummaryProps) {
     return sum + (deal.currentValue || 0);
   }, 0);
 
+  const dealsWithValuations = deals.filter(d => d.currentValue).length;
+
   return (
     <div className={className}>
-      <div className="rounded-xl border bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">
-              Portfolio Summary
-            </p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-bold tracking-tight">
-                {formatCurrency(totalAum)}
-              </span>
-              <span className="text-sm text-slate-400">Total AUM</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Total AUM Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">Total AUM</p>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
             </div>
           </div>
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20">
-            <TrendingUp className="h-7 w-7 text-emerald-400" />
-          </div>
+          <p className="mt-2 text-2xl font-semibold tracking-tight">
+            {formatCurrency(totalAum)}
+          </p>
         </div>
-        <div className="mt-4 flex items-center gap-6 border-t border-slate-700 pt-4">
-          <div>
-            <p className="text-2xl font-semibold">{deals.length}</p>
-            <p className="text-xs text-slate-400">Active Deals</p>
+
+        {/* Active Deals Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">Active Deals</p>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
+              <Building2 className="h-5 w-5 text-blue-600" />
+            </div>
           </div>
-          <div className="h-8 w-px bg-slate-700" />
-          <div>
-            <p className="text-2xl font-semibold">
-              {deals.filter(d => d.currentValue).length}
-            </p>
-            <p className="text-xs text-slate-400">With Valuations</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight">
+            {deals.length}
+          </p>
+        </div>
+
+        {/* With Valuations Card */}
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">With Valuations</p>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
+              <BarChart3 className="h-5 w-5 text-violet-600" />
+            </div>
           </div>
+          <p className="mt-2 text-2xl font-semibold tracking-tight">
+            {dealsWithValuations}
+          </p>
         </div>
       </div>
     </div>

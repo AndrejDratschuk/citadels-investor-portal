@@ -96,7 +96,7 @@ function PasswordStrength({ password }: { password: string }): JSX.Element {
 export function AcceptTeamInvitePage(): JSX.Element {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setAuth, isAuthenticated, user } = useAuthStore();
+  const { setAuth, isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const autoAcceptAttempted = useRef(false);
 
   const [loading, setLoading] = useState(true);
@@ -125,8 +125,13 @@ export function AcceptTeamInvitePage(): JSX.Element {
 
   const password = watch('password') || '';
 
-  // Auto-accept for authenticated existing users
+  // Auto-accept for authenticated existing users (wait for auth to finish loading)
   useEffect(() => {
+    // Wait for auth store to hydrate before checking
+    if (authLoading) {
+      return;
+    }
+
     if (!token || !invite || !isExistingUser || !isAuthenticated || autoAcceptAttempted.current) {
       return;
     }
@@ -139,7 +144,7 @@ export function AcceptTeamInvitePage(): JSX.Element {
 
     autoAcceptAttempted.current = true;
     autoAcceptInvite();
-  }, [token, invite, isExistingUser, isAuthenticated, user]);
+  }, [token, invite, isExistingUser, isAuthenticated, user, authLoading]);
 
   const autoAcceptInvite = async (): Promise<void> => {
     setAutoAccepting(true);
@@ -248,7 +253,7 @@ export function AcceptTeamInvitePage(): JSX.Element {
     }
   };
 
-  if (loading || autoAccepting) {
+  if (loading || autoAccepting || (isExistingUser && authLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">

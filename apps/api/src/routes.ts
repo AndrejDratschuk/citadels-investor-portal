@@ -17,6 +17,7 @@ import { dataImportRoutes } from './modules/data-import/data-import.routes';
 import { accountCreationRoutes } from './modules/account-creation/account-creation.routes';
 import { prospectsRoutes } from './modules/prospects/prospects.routes';
 import { teamInvitesRoutes } from './modules/team-invites/teamInvites.routes';
+import { reportsRoutes } from './modules/reports/reports.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all module routes
@@ -39,6 +40,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(accountCreationRoutes, { prefix: '/account-creation' });
   await fastify.register(prospectsRoutes, { prefix: '/prospects' });
   await fastify.register(teamInvitesRoutes, { prefix: '/team-invites' });
+  await fastify.register(reportsRoutes, { prefix: '/reports' });
 
   // Health check
   fastify.get('/health', async () => {

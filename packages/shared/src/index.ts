@@ -26,6 +26,7 @@ export * from './types/kpi.types';
 export * from './types/prospect.types';
 export * from './types/teamInvite.types';
 export * from './types/fundCreation.types';
+export * from './types/reports.types';
 
 // Constants
 export * from './constants/roles';

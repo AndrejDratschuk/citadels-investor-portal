@@ -16,5 +16,6 @@ export * from './AutomationLogsPage';
 export * from './DealFinancials';
 export * from './DealKPICategory';
 export * from './KPISettings';
+export * from './ReportsPage';
 
 

@@ -53,6 +53,7 @@ import { CreateFundWizardPage } from './features/onboarding/pages/CreateFundWiza
 import { AcceptTeamInvitePage } from './features/auth/pages/AcceptTeamInvitePage';
 import { KYCPage, KYCTypeSelectorPage, KYCTokenPage } from './features/kyc/pages';
 import { PipelinePage } from './features/manager-dashboard/pages/PipelinePage';
+import { ReportsPage } from './features/manager-dashboard/pages/ReportsPage';
 import { USER_ROLES } from '@altsui/shared';
 
 export const router = createBrowserRouter([
@@ -261,6 +262,10 @@ export const router = createBrowserRouter([
       {
         path: 'automation-logs',
         element: <AutomationLogsPage />,
+      },
+      {
+        path: 'reports',
+        element: <ReportsPage />,
       },
     ],
   },

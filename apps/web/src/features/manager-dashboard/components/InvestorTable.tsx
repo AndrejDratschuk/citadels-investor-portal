@@ -61,6 +61,9 @@ export function InvestorTable({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  
+  // Actions menu state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<InvestorRow | null>(null);
@@ -296,32 +299,49 @@ export function InvestorTable({
                     {formatCurrency(investor.totalCalled)}
                   </td>
                   <td className="p-4">
-                    <div className="relative group">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <div className="relative">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => setOpenMenuId(openMenuId === investor.id ? null : investor.id)}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
-                      <div className="absolute right-0 top-full z-10 hidden group-hover:block">
-                        <div className="mt-1 rounded-md border bg-popover p-1 shadow-md">
-                          <Link
-                            to={`/manager/investors/${investor.id}`}
-                            className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
-                          >
-                            <Eye className="h-4 w-4" /> View
-                          </Link>
-                          <Link
-                            to={`/manager/investors/${investor.id}`}
-                            className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
-                          >
-                            <Edit className="h-4 w-4" /> Edit
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(investor)}
-                            className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" /> Delete
-                          </button>
-                        </div>
-                      </div>
+                      {openMenuId === investor.id && (
+                        <>
+                          {/* Backdrop to close menu when clicking outside */}
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setOpenMenuId(null)}
+                          />
+                          <div className="absolute right-0 bottom-full mb-1 z-20 min-w-[120px] rounded-md border bg-popover p-1 shadow-lg">
+                            <Link
+                              to={`/manager/investors/${investor.id}`}
+                              className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
+                              onClick={() => setOpenMenuId(null)}
+                            >
+                              <Eye className="h-4 w-4" /> View
+                            </Link>
+                            <Link
+                              to={`/manager/investors/${investor.id}`}
+                              className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-muted"
+                              onClick={() => setOpenMenuId(null)}
+                            >
+                              <Edit className="h-4 w-4" /> Edit
+                            </Link>
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleDeleteClick(investor);
+                              }}
+                              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" /> Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -181,41 +181,26 @@ export async function acceptTeamInvite({
     refreshToken = signInData.session.refresh_token;
   }
 
-  // Mark invite as accepted
-  console.log('[Accept Invite] Attempting to update invite id:', invite.id, 'token prefix:', input.token.substring(0, 8));
+  // Mark invite as accepted using the token from verification (which we know is valid)
+  console.log('[Accept Invite] Attempting to update invite. ID:', invite.id, 'Token:', invite.token.substring(0, 8) + '...');
   
-  // First verify the invite still exists and is pending
-  const { data: currentInvite, error: fetchError } = await supabaseAdmin
-    .from('team_invites')
-    .select('id, status, token')
-    .eq('id', invite.id)
-    .single();
-    
-  if (fetchError) {
-    console.error('[Accept Invite] Failed to fetch invite for update:', fetchError);
-  } else {
-    console.log('[Accept Invite] Current invite state:', currentInvite?.id, 'status:', currentInvite?.status);
-  }
-
+  // Use the token from the invite object (retrieved during verification) for the update
   const { data: updatedInvites, error: inviteUpdateError } = await supabaseAdmin
     .from('team_invites')
     .update({
       status: 'accepted',
       accepted_at: timestamp.toISOString(),
     })
-    .eq('id', invite.id)
+    .eq('token', invite.token)
+    .eq('status', 'pending') // Only update if still pending
     .select();
 
-  console.log('[Accept Invite] Update result - data:', updatedInvites, 'error:', inviteUpdateError);
+  console.log('[Accept Invite] Update result - rows:', updatedInvites?.length, 'error:', inviteUpdateError);
 
   if (inviteUpdateError) {
     console.error('[Accept Invite] Failed to update invite status:', inviteUpdateError);
-    // Don't throw - user creation succeeded, log the issue but continue
-    console.error('[Accept Invite] WARNING: Invite status not updated, but user was created successfully');
   } else if (!updatedInvites || updatedInvites.length === 0) {
-    console.error('[Accept Invite] No rows updated for invite id:', invite.id);
-    // Don't throw - user creation succeeded
-    console.error('[Accept Invite] WARNING: Invite status not updated, but user was created successfully');
+    console.error('[Accept Invite] No rows updated - invite may already be accepted or token mismatch');
   } else {
     console.log('[Accept Invite] Successfully updated invite:', updatedInvites[0].id, 'to status:', updatedInvites[0].status);
   }

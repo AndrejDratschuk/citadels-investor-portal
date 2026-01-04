@@ -102,6 +102,7 @@ export const teamInvitesApi = {
     const response = await fetch(`${API_URL}/team-invites/${inviteId}/resend`, {
       method: 'POST',
       headers: await getAuthHeaders(),
+      body: JSON.stringify({}),
     });
     return handleResponse(response);
   },
@@ -113,6 +114,7 @@ export const teamInvitesApi = {
     const response = await fetch(`${API_URL}/team-invites/${inviteId}/cancel`, {
       method: 'POST',
       headers: await getAuthHeaders(),
+      body: JSON.stringify({}),
     });
     return handleResponse(response);
   },

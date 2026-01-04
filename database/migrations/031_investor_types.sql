@@ -190,3 +190,4 @@ CREATE POLICY investor_type_permissions_investor_select ON investor_type_permiss
     )
   );
 
+

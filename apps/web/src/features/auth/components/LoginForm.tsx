@@ -7,12 +7,13 @@ import { Label } from '@/components/ui/label';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const {
@@ -30,7 +31,15 @@ export function LoginForm() {
     try {
       const response = await authApi.login(data);
       setAuth(response.user, response.accessToken, response.refreshToken);
-      navigate('/');
+      
+      // Check for redirect parameter (used by invite accept flow)
+      const redirectUrl = searchParams.get('redirect');
+      if (redirectUrl) {
+        // Navigate to the redirect URL (invite accept page)
+        window.location.href = redirectUrl;
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

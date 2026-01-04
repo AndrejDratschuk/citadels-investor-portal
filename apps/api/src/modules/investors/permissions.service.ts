@@ -373,3 +373,4 @@ export class InvestorPermissionsService {
 
 export const investorPermissionsService = new InvestorPermissionsService();
 
+

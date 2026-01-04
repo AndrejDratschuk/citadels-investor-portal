@@ -93,3 +93,4 @@ export function InvestorTypeBadge({ type, className }: InvestorTypeBadgeProps) {
   );
 }
 
+

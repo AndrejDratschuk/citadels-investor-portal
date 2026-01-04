@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -96,7 +96,8 @@ function PasswordStrength({ password }: { password: string }): JSX.Element {
 export function AcceptTeamInvitePage(): JSX.Element {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setAuth, isAuthenticated, user } = useAuthStore();
+  const autoAcceptAttempted = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +105,7 @@ export function AcceptTeamInvitePage(): JSX.Element {
   const [isExistingUser, setIsExistingUser] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [autoAccepting, setAutoAccepting] = useState(false);
 
   const token = searchParams.get('token') || '';
 
@@ -122,6 +124,46 @@ export function AcceptTeamInvitePage(): JSX.Element {
   });
 
   const password = watch('password') || '';
+
+  // Auto-accept for authenticated existing users
+  useEffect(() => {
+    if (!token || !invite || !isExistingUser || !isAuthenticated || autoAcceptAttempted.current) {
+      return;
+    }
+
+    // Check if the logged-in user matches the invite email
+    if (user?.email?.toLowerCase() !== invite.email.toLowerCase()) {
+      setError(`You're logged in as ${user?.email}, but this invite is for ${invite.email}. Please log out and log in with the correct account.`);
+      return;
+    }
+
+    autoAcceptAttempted.current = true;
+    autoAcceptInvite();
+  }, [token, invite, isExistingUser, isAuthenticated, user]);
+
+  const autoAcceptInvite = async (): Promise<void> => {
+    setAutoAccepting(true);
+    setError(null);
+
+    try {
+      await teamInvitesApi.acceptInvite({
+        token,
+        // No password needed for existing users
+      });
+
+      // Redirect based on role
+      const rolePaths: Record<TeamRole, string> = {
+        manager: '/manager',
+        accountant: '/accountant',
+        attorney: '/attorney',
+        investor: '/investor',
+      };
+      navigate(rolePaths[invite?.role || 'investor'] || '/manager');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to accept invite');
+      setAutoAccepting(false);
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -206,12 +248,14 @@ export function AcceptTeamInvitePage(): JSX.Element {
     }
   };
 
-  if (loading) {
+  if (loading || autoAccepting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-4 text-slate-600">Verifying your invite...</p>
+          <p className="mt-4 text-slate-600">
+            {autoAccepting ? 'Accepting your invitation...' : 'Verifying your invite...'}
+          </p>
         </div>
       </div>
     );
@@ -238,7 +282,8 @@ export function AcceptTeamInvitePage(): JSX.Element {
     );
   }
 
-  if (isExistingUser) {
+  if (isExistingUser && !isAuthenticated) {
+    // Existing user who is NOT logged in - prompt them to log in
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">

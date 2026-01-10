@@ -28,10 +28,20 @@ export class StakeholderPermissionsController {
     request: AuthenticatedRequest,
     reply: FastifyReply
   ): Promise<void> {
-    const permissions = await stakeholderPermissionsService.getAllPermissionsForFund(
-      request.user.fundId
-    );
-    reply.send(permissions);
+    try {
+      if (!request.user?.fundId) {
+        reply.status(400).send({ error: 'Fund ID not found for user' });
+        return;
+      }
+      const permissions = await stakeholderPermissionsService.getAllPermissionsForFund(
+        request.user.fundId
+      );
+      reply.send(permissions);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch permissions';
+      console.error('[StakeholderPermissions] getAllPermissions error:', message);
+      reply.status(500).send({ error: message });
+    }
   }
 
   /**
@@ -41,10 +51,20 @@ export class StakeholderPermissionsController {
     request: AuthenticatedRequest,
     reply: FastifyReply
   ): Promise<void> {
-    const permissions = await stakeholderPermissionsService.seedDefaultPermissions(
-      request.user.fundId
-    );
-    reply.send(permissions);
+    try {
+      if (!request.user?.fundId) {
+        reply.status(400).send({ error: 'Fund ID not found for user' });
+        return;
+      }
+      const permissions = await stakeholderPermissionsService.seedDefaultPermissions(
+        request.user.fundId
+      );
+      reply.send(permissions);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to seed permissions';
+      console.error('[StakeholderPermissions] seedPermissions error:', message);
+      reply.status(500).send({ error: message });
+    }
   }
 
   /**

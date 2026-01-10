@@ -361,7 +361,8 @@ export class KpisService {
         return `${value.toFixed(2)}x`;
       case 'number':
       default:
-        return value.toLocaleString();
+        // Format numbers without decimals
+        return Math.round(value).toLocaleString();
     }
   }
 }

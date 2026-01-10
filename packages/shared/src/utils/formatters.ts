@@ -1,17 +1,19 @@
 /**
- * Format currency amount
+ * Format currency amount (no decimals for cleaner display)
  */
 export function formatCurrency(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 }
 
 /**
- * Format percentage
+ * Format percentage (no decimals for cleaner display)
  */
-export function formatPercentage(value: number, decimals = 2): string {
+export function formatPercentage(value: number, decimals = 0): string {
   return `${(value * 100).toFixed(decimals)}%`;
 }
 

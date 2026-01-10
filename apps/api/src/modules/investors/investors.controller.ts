@@ -1,12 +1,12 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { InvestorsService } from './investors.service';
-import { investorPermissionsService } from './permissions.service';
+import { stakeholderPermissionsService } from '../stakeholders/stakeholderPermissions.service';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { createInvestorSchema } from './dtos/createInvestor.dto';
 import { updateInvestorSchema } from './dtos/updateInvestor.dto';
-import { investorTypePermissionSchema, investorTypeSchema } from '@altsui/shared';
-import type { InvestorType } from '@altsui/shared';
+import { updateStakeholderPermissionSchema, stakeholderTypeSchema } from '@altsui/shared';
+import type { StakeholderType } from '@altsui/shared';
 
 const investorsService = new InvestorsService();
 
@@ -442,23 +442,25 @@ export class InvestorsController {
 
     try {
       const investor = await investorsService.getInvestorByUserId(request.user.id);
-      const permissions = await investorPermissionsService.getPermissionsForInvestor(investor.id);
+      const permissions = await stakeholderPermissionsService.getPermissionsForInvestor(investor.id);
 
       return reply.send({
         success: true,
         data: permissions,
       });
-    } catch (error: any) {
-      console.error('[getMyPermissions] Error:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to get permissions';
+      console.error('[getMyPermissions] Error:', message);
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to get permissions',
+        error: message,
       });
     }
   }
 
   /**
    * Get all permission configurations for a fund (manager view)
+   * @deprecated Use /stakeholders/permissions instead
    */
   async getFundPermissions(request: AuthenticatedRequest, reply: FastifyReply) {
     if (!request.user) {
@@ -477,40 +479,42 @@ export class InvestorsController {
     }
 
     try {
-      const permissions = await investorPermissionsService.getAllPermissionsForFund(manager.fund_id);
+      const permissions = await stakeholderPermissionsService.getAllPermissionsForFund(manager.fund_id);
 
       return reply.send({
         success: true,
         data: permissions,
       });
-    } catch (error: any) {
-      console.error('[getFundPermissions] Error:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to get fund permissions';
+      console.error('[getFundPermissions] Error:', message);
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to get fund permissions',
+        error: message,
       });
     }
   }
 
   /**
    * Update permission configuration for an investor type (manager view)
+   * @deprecated Use /stakeholders/permissions/:stakeholderType instead
    */
   async updateTypePermissions(request: AuthenticatedRequest, reply: FastifyReply) {
     if (!request.user) {
       return reply.status(401).send({ success: false, error: 'Unauthorized' });
     }
 
-    const { investorType: rawInvestorType } = request.params as { investorType: string };
+    const { investorType: rawStakeholderType } = request.params as { investorType: string };
 
-    // Validate investorType URL parameter
-    const investorTypeResult = investorTypeSchema.safeParse(rawInvestorType);
-    if (!investorTypeResult.success) {
+    // Validate stakeholderType URL parameter
+    const stakeholderTypeResult = stakeholderTypeSchema.safeParse(rawStakeholderType);
+    if (!stakeholderTypeResult.success) {
       return reply.status(400).send({
         success: false,
-        error: `Invalid investor type: ${rawInvestorType}`,
+        error: `Invalid stakeholder type: ${rawStakeholderType}`,
       });
     }
-    const investorType = investorTypeResult.data as InvestorType;
+    const stakeholderType = stakeholderTypeResult.data as StakeholderType;
 
     // Get the manager's fund
     const { data: manager, error: managerError } = await supabaseAdmin
@@ -524,10 +528,10 @@ export class InvestorsController {
     }
 
     try {
-      const updates = investorTypePermissionSchema.parse(request.body);
-      const permission = await investorPermissionsService.updatePermissions(
+      const updates = updateStakeholderPermissionSchema.parse(request.body);
+      const permission = await stakeholderPermissionsService.updatePermissions(
         manager.fund_id,
-        investorType,
+        stakeholderType,
         updates
       );
 
@@ -535,17 +539,19 @@ export class InvestorsController {
         success: true,
         data: permission,
       });
-    } catch (error: any) {
-      console.error('[updateTypePermissions] Error:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to update permissions';
+      console.error('[updateTypePermissions] Error:', message);
       return reply.status(400).send({
         success: false,
-        error: error.message || 'Failed to update permissions',
+        error: message,
       });
     }
   }
 
   /**
    * Seed default permissions for a fund (manager view)
+   * @deprecated Use /stakeholders/permissions/seed instead
    */
   async seedFundPermissions(request: AuthenticatedRequest, reply: FastifyReply) {
     if (!request.user) {
@@ -564,18 +570,18 @@ export class InvestorsController {
     }
 
     try {
-      await investorPermissionsService.seedDefaultPermissions(manager.fund_id);
-      const permissions = await investorPermissionsService.getAllPermissionsForFund(manager.fund_id);
+      const permissions = await stakeholderPermissionsService.seedDefaultPermissions(manager.fund_id);
 
       return reply.send({
         success: true,
         data: permissions,
       });
-    } catch (error: any) {
-      console.error('[seedFundPermissions] Error:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to seed permissions';
+      console.error('[seedFundPermissions] Error:', message);
       return reply.status(500).send({
         success: false,
-        error: error.message || 'Failed to seed permissions',
+        error: message,
       });
     }
   }

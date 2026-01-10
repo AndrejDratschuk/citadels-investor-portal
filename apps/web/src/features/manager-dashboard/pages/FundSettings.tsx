@@ -9,7 +9,7 @@ import {
   FundBankingTab,
   FundTeamTab,
   FundIntegrationsTab,
-  FundPermissionsTab,
+  FundStakeholderPermissionsTab,
 } from '../components/settings';
 
 type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'permissions' | 'integrations';
@@ -19,7 +19,7 @@ const TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'branding', label: 'Branding', icon: Palette },
   { id: 'banking', label: 'Banking', icon: CreditCard },
   { id: 'team', label: 'Team', icon: Users },
-  { id: 'permissions', label: 'Permissions', icon: Shield },
+  { id: 'permissions', label: 'Stakeholder Permissions', icon: Shield },
   { id: 'integrations', label: 'Integrations', icon: Plug },
 ];
 
@@ -157,7 +157,7 @@ export function FundSettings(): JSX.Element {
 
       {activeTab === 'team' && <FundTeamTab />}
 
-      {activeTab === 'permissions' && <FundPermissionsTab />}
+      {activeTab === 'permissions' && <FundStakeholderPermissionsTab />}
 
       {activeTab === 'integrations' && (
         <FundIntegrationsTab emailMessage={emailMessage} />

@@ -38,7 +38,8 @@ import { cn } from '@/lib/utils';
 import { DealImageUpload } from '../components/DealImageUpload';
 import { DealInvestorsModal } from '../components/DealInvestorsModal';
 import { dealsApi, Deal, DealKPIs, DealInvestor } from '@/lib/api/deals';
-import { dealKpisApi, outliersApi } from '@/lib/api/kpis';
+import { dealKpisApi, outliersApi, kpiDefinitionsApi } from '@/lib/api/kpis';
+import { useDealKpiSummary } from '../hooks/useDealKpis';
 import {
   KPICard,
   KPICardGrid,
@@ -332,12 +333,12 @@ export function DealDetail() {
     setDateRange(range);
   };
 
-  // Fetch KPI summary for financials tab
-  const { data: kpiSummary, isLoading: isKpiLoading } = useQuery({
-    queryKey: ['deal-kpi-summary', id, dateRange.startDate, dateRange.endDate],
-    queryFn: () => dealKpisApi.getSummary(id!, deal?.name),
-    enabled: !!id && activeTab === 'financials',
-  });
+  // Fetch KPI summary for financials tab - using hook for proper caching
+  const { data: kpiSummary, isLoading: isKpiLoading } = useDealKpiSummary(
+    id,
+    deal?.name,
+    { enabled: activeTab === 'financials' }
+  );
 
   // Fetch outliers data (only when outliers category is selected)
   const { data: outliers, isLoading: isOutliersLoading } = useQuery({
@@ -355,29 +356,48 @@ export function DealDetail() {
   const hasBottomPerformers = (outliers?.bottomPerformers?.length ?? 0) > 0;
   const hasAnyOutliers = hasTopPerformers || hasBottomPerformers;
 
-  // Use mock data if API returns empty or fails
-  const displayKpiSummary = kpiSummary?.featured?.length ? kpiSummary : MOCK_KPI_SUMMARY;
+  // Check if we have real KPI data from the API
+  const hasRealKpiData = kpiSummary?.featured?.length || 
+    Object.values(kpiSummary?.byCategory || {}).some(arr => arr.length > 0);
+  
+  // Use real data if available, otherwise fall back to mock for demo
+  const displayKpiSummary = hasRealKpiData ? kpiSummary! : MOCK_KPI_SUMMARY;
 
   // Get KPIs based on selected category
   // When "all" or "outliers" is selected, return empty array (featured KPIs or outliers view used instead)
-  // When a specific category is selected, show ALL KPIs for that category
+  // When a specific category is selected, get from API response's byCategory
   const categoryKpis = (selectedCategory === 'all' || selectedCategory === 'outliers')
     ? [] 
-    : (MOCK_CATEGORY_DATA[selectedCategory]?.map((item: { code: string; name: string; value: number; previousValue: number; format: 'number' | 'currency' | 'percentage' | 'ratio' }) => {
-        const iconConfig = getKpiIcon(item.code);
-        const change = calculateChangePercent(item.value, item.previousValue);
-        return {
-          code: item.code,
-          name: item.name,
-          value: formatKpiValue(item.value, item.format),
-          rawValue: item.value,
-          change,
-          icon: iconConfig.icon,
-          iconColor: iconConfig.color,
-          iconBg: iconConfig.bg,
-          format: item.format,
-        };
-      }) ?? []);
+    : (hasRealKpiData && kpiSummary?.byCategory[selectedCategory]?.length
+        ? kpiSummary.byCategory[selectedCategory].map((kpi) => {
+            const iconConfig = getKpiIcon(kpi.code);
+            return {
+              code: kpi.code,
+              name: kpi.name,
+              value: kpi.value,
+              rawValue: kpi.rawValue,
+              change: kpi.change,
+              icon: iconConfig.icon,
+              iconColor: iconConfig.color,
+              iconBg: iconConfig.bg,
+              format: kpi.format,
+            };
+          })
+        : MOCK_CATEGORY_DATA[selectedCategory]?.map((item: { code: string; name: string; value: number; previousValue: number; format: 'number' | 'currency' | 'percentage' | 'ratio' }) => {
+            const iconConfig = getKpiIcon(item.code);
+            const change = calculateChangePercent(item.value, item.previousValue);
+            return {
+              code: item.code,
+              name: item.name,
+              value: formatKpiValue(item.value, item.format),
+              rawValue: item.value,
+              change,
+              icon: iconConfig.icon,
+              iconColor: iconConfig.color,
+              iconBg: iconConfig.bg,
+              format: item.format,
+            };
+          }) ?? []);
 
   // Get chart data based on selected category
   const getChartData = () => {
@@ -869,6 +889,31 @@ export function DealDetail() {
 
       {activeTab === 'financials' && (
         <div className="space-y-6">
+          {/* Data Source Indicator */}
+          {!isKpiLoading && (
+            <div className={cn(
+              'flex items-center gap-2 rounded-lg px-4 py-2 text-sm',
+              hasRealKpiData 
+                ? 'border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400'
+                : 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400'
+            )}>
+              {hasRealKpiData ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Showing real KPI data from your imports</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Showing sample data - Import your data to see real metrics</span>
+                  <Link to="/manager/data" className="ml-auto font-medium underline hover:no-underline">
+                    Import Data →
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Time Period Filter - applies to all views */}
           <div className="flex items-center justify-between">
             <TimePeriodFilter

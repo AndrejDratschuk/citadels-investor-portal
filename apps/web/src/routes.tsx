@@ -28,6 +28,7 @@ import {
   DocumentsManager,
   FundSettings,
   AutomationLogsPage,
+  DataConnectionsPage,
 } from './features/manager-dashboard/pages';
 import { DealFinancials } from './features/manager-dashboard/pages/DealFinancials';
 import { DealKPICategory } from './features/manager-dashboard/pages/DealKPICategory';
@@ -266,6 +267,10 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: <ReportsPage />,
+      },
+      {
+        path: 'data',
+        element: <DataConnectionsPage />,
       },
     ],
   },

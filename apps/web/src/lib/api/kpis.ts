@@ -42,36 +42,25 @@ export type {
 };
 
 // ============================================
-// API Response Types
-// ============================================
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  error?: string;
-}
-
-// ============================================
 // KPI Definitions API
 // ============================================
 export const kpiDefinitionsApi = {
   /** Get all KPI definitions */
   getAll: async (): Promise<KpiDefinition[]> => {
-    const response = await api.get<ApiResponse<KpiDefinition[]>>('/kpis/definitions');
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiDefinition[]>('/kpis/definitions');
   },
 
   /** Get KPI definitions by category */
   getByCategory: async (category: KpiCategory): Promise<KpiDefinition[]> => {
-    const response = await api.get<ApiResponse<KpiDefinition[]>>(`/kpis/definitions/${category}`);
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiDefinition[]>(`/kpis/definitions/${category}`);
   },
 
   /** Get KPI definitions with fund preferences */
   getWithPreferences: async (): Promise<KpiDefinitionWithPreference[]> => {
-    const response = await api.get<ApiResponse<KpiDefinitionWithPreference[]>>(
-      '/kpis/definitions/with-preferences'
-    );
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiDefinitionWithPreference[]>('/kpis/definitions/with-preferences');
   },
 };
 
@@ -81,8 +70,8 @@ export const kpiDefinitionsApi = {
 export const kpiPreferencesApi = {
   /** Get fund's KPI preferences */
   get: async (): Promise<KpiPreference[]> => {
-    const response = await api.get<ApiResponse<KpiPreference[]>>('/kpis/preferences');
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiPreference[]>('/kpis/preferences');
   },
 
   /** Update fund's KPI preferences */
@@ -94,10 +83,8 @@ export const kpiPreferencesApi = {
       sortOrder?: number;
     }>
   ): Promise<KpiPreference[]> => {
-    const response = await api.put<ApiResponse<KpiPreference[]>>('/kpis/preferences', {
-      preferences,
-    });
-    return response.data;
+    // api.put already extracts .data from the ApiResponse
+    return api.put<KpiPreference[]>('/kpis/preferences', { preferences });
   },
 };
 
@@ -124,17 +111,19 @@ export const dealKpisApi = {
 
     const query = params.toString();
     const url = `/deals/${dealId}/kpis${query ? `?${query}` : ''}`;
-    const response = await api.get<ApiResponse<KpiDataPoint[]>>(url);
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiDataPoint[]>(url);
   },
 
   /** Get deal's KPI summary (formatted for display) */
-  getSummary: async (dealId: string, dealName?: string): Promise<DealKpiSummary> => {
-    const params = dealName ? `?dealName=${encodeURIComponent(dealName)}` : '';
-    const response = await api.get<ApiResponse<DealKpiSummary>>(
-      `/deals/${dealId}/kpis/summary${params}`
-    );
-    return response.data;
+  getSummary: async (dealId: string, dealName?: string, startDate?: string, endDate?: string): Promise<DealKpiSummary> => {
+    const params = new URLSearchParams();
+    if (dealName) params.append('dealName', dealName);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const query = params.toString();
+    // api.get already extracts .data from the ApiResponse
+    return api.get<DealKpiSummary>(`/deals/${dealId}/kpis/summary${query ? `?${query}` : ''}`);
   },
 
   /** Get deal's KPIs by category */
@@ -151,8 +140,8 @@ export const dealKpisApi = {
 
     const query = params.toString();
     const url = `/deals/${dealId}/kpis/category/${category}${query ? `?${query}` : ''}`;
-    const response = await api.get<ApiResponse<KpiDataPoint[]>>(url);
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiDataPoint[]>(url);
   },
 
   /** Get KPI time series for charts */
@@ -172,8 +161,8 @@ export const dealKpisApi = {
 
     const query = params.toString();
     const url = `/deals/${dealId}/kpis/${kpiId}/timeseries${query ? `?${query}` : ''}`;
-    const response = await api.get<ApiResponse<KpiTimeSeries>>(url);
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiTimeSeries>(url);
   },
 
   /** Save single KPI data point */
@@ -188,8 +177,8 @@ export const dealKpisApi = {
       source?: string;
     }
   ): Promise<KpiDataPoint> => {
-    const response = await api.post<ApiResponse<KpiDataPoint>>(`/deals/${dealId}/kpis`, data);
-    return response.data;
+    // api.post already extracts .data from the ApiResponse
+    return api.post<KpiDataPoint>(`/deals/${dealId}/kpis`, data);
   },
 
   /** Bulk save KPI data */
@@ -204,10 +193,8 @@ export const dealKpisApi = {
       source?: string;
     }>
   ): Promise<KpiDataPoint[]> => {
-    const response = await api.post<ApiResponse<KpiDataPoint[]>>(`/deals/${dealId}/kpis/bulk`, {
-      data,
-    });
-    return response.data;
+    // api.post already extracts .data from the ApiResponse
+    return api.post<KpiDataPoint[]>(`/deals/${dealId}/kpis/bulk`, { data });
   },
 
   /** Delete KPI data point */
@@ -223,18 +210,14 @@ export const financialStatementsApi = {
   /** Get deal's financial statements */
   getAll: async (dealId: string, type?: StatementType): Promise<FinancialStatement[]> => {
     const params = type ? `?type=${type}` : '';
-    const response = await api.get<ApiResponse<FinancialStatement[]>>(
-      `/deals/${dealId}/financials${params}`
-    );
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<FinancialStatement[]>(`/deals/${dealId}/financials${params}`);
   },
 
   /** Get latest statement of specific type */
   getLatest: async (dealId: string, type: StatementType): Promise<FinancialStatement> => {
-    const response = await api.get<ApiResponse<FinancialStatement>>(
-      `/deals/${dealId}/financials/${type}`
-    );
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<FinancialStatement>(`/deals/${dealId}/financials/${type}`);
   },
 
   /** Save financial statement */
@@ -247,11 +230,8 @@ export const financialStatementsApi = {
       source?: string;
     }
   ): Promise<FinancialStatement> => {
-    const response = await api.post<ApiResponse<FinancialStatement>>(
-      `/deals/${dealId}/financials`,
-      data
-    );
-    return response.data;
+    // api.post already extracts .data from the ApiResponse
+    return api.post<FinancialStatement>(`/deals/${dealId}/financials`, data);
   },
 };
 
@@ -279,14 +259,14 @@ export const outliersApi = {
 
     const query = params.toString();
     const url = `/deals/${dealId}/kpis/outliers${query ? `?${query}` : ''}`;
-    const response = await api.get<ApiResponse<OutliersResponse>>(url);
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<OutliersResponse>(url);
   },
 
   /** Get fund's outlier configuration */
   getConfig: async (): Promise<KpiOutlierConfig[]> => {
-    const response = await api.get<ApiResponse<KpiOutlierConfig[]>>('/kpis/outlier-config');
-    return response.data;
+    // api.get already extracts .data from the ApiResponse
+    return api.get<KpiOutlierConfig[]>('/kpis/outlier-config');
   },
 
   /** Update fund's outlier configuration */
@@ -301,10 +281,8 @@ export const outliersApi = {
       enabledInOutliers?: boolean;
     }>
   ): Promise<KpiOutlierConfig[]> => {
-    const response = await api.put<ApiResponse<KpiOutlierConfig[]>>('/kpis/outlier-config', {
-      configs,
-    });
-    return response.data;
+    // api.put already extracts .data from the ApiResponse
+    return api.put<KpiOutlierConfig[]>('/kpis/outlier-config', { configs });
   },
 };
 

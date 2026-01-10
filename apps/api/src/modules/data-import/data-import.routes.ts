@@ -11,6 +11,33 @@ import { requireManager } from '../../common/middleware/rbac.middleware';
 export async function dataImportRoutes(fastify: FastifyInstance): Promise<void> {
   const managerPreHandler = [authenticate, requireManager];
 
+  // ========== Onboarding Endpoints ==========
+
+  // Get KPI definitions for mapping dropdown
+  fastify.get('/kpi-definitions', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dataImportController.getKpiDefinitions(request as any, reply);
+  });
+
+  // Suggest column mappings based on column names
+  fastify.post('/suggest-mappings', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dataImportController.suggestMappings(request as any, reply);
+  });
+
+  // Import data with mapping (main onboarding import)
+  fastify.post('/import', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dataImportController.importWithMapping(request as any, reply);
+  });
+
+  // Get sample data for preview
+  fastify.get('/sample-data', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dataImportController.getSampleData(request as any, reply);
+  });
+
+  // Import sample data
+  fastify.post('/import-sample', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dataImportController.importSampleData(request as any, reply);
+  });
+
   // ========== Data Connections ==========
 
   // Get all connections for fund
@@ -46,6 +73,20 @@ export async function dataImportRoutes(fastify: FastifyInstance): Promise<void> 
     }
   );
 
+  // Update connection's deal
+  fastify.patch(
+    '/connections/:connectionId/deal',
+    { preHandler: managerPreHandler },
+    async (request, reply) => {
+      return dataImportController.updateConnectionDeal(request as any, reply);
+    }
+  );
+
+  // Get connections by deal
+  fastify.get('/connections/deal/:dealId', { preHandler: managerPreHandler }, async (request, reply) => {
+    return dataImportController.getConnectionsByDeal(request as any, reply);
+  });
+
   // ========== Sync Operations ==========
 
   // Sync Google Sheets data for a deal
@@ -75,4 +116,3 @@ export async function dataImportRoutes(fastify: FastifyInstance): Promise<void> 
     }
   );
 }
-

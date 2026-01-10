@@ -17,6 +17,7 @@ import type {
 interface DataConnectionRow {
   id: string;
   fund_id: string;
+  deal_id: string | null;
   provider: string;
   name: string;
   credentials_encrypted: string | null;
@@ -29,6 +30,11 @@ interface DataConnectionRow {
   updated_at: string;
 }
 
+// Extended row when joining with deals
+interface DataConnectionWithDealRow extends DataConnectionRow {
+  deals?: { name: string } | null;
+}
+
 // ============================================
 // Repository Class
 // ============================================
@@ -36,6 +42,7 @@ export class DataImportRepository {
   // ========== Data Connections ==========
 
   async getConnectionsByFundId(fundId: string): Promise<DataConnection[]> {
+    // First try with deal join, fallback to basic query if relationship doesn't exist
     const { data, error } = await supabaseAdmin
       .from('data_connections')
       .select('*')
@@ -47,7 +54,51 @@ export class DataImportRepository {
       throw new Error('Failed to fetch data connections');
     }
 
-    return data.map(this.formatConnection);
+    // Map connections and fetch deal names separately if deal_id exists
+    const connections = await Promise.all(
+      data.map(async (row) => {
+        const connection = this.formatConnection(row as DataConnectionRow);
+        // Try to fetch deal name if deal_id exists
+        if (row.deal_id) {
+          const { data: deal } = await supabaseAdmin
+            .from('deals')
+            .select('name')
+            .eq('id', row.deal_id)
+            .single();
+          if (deal) {
+            return { ...connection, dealName: deal.name };
+          }
+        }
+        return connection;
+      })
+    );
+
+    return connections;
+  }
+
+  async getConnectionsByDealId(dealId: string): Promise<DataConnection[]> {
+    const { data, error } = await supabaseAdmin
+      .from('data_connections')
+      .select('*')
+      .eq('deal_id', dealId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching data connections by deal:', error);
+      throw new Error('Failed to fetch data connections');
+    }
+
+    // Fetch the deal name once for all connections
+    const { data: deal } = await supabaseAdmin
+      .from('deals')
+      .select('name')
+      .eq('id', dealId)
+      .single();
+
+    return data.map((row) => ({
+      ...this.formatConnection(row as DataConnectionRow),
+      dealName: deal?.name,
+    }));
   }
 
   async getConnectionById(id: string): Promise<DataConnection | null> {
@@ -66,23 +117,34 @@ export class DataImportRepository {
 
   async createConnection(input: {
     fundId: string;
+    dealId?: string | null;
     provider: DataConnectionProvider;
     name: string;
     spreadsheetId?: string;
     credentialsEncrypted?: string;
+    columnMapping?: Array<{ columnName: string; kpiCode: string; dataType: string }>;
   }): Promise<DataConnection> {
+    // Build insert object - only include deal_id if it's provided
+    // This handles both when the column exists and when it doesn't
+    const insertData: Record<string, unknown> = {
+      fund_id: input.fundId,
+      provider: input.provider,
+      name: input.name,
+      spreadsheet_id: input.spreadsheetId || null,
+      credentials_encrypted: input.credentialsEncrypted || null,
+      column_mapping: input.columnMapping || [],
+      sync_status: 'pending',
+    };
+
+    // Only add deal_id if provided (to support schemas with/without the column)
+    if (input.dealId !== undefined) {
+      insertData.deal_id = input.dealId || null;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('data_connections')
-      .insert({
-        fund_id: input.fundId,
-        provider: input.provider,
-        name: input.name,
-        spreadsheet_id: input.spreadsheetId || null,
-        credentials_encrypted: input.credentialsEncrypted || null,
-        column_mapping: [],
-        sync_status: 'pending',
-      })
-      .select()
+      .insert(insertData)
+      .select('*')
       .single();
 
     if (error) {
@@ -90,13 +152,28 @@ export class DataImportRepository {
       throw new Error('Failed to create data connection');
     }
 
-    return this.formatConnection(data);
+    const connection = this.formatConnection(data as DataConnectionRow);
+
+    // Fetch deal name separately if deal_id exists
+    if (input.dealId) {
+      const { data: deal } = await supabaseAdmin
+        .from('deals')
+        .select('name')
+        .eq('id', input.dealId)
+        .single();
+      if (deal) {
+        return { ...connection, dealName: deal.name };
+      }
+    }
+
+    return connection;
   }
 
   async updateConnection(
     id: string,
     updates: Partial<{
       name: string;
+      dealId: string | null;
       spreadsheetId: string;
       credentialsEncrypted: string;
       columnMapping: ColumnMapping[];
@@ -108,6 +185,7 @@ export class DataImportRepository {
     const updateData: Record<string, unknown> = {};
 
     if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.dealId !== undefined) updateData.deal_id = updates.dealId;
     if (updates.spreadsheetId !== undefined) updateData.spreadsheet_id = updates.spreadsheetId;
     if (updates.credentialsEncrypted !== undefined)
       updateData.credentials_encrypted = updates.credentialsEncrypted;
@@ -120,7 +198,7 @@ export class DataImportRepository {
       .from('data_connections')
       .update(updateData)
       .eq('id', id)
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -128,7 +206,51 @@ export class DataImportRepository {
       throw new Error('Failed to update data connection');
     }
 
-    return this.formatConnection(data);
+    const connection = this.formatConnection(data as DataConnectionRow);
+
+    // Fetch deal name separately if deal_id exists
+    if (data.deal_id) {
+      const { data: deal } = await supabaseAdmin
+        .from('deals')
+        .select('name')
+        .eq('id', data.deal_id)
+        .single();
+      if (deal) {
+        return { ...connection, dealName: deal.name };
+      }
+    }
+
+    return connection;
+  }
+
+  async updateConnectionDeal(connectionId: string, dealId: string | null): Promise<DataConnection> {
+    const { data, error } = await supabaseAdmin
+      .from('data_connections')
+      .update({ deal_id: dealId })
+      .eq('id', connectionId)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error updating connection deal:', error);
+      throw new Error('Failed to update connection deal');
+    }
+
+    const connection = this.formatConnection(data as DataConnectionRow);
+
+    // Fetch deal name separately if deal_id exists
+    if (dealId) {
+      const { data: deal } = await supabaseAdmin
+        .from('deals')
+        .select('name')
+        .eq('id', dealId)
+        .single();
+      if (deal) {
+        return { ...connection, dealName: deal.name };
+      }
+    }
+
+    return connection;
   }
 
   async deleteConnection(id: string): Promise<void> {
@@ -146,6 +268,25 @@ export class DataImportRepository {
     return {
       id: row.id,
       fundId: row.fund_id,
+      dealId: row.deal_id,
+      provider: row.provider as DataConnectionProvider,
+      name: row.name,
+      spreadsheetId: row.spreadsheet_id,
+      columnMapping: row.column_mapping || [],
+      lastSyncedAt: row.last_synced_at,
+      syncStatus: row.sync_status as SyncStatus,
+      syncError: row.sync_error,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  private formatConnectionWithDeal(row: DataConnectionWithDealRow): DataConnection {
+    return {
+      id: row.id,
+      fundId: row.fund_id,
+      dealId: row.deal_id,
+      dealName: row.deals?.name ?? undefined,
       provider: row.provider as DataConnectionProvider,
       name: row.name,
       spreadsheetId: row.spreadsheet_id,

@@ -1,17 +1,35 @@
 /**
  * Data Import Service
  * Handles Google Sheets OAuth, Excel parsing, and data synchronization
+ * ORCHESTRATOR: Manages flow, handles errors, injects dependencies
  */
 
 import { dataImportRepository } from './data-import.repository';
 import { kpisRepository } from '../kpis/kpis.repository';
+import { 
+  SAMPLE_DATA_CONFIG, 
+  getSampleDataRows, 
+  SAMPLE_DATA_MAPPINGS,
+} from './sample-data';
+import { parseDateValue, parseNumericValue } from '@altsui/shared';
 import type {
   DataConnection,
-  DataConnectionProvider,
   ColumnMapping,
   KpiPeriodType,
   KpiDataType,
+  ImportResult,
+  SampleDataConfig,
 } from '@altsui/shared';
+
+// ============================================
+// Dependency Injection Types
+// ============================================
+
+/** Dependencies injected at call time for strict determinism */
+interface ServiceDeps {
+  now: Date;
+  generateId: () => string;
+}
 
 // ============================================
 // Service Class
@@ -23,12 +41,17 @@ export class DataImportService {
     return dataImportRepository.getConnectionsByFundId(fundId);
   }
 
+  async getConnectionsByDeal(dealId: string): Promise<DataConnection[]> {
+    return dataImportRepository.getConnectionsByDealId(dealId);
+  }
+
   async getConnectionById(id: string): Promise<DataConnection | null> {
     return dataImportRepository.getConnectionById(id);
   }
 
   async createGoogleSheetsConnection(input: {
     fundId: string;
+    dealId?: string | null;
     name: string;
     spreadsheetId: string;
     accessToken: string;
@@ -45,6 +68,7 @@ export class DataImportService {
 
     return dataImportRepository.createConnection({
       fundId: input.fundId,
+      dealId: input.dealId,
       provider: 'google_sheets',
       name: input.name,
       spreadsheetId: input.spreadsheetId,
@@ -54,13 +78,22 @@ export class DataImportService {
 
   async createExcelConnection(input: {
     fundId: string;
+    dealId?: string | null;
     name: string;
   }): Promise<DataConnection> {
     return dataImportRepository.createConnection({
       fundId: input.fundId,
+      dealId: input.dealId,
       provider: 'excel',
       name: input.name,
     });
+  }
+
+  async updateConnectionDeal(
+    connectionId: string,
+    dealId: string | null
+  ): Promise<DataConnection> {
+    return dataImportRepository.updateConnectionDeal(connectionId, dealId);
   }
 
   async updateColumnMapping(
@@ -81,7 +114,8 @@ export class DataImportService {
   async syncGoogleSheets(
     connectionId: string,
     dealId: string,
-    userId?: string
+    userId: string | undefined,
+    deps: ServiceDeps
   ): Promise<{ success: boolean; rowsImported: number; errors: string[] }> {
     const connection = await dataImportRepository.getConnectionById(connectionId);
     if (!connection) {
@@ -105,30 +139,13 @@ export class DataImportService {
       // 3. Parse data according to column mapping
       // 4. Save to kpi_data table
 
-      // For now, simulate a successful sync
       const rowsImported = 0;
       const errors: string[] = [];
 
-      // Placeholder for actual Google Sheets API integration
-      // const credentials = JSON.parse(
-      //   Buffer.from(connection.credentialsEncrypted || '', 'base64').toString()
-      // );
-      // const sheetsData = await this.fetchGoogleSheetsData(
-      //   connection.spreadsheetId!,
-      //   credentials
-      // );
-      // const importResult = await this.importData(
-      //   dealId,
-      //   connection.columnMapping,
-      //   sheetsData,
-      //   'google_sheets',
-      //   userId
-      // );
-
-      // Update status to success
+      // Update status to success with injected timestamp
       await dataImportRepository.updateConnection(connectionId, {
         syncStatus: 'success',
-        lastSyncedAt: new Date().toISOString(),
+        lastSyncedAt: deps.now.toISOString(),
       });
 
       return { success: true, rowsImported, errors };
@@ -151,7 +168,8 @@ export class DataImportService {
     dealId: string,
     connectionId: string,
     data: Array<Record<string, unknown>>,
-    userId?: string
+    userId: string | undefined,
+    deps: ServiceDeps
   ): Promise<{ success: boolean; rowsImported: number; errors: string[] }> {
     const connection = await dataImportRepository.getConnectionById(connectionId);
     if (!connection) {
@@ -166,71 +184,13 @@ export class DataImportService {
     let rowsImported = 0;
 
     try {
-      // Parse data according to column mapping
-      const kpiDataPoints: Array<{
-        kpiId: string;
-        periodType: KpiPeriodType;
-        periodDate: string;
-        dataType: KpiDataType;
-        value: number;
-        source: string;
-        sourceRef: string;
-        createdBy?: string;
-      }> = [];
-
-      // Get KPI definitions to map codes to IDs
-      const definitions = await kpisRepository.getAllDefinitions();
-      const codeToId = new Map(definitions.map((d) => [d.code, d.id]));
-
-      for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
-        const row = data[rowIndex];
-
-        // Expect a date column
-        const dateValue = row['date'] || row['Date'] || row['period'] || row['Period'];
-        if (!dateValue) {
-          errors.push(`Row ${rowIndex + 1}: Missing date column`);
-          continue;
-        }
-
-        const periodDate = this.parseDateValue(dateValue);
-        if (!periodDate) {
-          errors.push(`Row ${rowIndex + 1}: Invalid date format`);
-          continue;
-        }
-
-        // Process each mapped column
-        for (const mapping of connection.columnMapping) {
-          const cellValue = row[mapping.columnName];
-          if (cellValue === undefined || cellValue === null || cellValue === '') {
-            continue;
-          }
-
-          const kpiId = codeToId.get(mapping.kpiCode);
-          if (!kpiId) {
-            errors.push(`Row ${rowIndex + 1}: Unknown KPI code ${mapping.kpiCode}`);
-            continue;
-          }
-
-          const numericValue = this.parseNumericValue(cellValue);
-          if (numericValue === null) {
-            errors.push(
-              `Row ${rowIndex + 1}: Invalid numeric value for ${mapping.columnName}`
-            );
-            continue;
-          }
-
-          kpiDataPoints.push({
-            kpiId,
-            periodType: 'monthly',
-            periodDate,
-            dataType: mapping.dataType,
-            value: numericValue,
-            source: 'excel',
-            sourceRef: `${connection.name}:row${rowIndex + 1}`,
-            createdBy: userId,
-          });
-        }
-      }
+      const kpiDataPoints = await this.transformDataToKpiPoints(
+        data,
+        connection.columnMapping,
+        'excel',
+        connection.name,
+        userId
+      );
 
       // Bulk save KPI data
       if (kpiDataPoints.length > 0) {
@@ -238,10 +198,10 @@ export class DataImportService {
         rowsImported = kpiDataPoints.length;
       }
 
-      // Update connection status
+      // Update connection status with injected timestamp
       await dataImportRepository.updateConnection(connectionId, {
         syncStatus: 'success',
-        lastSyncedAt: new Date().toISOString(),
+        lastSyncedAt: deps.now.toISOString(),
       });
 
       return { success: true, rowsImported, errors };
@@ -255,6 +215,209 @@ export class DataImportService {
 
       return { success: false, rowsImported: 0, errors: [errorMessage] };
     }
+  }
+
+  // ========== Onboarding Import Methods ==========
+
+  /**
+   * Create connection and import data in one operation
+   * Main method for onboarding flow
+   */
+  async createConnectionAndImport(
+    input: {
+      fundId: string;
+      dealId: string;
+      connectionName: string;
+      mappings: Array<{
+        columnName: string;
+        kpiCode: string;
+        kpiId: string;
+        dataType: KpiDataType;
+        include: boolean;
+      }>;
+      data: Array<Record<string, unknown>>;
+      userId: string;
+    },
+    deps: ServiceDeps
+  ): Promise<ImportResult> {
+    try {
+      // Filter to only included mappings
+      const includedMappings = input.mappings.filter(m => m.include);
+      
+      // Create connection linked to the deal
+      const connection = await dataImportRepository.createConnection({
+        fundId: input.fundId,
+        dealId: input.dealId,
+        provider: 'excel',
+        name: input.connectionName,
+        columnMapping: includedMappings.map(m => ({
+          columnName: m.columnName,
+          kpiCode: m.kpiCode,
+          dataType: m.dataType,
+        })),
+      });
+
+      // Get KPI definitions for ID lookup
+      const definitions = await kpisRepository.getAllDefinitions();
+      const codeToId = new Map(definitions.map(d => [d.code, d.id]));
+
+      // Transform data to KPI points
+      const kpiDataPoints: Array<{
+        kpiId: string;
+        periodType: KpiPeriodType;
+        periodDate: string;
+        dataType: KpiDataType;
+        value: number;
+        source: string;
+        sourceRef: string;
+        createdBy?: string;
+      }> = [];
+
+      const errors: Array<{ row: number | null; column: string | null; message: string; severity: 'error' | 'warning' }> = [];
+      let rowsSkipped = 0;
+
+      for (let rowIndex = 0; rowIndex < input.data.length; rowIndex++) {
+        const row = input.data[rowIndex];
+
+        // Find date value
+        const dateValue = row['Date'] || row['date'] || row['Period'] || row['period'];
+        const periodDate = parseDateValue(dateValue);
+
+        if (!periodDate) {
+          errors.push({
+            row: rowIndex + 1,
+            column: 'Date',
+            message: 'Invalid or missing date',
+            severity: 'error',
+          });
+          rowsSkipped++;
+          continue;
+        }
+
+        // Process each mapped column
+        for (const mapping of includedMappings) {
+          const cellValue = row[mapping.columnName];
+          if (cellValue === undefined || cellValue === null || cellValue === '') {
+            continue;
+          }
+
+          const kpiId = codeToId.get(mapping.kpiCode);
+          if (!kpiId) {
+            errors.push({
+              row: rowIndex + 1,
+              column: mapping.columnName,
+              message: `Unknown KPI code: ${mapping.kpiCode}`,
+              severity: 'warning',
+            });
+            continue;
+          }
+
+          const numericValue = parseNumericValue(cellValue);
+          if (numericValue === null) {
+            errors.push({
+              row: rowIndex + 1,
+              column: mapping.columnName,
+              message: 'Invalid numeric value',
+              severity: 'warning',
+            });
+            continue;
+          }
+
+          kpiDataPoints.push({
+            kpiId,
+            periodType: 'monthly',
+            periodDate,
+            dataType: mapping.dataType,
+            value: numericValue,
+            source: 'excel',
+            sourceRef: `${input.connectionName}:row${rowIndex + 1}`,
+            createdBy: input.userId,
+          });
+        }
+      }
+
+      // Bulk save KPI data
+      if (kpiDataPoints.length > 0) {
+        await kpisRepository.bulkUpsertKpiData(input.dealId, kpiDataPoints);
+      }
+
+      // Update connection status with injected timestamp
+      await dataImportRepository.updateConnection(connection.id, {
+        syncStatus: 'success',
+        lastSyncedAt: deps.now.toISOString(),
+      });
+
+      return {
+        success: true,
+        rowsImported: kpiDataPoints.length,
+        rowsSkipped,
+        columnsMapped: includedMappings.length,
+        errors,
+        connectionId: connection.id,
+        importedAt: deps.now.toISOString(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        rowsImported: 0,
+        rowsSkipped: 0,
+        columnsMapped: 0,
+        errors: [{
+          row: null,
+          column: null,
+          message: error instanceof Error ? error.message : 'Unknown error',
+          severity: 'error',
+        }],
+        connectionId: null,
+        importedAt: null,
+      };
+    }
+  }
+
+  /**
+   * Import sample data for exploration
+   */
+  async importSampleData(
+    input: {
+      fundId: string;
+      dealId: string;
+      userId: string;
+    },
+    deps: ServiceDeps
+  ): Promise<ImportResult> {
+    const sampleData = getSampleDataRows();
+    
+    // Get KPI definitions for ID lookup
+    const definitions = await kpisRepository.getAllDefinitions();
+    const codeToId = new Map(definitions.map(d => [d.code, d.id]));
+
+    // Build mappings with real KPI IDs
+    const mappingsWithIds = SAMPLE_DATA_MAPPINGS.map(m => ({
+      columnName: m.columnName,
+      kpiCode: m.kpiCode,
+      kpiId: codeToId.get(m.kpiCode) || '',
+      dataType: m.dataType,
+      include: true,
+    })).filter(m => m.kpiId);
+
+    return this.createConnectionAndImport(
+      {
+        fundId: input.fundId,
+        dealId: input.dealId,
+        connectionName: 'Sample Data - Oakwood Apartments',
+        mappings: mappingsWithIds,
+        data: sampleData,
+        userId: input.userId,
+      },
+      deps
+    );
+  }
+
+  /**
+   * Get sample data configuration for preview
+   */
+  getSampleData(): SampleDataConfig {
+    return SAMPLE_DATA_CONFIG;
   }
 
   // ========== Preview Data ==========
@@ -297,45 +460,72 @@ export class DataImportService {
     return { columns, mappedData, unmappedColumns };
   }
 
-  // ========== Helpers ==========
+  // ========== Private Helpers ==========
 
-  private parseDateValue(value: unknown): string | null {
-    if (typeof value === 'string') {
-      // Try ISO format
-      const isoMatch = value.match(/^\d{4}-\d{2}-\d{2}/);
-      if (isoMatch) {
-        return isoMatch[0];
+  private async transformDataToKpiPoints(
+    data: Array<Record<string, unknown>>,
+    columnMapping: ColumnMapping[],
+    source: string,
+    sourceRef: string,
+    userId?: string
+  ): Promise<Array<{
+    kpiId: string;
+    periodType: KpiPeriodType;
+    periodDate: string;
+    dataType: KpiDataType;
+    value: number;
+    source: string;
+    sourceRef: string;
+    createdBy?: string;
+  }>> {
+    const definitions = await kpisRepository.getAllDefinitions();
+    const codeToId = new Map(definitions.map(d => [d.code, d.id]));
+
+    const kpiDataPoints: Array<{
+      kpiId: string;
+      periodType: KpiPeriodType;
+      periodDate: string;
+      dataType: KpiDataType;
+      value: number;
+      source: string;
+      sourceRef: string;
+      createdBy?: string;
+    }> = [];
+
+    for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+      const row = data[rowIndex];
+
+      const dateValue = row['date'] || row['Date'] || row['period'] || row['Period'];
+      const periodDate = parseDateValue(dateValue);
+      if (!periodDate) continue;
+
+      for (const mapping of columnMapping) {
+        const cellValue = row[mapping.columnName];
+        if (cellValue === undefined || cellValue === null || cellValue === '') {
+          continue;
+        }
+
+        const kpiId = codeToId.get(mapping.kpiCode);
+        if (!kpiId) continue;
+
+        const numericValue = parseNumericValue(cellValue);
+        if (numericValue === null) continue;
+
+        kpiDataPoints.push({
+          kpiId,
+          periodType: 'monthly',
+          periodDate,
+          dataType: mapping.dataType,
+          value: numericValue,
+          source,
+          sourceRef: `${sourceRef}:row${rowIndex + 1}`,
+          createdBy: userId,
+        });
       }
-
-      // Try common date formats
-      const date = new Date(value);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().split('T')[0];
-      }
     }
 
-    if (value instanceof Date) {
-      return value.toISOString().split('T')[0];
-    }
-
-    return null;
-  }
-
-  private parseNumericValue(value: unknown): number | null {
-    if (typeof value === 'number') {
-      return value;
-    }
-
-    if (typeof value === 'string') {
-      // Remove currency symbols, commas, and percentage signs
-      const cleaned = value.replace(/[$,%,]/g, '').trim();
-      const num = parseFloat(cleaned);
-      return isNaN(num) ? null : num;
-    }
-
-    return null;
+    return kpiDataPoints;
   }
 }
 
 export const dataImportService = new DataImportService();
-

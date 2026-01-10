@@ -179,6 +179,8 @@ export interface ColumnMapping {
 export interface DataConnection {
   id: string;
   fundId: string;
+  dealId: string | null;
+  dealName?: string; // Populated when fetching with deal info
   provider: DataConnectionProvider;
   name: string;
   spreadsheetId: string | null;

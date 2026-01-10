@@ -5,23 +5,17 @@ import {
   Building2,
   TrendingUp,
   ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@altsui/shared';
 import { StatsCard } from '../components/StatsCard';
 import { ActivityFeed, ActivityItem } from '../components/ActivityFeed';
 import { FundChart } from '../components/FundChart';
 import { CapitalCallProgress } from '../components/CapitalCallProgress';
+import { useDashboardStats } from '../hooks/useDashboardStats';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock data - will be replaced with real API calls
-const mockStats = {
-  totalAUM: 68500000,
-  totalInvestors: 47,
-  activeDeals: 4,
-  pendingCapitalCalls: 2,
-  capitalDeployed: 52300000,
-  uncommittedCapital: 16200000,
-};
-
+// Activity data is separate from dashboard stats
 const mockActivities: ActivityItem[] = [
   {
     id: '1',
@@ -65,39 +59,87 @@ const mockActivities: ActivityItem[] = [
   },
 ];
 
-const mockDealData = [
-  { label: 'Riverside Apartments', value: 14200000 },
-  { label: 'Downtown Office Tower', value: 28500000 },
-  { label: 'Eastside Industrial', value: 18500000 },
-  { label: 'Lakefront Retail', value: 10500000 },
-];
+// Status colors for investor status chart
+const STATUS_COLORS: Record<string, string> = {
+  active: 'bg-green-500',
+  committed: 'bg-green-500',
+  onboarding: 'bg-blue-500',
+  prospect: 'bg-gray-400',
+  pending: 'bg-yellow-500',
+  unknown: 'bg-gray-300',
+};
 
-const mockInvestorStatus = [
-  { label: 'Active', value: 38, color: 'bg-green-500' },
-  { label: 'Onboarding', value: 5, color: 'bg-blue-500' },
-  { label: 'Prospect', value: 4, color: 'bg-gray-400' },
-];
+function StatsCardSkeleton(): JSX.Element {
+  return (
+    <div className="rounded-xl border bg-card p-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+      <Skeleton className="mt-4 h-8 w-32" />
+      <Skeleton className="mt-2 h-3 w-20" />
+    </div>
+  );
+}
 
-const mockCapitalCalls = [
-  {
-    id: '1',
-    dealName: 'Downtown Office Tower',
-    totalAmount: 2500000,
-    receivedAmount: 1875000,
-    deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
-    status: 'partial' as const,
-  },
-  {
-    id: '2',
-    dealName: 'Eastside Industrial Park',
-    totalAmount: 3500000,
-    receivedAmount: 875000,
-    deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
-    status: 'sent' as const,
-  },
-];
+function ChartSkeleton(): JSX.Element {
+  return (
+    <div className="rounded-xl border bg-card p-6">
+      <Skeleton className="h-5 w-32" />
+      <Skeleton className="mt-4 h-[200px] w-full" />
+    </div>
+  );
+}
 
-export function ManagerDashboard() {
+function CapitalCallSkeleton(): JSX.Element {
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <Skeleton className="h-5 w-40" />
+      <Skeleton className="mt-3 h-2 w-full rounded-full" />
+      <div className="mt-3 flex justify-between">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-24" />
+      </div>
+    </div>
+  );
+}
+
+export function ManagerDashboard(): JSX.Element {
+  const { data: stats, isLoading, error } = useDashboardStats();
+
+  // Transform portfolio data for chart
+  const portfolioChartData = stats?.portfolioByDeal.map((deal) => ({
+    label: deal.name,
+    value: deal.value,
+  })) ?? [];
+
+  // Transform investor status data for chart
+  const investorStatusChartData = stats?.investorsByStatus.map((group) => ({
+    label: group.status.charAt(0).toUpperCase() + group.status.slice(1),
+    value: group.count,
+    color: STATUS_COLORS[group.status.toLowerCase()] ?? 'bg-gray-400',
+  })) ?? [];
+
+  // Transform capital calls for display
+  const capitalCallsDisplay = stats?.activeCapitalCallsList.map((call) => ({
+    id: call.id,
+    dealName: call.dealName,
+    totalAmount: call.totalAmount,
+    receivedAmount: call.receivedAmount,
+    deadline: call.dueDate ?? undefined,
+    status: call.status,
+  })) ?? [];
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <h2 className="mt-4 text-xl font-semibold">Failed to Load Dashboard</h2>
+        <p className="mt-2 text-muted-foreground">{error.message}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -110,46 +152,64 @@ export function ManagerDashboard() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total AUM"
-          value={formatCurrency(mockStats.totalAUM)}
-          icon={DollarSign}
-          trend={{ value: 12.5, isPositive: true }}
-          description="Assets under management"
-        />
-        <StatsCard
-          title="Total Investors"
-          value={mockStats.totalInvestors}
-          icon={Users}
-          trend={{ value: 8, isPositive: true }}
-          description="Active fund investors"
-        />
-        <StatsCard
-          title="Active Deals"
-          value={mockStats.activeDeals}
-          icon={Building2}
-          description="Properties in portfolio"
-        />
-        <StatsCard
-          title="Pending Capital Calls"
-          value={mockStats.pendingCapitalCalls}
-          icon={TrendingUp}
-          description="Awaiting wire transfers"
-        />
+        {isLoading ? (
+          <>
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+          </>
+        ) : (
+          <>
+            <StatsCard
+              title="Total AUM"
+              value={formatCurrency(stats?.totalAUM ?? 0)}
+              icon={DollarSign}
+              description="Assets under management"
+            />
+            <StatsCard
+              title="Total Investors"
+              value={stats?.totalInvestors ?? 0}
+              icon={Users}
+              description="Active fund investors"
+            />
+            <StatsCard
+              title="Active Deals"
+              value={stats?.activeDeals ?? 0}
+              icon={Building2}
+              description="Properties in portfolio"
+            />
+            <StatsCard
+              title="Pending Capital Calls"
+              value={stats?.pendingCapitalCalls ?? 0}
+              icon={TrendingUp}
+              description="Awaiting wire transfers"
+            />
+          </>
+        )}
       </div>
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <FundChart
-          title="Portfolio by Deal"
-          data={mockDealData}
-          type="bar"
-        />
-        <FundChart
-          title="Investor Status"
-          data={mockInvestorStatus}
-          type="donut"
-        />
+        {isLoading ? (
+          <>
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </>
+        ) : (
+          <>
+            <FundChart
+              title="Portfolio by Deal"
+              data={portfolioChartData.length > 0 ? portfolioChartData : [{ label: 'No deals yet', value: 0 }]}
+              type="bar"
+            />
+            <FundChart
+              title="Investor Status"
+              data={investorStatusChartData.length > 0 ? investorStatusChartData : [{ label: 'No investors yet', value: 0, color: 'bg-gray-400' }]}
+              type="donut"
+            />
+          </>
+        )}
       </div>
 
       {/* Capital Calls Section */}
@@ -164,16 +224,27 @@ export function ManagerDashboard() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          {mockCapitalCalls.map((call) => (
-            <CapitalCallProgress
-              key={call.id}
-              dealName={call.dealName}
-              totalAmount={call.totalAmount}
-              receivedAmount={call.receivedAmount}
-              deadline={call.deadline}
-              status={call.status}
-            />
-          ))}
+          {isLoading ? (
+            <>
+              <CapitalCallSkeleton />
+              <CapitalCallSkeleton />
+            </>
+          ) : capitalCallsDisplay.length > 0 ? (
+            capitalCallsDisplay.map((call) => (
+              <CapitalCallProgress
+                key={call.id}
+                dealName={call.dealName}
+                totalAmount={call.totalAmount}
+                receivedAmount={call.receivedAmount}
+                deadline={call.deadline}
+                status={call.status}
+              />
+            ))
+          ) : (
+            <div className="col-span-2 rounded-xl border bg-card p-6 text-center">
+              <p className="text-muted-foreground">No active capital calls</p>
+            </div>
+          )}
         </div>
       </div>
 

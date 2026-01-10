@@ -5,16 +5,11 @@
 
 import { z } from 'zod';
 import { STAKEHOLDER_TYPE } from '../constants/stakeholderType.constants';
-import { KPI_DETAIL_LEVEL } from '../constants/status';
+import { kpiDetailLevelSchema } from './investor.schema';
 
 /** Stakeholder type validation */
 export const stakeholderTypeSchema = z.enum(
   Object.values(STAKEHOLDER_TYPE) as [string, ...string[]]
-);
-
-/** KPI detail level validation */
-export const kpiDetailLevelSchema = z.enum(
-  Object.values(KPI_DETAIL_LEVEL) as [string, ...string[]]
 );
 
 /** Schema for updating stakeholder type permissions */

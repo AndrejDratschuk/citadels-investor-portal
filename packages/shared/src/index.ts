@@ -13,6 +13,7 @@ export * from './schemas/prospect.schema';
 export * from './schemas/teamInvite.schema';
 export * from './schemas/fundCreation.schema';
 export * from './schemas/dataImportOnboarding.schema';
+export * from './schemas/dealNotes.schema';
 
 // Types
 export * from './types/auth.types';
@@ -29,6 +30,7 @@ export * from './types/teamInvite.types';
 export * from './types/fundCreation.types';
 export * from './types/reports.types';
 export * from './types/dataImportOnboarding.types';
+export * from './types/dealNotes.types';
 
 // Constants
 export * from './constants/roles';

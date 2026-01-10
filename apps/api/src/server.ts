@@ -29,6 +29,7 @@ async function start() {
     await fastify.register(cors, {
       origin: [
         'http://localhost:5173',
+        'http://localhost:5174',
         'http://localhost:3000',
         'https://citadel-investor-portal-api-olde.vercel.app',
         /\.vercel\.app$/,  // Allow all Vercel preview deployments

@@ -52,6 +52,8 @@ import {
   getCategoryConfig,
 } from '../components/kpi';
 import type { KpiCategoryNavOption, TimePeriodPreset, DateRange } from '../components/kpi';
+import { DealNotesSection } from '../components/deal-notes';
+import { DealTimelineSection } from '../components/deal-timeline';
 
 // Property type gradients and icons for placeholder
 const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
@@ -657,90 +659,62 @@ export function DealDetail() {
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Deal Image Section */}
-          <div className="rounded-xl border bg-card p-6">
-            <h3 className="font-semibold">Deal Image</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Upload a primary image to represent this deal
-            </p>
-            <div className="mt-4">
-              {isRealDeal ? (
-                <DealImageUpload
-                  imageUrl={deal.imageUrl}
-                  propertyType={deal.propertyType}
-                  onUpload={handleImageUpload}
-                  onDelete={handleImageDelete}
-                />
-              ) : (
-                <div className="space-y-4">
-                  <DealImageUpload
-                    imageUrl={deal.imageUrl}
-                    propertyType={deal.propertyType}
-                    onUpload={async () => {}}
-                    onDelete={async () => {}}
-                  />
-                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
-                    <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
-                    <div className="text-sm">
-                      <p className="font-medium text-amber-800 dark:text-amber-200">Demo Mode</p>
-                      <p className="text-amber-600 dark:text-amber-400">
-                        This is sample data. Image upload is available for deals saved in the database.
-                        Create a new deal to enable image uploads.
-                      </p>
-                    </div>
+        <div className="space-y-6">
+          {/* Deal Timeline */}
+          {id && <DealTimelineSection dealId={id} />}
+
+          {/* Property Details & Renovation Progress */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-xl border bg-card p-6">
+              <h3 className="font-semibold">Property Details</h3>
+              <p className="mt-3 text-muted-foreground">{deal.description}</p>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Acquisition Date</span>
+                  <span>{deal.acquisitionDate ? formatDate(deal.acquisitionDate) : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Acquisition Price</span>
+                  <span>{deal.acquisitionPrice ? formatCurrency(deal.acquisitionPrice) : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Total Investment</span>
+                  <span>{deal.totalInvestment ? formatCurrency(deal.totalInvestment) : '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            {deal.kpis?.renovationBudget && (
+              <div className="rounded-xl border bg-card p-6">
+                <h3 className="font-semibold">Renovation Progress</h3>
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Budget Used</span>
+                    <span className="font-medium">
+                      {((deal.kpis.renovationSpent! / deal.kpis.renovationBudget) * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                      style={{
+                        width: `${(deal.kpis.renovationSpent! / deal.kpis.renovationBudget) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-2 flex justify-between text-sm">
+                    <span>{formatCurrency(deal.kpis.renovationSpent!)}</span>
+                    <span className="text-muted-foreground">
+                      of {formatCurrency(deal.kpis.renovationBudget)}
+                    </span>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
-          <div className="rounded-xl border bg-card p-6">
-            <h3 className="font-semibold">Property Details</h3>
-            <p className="mt-3 text-muted-foreground">{deal.description}</p>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Acquisition Date</span>
-                <span>{deal.acquisitionDate ? formatDate(deal.acquisitionDate) : '—'}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Acquisition Price</span>
-                <span>{deal.acquisitionPrice ? formatCurrency(deal.acquisitionPrice) : '—'}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Total Investment</span>
-                <span>{deal.totalInvestment ? formatCurrency(deal.totalInvestment) : '—'}</span>
-              </div>
-            </div>
-          </div>
-
-          {deal.kpis?.renovationBudget && (
-            <div className="rounded-xl border bg-card p-6 lg:col-span-2">
-              <h3 className="font-semibold">Renovation Progress</h3>
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Budget Used</span>
-                  <span className="font-medium">
-                    {((deal.kpis.renovationSpent! / deal.kpis.renovationBudget) * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600"
-                    style={{
-                      width: `${(deal.kpis.renovationSpent! / deal.kpis.renovationBudget) * 100}%`,
-                    }}
-                  />
-                </div>
-                <div className="mt-2 flex justify-between text-sm">
-                  <span>{formatCurrency(deal.kpis.renovationSpent!)}</span>
-                  <span className="text-muted-foreground">
-                    of {formatCurrency(deal.kpis.renovationBudget)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Deal Notes */}
+          {id && <DealNotesSection dealId={id} />}
         </div>
       )}
 

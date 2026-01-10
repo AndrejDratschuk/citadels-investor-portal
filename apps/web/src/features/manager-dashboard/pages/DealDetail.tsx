@@ -840,28 +840,14 @@ export function DealDetail() {
 
       {activeTab === 'financials' && (
         <div className="space-y-6">
-          {/* Data Source Indicator */}
-          {!isKpiLoading && (
-            <div className={cn(
-              'flex items-center gap-2 rounded-lg px-4 py-2 text-sm',
-              hasRealKpiData 
-                ? 'border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400'
-                : 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400'
-            )}>
-              {hasRealKpiData ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>Showing real KPI data from your imports</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Showing sample data - Import your data to see real metrics</span>
-                  <Link to="/manager/data" className="ml-auto font-medium underline hover:no-underline">
-                    Import Data →
-                  </Link>
-                </>
-              )}
+          {/* Data Source Indicator - Only show for mock data */}
+          {!isKpiLoading && !hasRealKpiData && (
+            <div className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
+              <AlertCircle className="h-4 w-4" />
+              <span>Showing sample data - Import your data to see real metrics</span>
+              <Link to="/manager/data" className="ml-auto font-medium underline hover:no-underline">
+                Import Data →
+              </Link>
             </div>
           )}
 

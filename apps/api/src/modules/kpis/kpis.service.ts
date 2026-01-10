@@ -350,7 +350,13 @@ export class KpisService {
       case 'currency':
         return formatCurrency(value);
       case 'percentage':
-        return formatPercentage(value);
+        // If value > 1, assume it's already in percentage form (e.g., 94.7 = 94.7%)
+        // If value <= 1, assume it's a decimal (e.g., 0.947 = 94.7%)
+        // Format without decimals for cleaner display
+        if (value > 1) {
+          return `${Math.round(value)}%`;
+        }
+        return `${Math.round(value * 100)}%`;
       case 'ratio':
         return `${value.toFixed(2)}x`;
       case 'number':

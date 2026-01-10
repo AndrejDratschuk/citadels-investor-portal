@@ -4,7 +4,7 @@
  * No methods, no logic - pure data structures
  */
 
-import type { KpiDataType, KpiDefinition } from './kpi.types';
+import type { KpiDataType } from './kpi.types';
 
 // ============================================
 // File Parsing Types

@@ -51,7 +51,7 @@ interface UseDataImportOnboardingReturn {
   // Mapping
   updateMappings: (mappings: MappingState[]) => void;
   // Import
-  executeImport: (fundId: string, dealId: string) => Promise<void>;
+  executeImport: (fundId: string, dealId?: string) => Promise<void>;
   // AI Dashboard
   generateDashboard: () => void;
   skipDashboard: () => void;
@@ -196,7 +196,7 @@ export function useDataImportOnboarding(
       });
 
       const { suggestions, definitions } = await dataImportApi.suggestMappings(
-        parsedFile.columns,
+        [...parsedFile.columns],
         sampleValues
       );
 
@@ -241,7 +241,7 @@ export function useDataImportOnboarding(
 
       // Get suggestions
       const { suggestions, definitions } = await dataImportApi.suggestMappings(
-        sampleData.columns
+        [...sampleData.columns]
       );
 
       // Build parsed file structure from sample data
@@ -298,7 +298,7 @@ export function useDataImportOnboarding(
 
   const executeImport = useCallback(async (
     fundId: string,
-    dealId: string
+    dealId?: string
   ): Promise<void> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -324,7 +324,7 @@ export function useDataImportOnboarding(
 
         result = await dataImportApi.importData({
           fundId,
-          dealId,
+          dealId: dealId ?? null,
           connectionName: state.connectionName,
           mappings: mappingsToSend,
           data: state.parsedFile.rows as Array<Record<string, unknown>>,

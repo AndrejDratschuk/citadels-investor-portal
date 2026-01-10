@@ -4,7 +4,7 @@
  * OPERATOR: No side effects, no try/catch, bubbles errors up
  */
 
-import type { KpiDefinition, KpiDataType } from '../types/kpi.types';
+import type { KpiDefinition } from '../types/kpi.types';
 import type { 
   SuggestedMapping, 
   MappingConfidence,

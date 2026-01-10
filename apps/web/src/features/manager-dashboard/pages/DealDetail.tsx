@@ -35,10 +35,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { DealImageUpload } from '../components/DealImageUpload';
 import { DealInvestorsModal } from '../components/DealInvestorsModal';
 import { dealsApi, Deal, DealKPIs, DealInvestor } from '@/lib/api/deals';
-import { dealKpisApi, outliersApi, kpiDefinitionsApi } from '@/lib/api/kpis';
+import { outliersApi } from '@/lib/api/kpis';
 import { useDealKpiSummary } from '../hooks/useDealKpis';
 import {
   KPICard,
@@ -501,28 +500,6 @@ export function DealDetail() {
     { id: 'financials', label: 'Financials' },
     { id: 'kpis', label: 'KPIs' },
   ];
-
-  const handleImageUpload = async (file: File) => {
-    if (!id || !isRealDeal) return;
-    try {
-      const { imageUrl } = await dealsApi.uploadImage(id, file);
-      setDeal(prev => ({ ...prev, imageUrl }));
-    } catch (error) {
-      console.error('Failed to upload image:', error);
-      throw error;
-    }
-  };
-
-  const handleImageDelete = async () => {
-    if (!id || !isRealDeal) return;
-    try {
-      await dealsApi.deleteImage(id);
-      setDeal(prev => ({ ...prev, imageUrl: null }));
-    } catch (error) {
-      console.error('Failed to delete image:', error);
-      throw error;
-    }
-  };
 
   if (isLoading) {
     return (

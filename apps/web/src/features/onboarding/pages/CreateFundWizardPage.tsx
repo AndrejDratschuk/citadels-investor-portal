@@ -54,7 +54,6 @@ export function CreateFundWizardPage(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdFund, setCreatedFund] = useState<{ id: string; name: string } | null>(null);
-  const [createdDeal, setCreatedDeal] = useState<{ id: string } | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showAIPrompt, setShowAIPrompt] = useState(false);
@@ -123,9 +122,6 @@ export function CreateFundWizardPage(): JSX.Element {
       
       // Store created fund info
       setCreatedFund({ id: result.fund.id, name: result.fund.name });
-      if (result.deal) {
-        setCreatedDeal({ id: result.deal.id });
-      }
 
       // Update user state with fundId but DO NOT mark onboarding complete yet
       // Onboarding is only complete after data import phase (or skip)
@@ -173,11 +169,11 @@ export function CreateFundWizardPage(): JSX.Element {
   };
 
   const handleImport = async (): Promise<void> => {
-    if (!createdFund || !createdDeal) {
-      setError('Fund or deal not found');
+    if (!createdFund) {
+      setError('Fund not found');
       return;
     }
-    await dataImport.executeImport(createdFund.id, createdDeal.id);
+    await dataImport.executeImport(createdFund.id);
     if (dataImport.state.importResult?.success) {
       setShowSuccessModal(true);
     }
@@ -523,6 +519,7 @@ export function CreateFundWizardPage(): JSX.Element {
               isLoading={dataImport.state.isLoading}
               error={dataImport.state.error}
               selectedFile={dataImport.state.selectedFile}
+              showDealSelector={false}
             />
           )}
 

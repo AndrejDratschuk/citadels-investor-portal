@@ -6,7 +6,6 @@
 import { useState } from 'react';
 import { 
   Check, 
-  X, 
   AlertCircle, 
   ChevronDown,
   Sparkles,

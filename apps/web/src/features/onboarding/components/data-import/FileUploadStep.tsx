@@ -22,8 +22,8 @@ import type { Deal } from '@/lib/api/deals';
 interface FileUploadStepProps {
   connectionName: string;
   onConnectionNameChange: (name: string) => void;
-  selectedDealId: string | null;
-  onDealChange: (dealId: string | null, deal: Deal | null) => void;
+  selectedDealId?: string | null;
+  onDealChange?: (dealId: string | null, deal: Deal | null) => void;
   onFileSelect: (file: File) => void;
   onUseSampleData: () => void;
   onBack: () => void;
@@ -44,7 +44,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export function FileUploadStep({
   connectionName,
   onConnectionNameChange,
-  selectedDealId,
+  selectedDealId = null,
   onDealChange,
   onFileSelect,
   onUseSampleData,
@@ -105,7 +105,7 @@ export function FileUploadStep({
       </div>
 
       {/* Deal Selection */}
-      {showDealSelector && (
+      {showDealSelector && onDealChange && (
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700">
             Select Deal <span className="text-red-500">*</span>

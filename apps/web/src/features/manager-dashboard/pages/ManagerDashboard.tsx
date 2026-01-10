@@ -126,8 +126,8 @@ export function ManagerDashboard(): JSX.Element {
     dealName: call.dealName,
     totalAmount: call.totalAmount,
     receivedAmount: call.receivedAmount,
-    deadline: call.dueDate ?? undefined,
-    status: call.status,
+    deadline: call.dueDate ?? new Date().toISOString(),
+    status: (call.status === 'pending' ? 'draft' : call.status) as 'draft' | 'sent' | 'partial' | 'funded' | 'closed',
   })) ?? [];
 
   if (error) {

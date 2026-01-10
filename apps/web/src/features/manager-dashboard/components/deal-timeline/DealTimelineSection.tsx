@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TimelineChart } from './TimelineChart';
@@ -13,7 +13,6 @@ import {
   useDealMilestones,
   useCreateMilestone,
   useUpdateMilestone,
-  useDeleteMilestone,
 } from '../../hooks/useDealNotes';
 import type { DealMilestone, MilestoneStatus, MilestoneCategory } from '@altsui/shared';
 
@@ -28,7 +27,6 @@ export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.E
   const { data, isLoading } = useDealMilestones(dealId);
   const createMilestone = useCreateMilestone();
   const updateMilestone = useUpdateMilestone(dealId);
-  const deleteMilestone = useDeleteMilestone(dealId);
 
   const handleCreate = (formData: {
     title: string;
@@ -65,17 +63,6 @@ export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.E
         },
       }
     );
-  };
-
-  const handleDelete = (): void => {
-    if (!editingMilestone) return;
-    if (window.confirm('Are you sure you want to delete this milestone?')) {
-      deleteMilestone.mutate(editingMilestone.id, {
-        onSuccess: () => {
-          setEditingMilestone(null);
-        },
-      });
-    }
   };
 
   const handleDateChange = (milestoneId: string, startDate: string, endDate: string | null): void => {

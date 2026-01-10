@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Edit2, Trash2, MoreHorizontal, User } from 'lucide-react';
+import { Edit2, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VisibilityBadge } from './VisibilityBadge';
 import type { DealNote } from '@altsui/shared';

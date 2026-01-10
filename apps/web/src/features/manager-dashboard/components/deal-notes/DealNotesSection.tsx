@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, MessageSquare, Loader2 } from 'lucide-react';
+import { Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoteCard } from './NoteCard';

@@ -17,10 +17,8 @@ import {
   FileSpreadsheet,
   X,
   Building2,
-  Edit2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { dataImportApi } from '@/lib/api/dataImport';
 import { useAuth } from '@/hooks/useAuth';
 import { DealSelector } from '@/components/common/DealSelector';
@@ -267,7 +265,7 @@ export function DataConnectionsPage(): JSX.Element {
       });
 
       const { suggestions, definitions } = await dataImportApi.suggestMappings(
-        parsedFile.columns,
+        [...parsedFile.columns],
         sampleValues
       );
 
@@ -306,7 +304,7 @@ export function DataConnectionsPage(): JSX.Element {
       setAddState(prev => ({ ...prev, isLoading: true, error: null }));
 
       const sampleData = await dataImportApi.getSampleData();
-      const { suggestions, definitions } = await dataImportApi.suggestMappings(sampleData.columns);
+      const { suggestions, definitions } = await dataImportApi.suggestMappings([...sampleData.columns]);
 
       const parsedFile: ParsedFileData = {
         columns: sampleData.columns,

@@ -132,7 +132,7 @@ export function MilestoneBar({
     setWidthDelta(0);
   }, [dragMode, dragOffset, widthDelta, milestone.startDate, milestone.endDate, onDateChange]);
 
-  const handleBarClick = useCallback((e: React.MouseEvent) => {
+  const handleBarClick = useCallback((_e: React.MouseEvent) => {
     // Only trigger click if we weren't dragging
     if (!dragMode) {
       onClick();

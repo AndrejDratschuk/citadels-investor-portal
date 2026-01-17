@@ -11,7 +11,7 @@ import {
   BarChart3,
   Info,
 } from 'lucide-react';
-import { formatCurrency } from '@altsui/shared';
+import { formatCurrency, INVESTOR_TYPE_LABELS, type InvestorType } from '@altsui/shared';
 import { useInvestorStats, useInvestorProfile } from '../hooks/useInvestorData';
 import { useDocuments } from '../hooks/useDocuments';
 import { useNotices } from '../hooks/useNotices';
@@ -134,13 +134,13 @@ export function InvestorDashboard() {
       </div>
 
       {/* Investor Type Info Banner - Show for limited access investors */}
-      {permissions && !showDetailedKpis && (
+      {permissions && !showDetailedKpis && profile?.investorType && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-blue-600 mt-0.5" />
             <div>
               <p className="font-medium text-blue-800">
-                {permissions.roleName} Dashboard
+                {INVESTOR_TYPE_LABELS[profile.investorType as InvestorType]} Dashboard
               </p>
               <p className="text-sm text-blue-700">
                 You're viewing a summary of your investments. Detailed financial metrics and KPI breakdowns are available to investors with enhanced access.

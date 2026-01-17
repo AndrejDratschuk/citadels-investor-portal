@@ -21,6 +21,7 @@ export interface InvestorProfile {
   onboardingStep: number;
   onboardedAt: string | null;
   status: string;
+  investorType: string;
   createdAt: string;
   updatedAt: string;
 }

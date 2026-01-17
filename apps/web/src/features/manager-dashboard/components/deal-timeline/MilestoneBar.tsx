@@ -209,14 +209,14 @@ function getMonthDiff(start: Date, end: Date): number {
 
 function formatDateRange(start: string, end: string | null): string {
   const startDate = new Date(start);
-  const options: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric' };
+  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
   const startStr = startDate.toLocaleDateString('en-US', options);
 
   if (!end) return startStr;
 
   const endDate = new Date(end);
   const endStr = endDate.toLocaleDateString('en-US', options);
-  return `${startStr} - ${endStr}`;
+  return `${startStr} – ${endStr}`;
 }
 
 function formatDateForApi(date: Date): string {

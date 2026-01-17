@@ -1,5 +1,6 @@
 /**
  * Deal Timeline Section - Container with chart + form
+ * Supports planned, actual, and comparison view modes
  */
 
 import { useState } from 'react';
@@ -8,21 +9,27 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TimelineChart } from './TimelineChart';
 import { MilestoneForm } from './MilestoneForm';
+import { MilestoneViewToggle } from './MilestoneViewToggle';
 import { StatusBadge } from './StatusBadge';
 import {
   useDealMilestones,
   useCreateMilestone,
   useUpdateMilestone,
 } from '../../hooks/useDealNotes';
-import type { DealMilestone, MilestoneStatus, MilestoneCategory } from '@altsui/shared';
+import type { DealMilestone, MilestoneStatus, MilestoneCategory, MilestoneViewMode } from '@altsui/shared';
 
 interface DealTimelineSectionProps {
   dealId: string;
 }
 
+function getTodayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.Element {
   const [showForm, setShowForm] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<DealMilestone | null>(null);
+  const [viewMode, setViewMode] = useState<MilestoneViewMode>('planned');
 
   const { data, isLoading } = useDealMilestones(dealId);
   const createMilestone = useCreateMilestone();
@@ -35,6 +42,8 @@ export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.E
     endDate?: string;
     status: MilestoneStatus;
     category: MilestoneCategory;
+    actualStartDate?: string | null;
+    actualCompletionDate?: string | null;
   }): void => {
     createMilestone.mutate(
       { dealId, ...formData },
@@ -53,6 +62,8 @@ export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.E
     endDate?: string;
     status: MilestoneStatus;
     category: MilestoneCategory;
+    actualStartDate?: string | null;
+    actualCompletionDate?: string | null;
   }): void => {
     if (!editingMilestone) return;
     updateMilestone.mutate(
@@ -82,20 +93,31 @@ export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.E
     {} as Record<MilestoneStatus, number>
   );
 
+  // Check if any milestones have actual data (for showing comparison option hint)
+  const hasActualData = milestones.some(m => m.actualStartDate || m.actualCompletionDate);
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="font-semibold">Deal Timeline</h3>
           <p className="text-sm text-muted-foreground">
             Plan and track milestones throughout the deal lifecycle
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Milestone
-        </Button>
+        <div className="flex items-center gap-3">
+          {milestones.length > 0 && (
+            <MilestoneViewToggle
+              selected={viewMode}
+              onChange={setViewMode}
+            />
+          )}
+          <Button onClick={() => setShowForm(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Milestone
+          </Button>
+        </div>
       </div>
 
       {/* Status Summary */}
@@ -130,30 +152,63 @@ export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.E
         <div className="rounded-xl border bg-card p-4">
           <TimelineChart
             milestones={milestones}
+            viewMode={viewMode}
+            currentDate={getTodayString()}
             onMilestoneClick={setEditingMilestone}
             onMilestoneDateChange={handleDateChange}
           />
 
-          {/* Legend */}
+          {/* Legend - different based on view mode */}
           <div className="mt-4 flex flex-wrap items-center gap-4 border-t pt-4 text-xs">
-            <span className="text-muted-foreground">Status:</span>
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded bg-slate-400" />
-              <span>Planned</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded bg-blue-500" />
-              <span>In Progress</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded bg-green-500" />
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded bg-orange-500" />
-              <span>Delayed</span>
-            </div>
+            {viewMode === 'comparison' ? (
+              <>
+                <span className="text-muted-foreground">Variance:</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-green-500" />
+                  <span>Ahead / On Track</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-amber-500" />
+                  <span>Slight Delay (1-20%)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-red-500" />
+                  <span>Major Delay ({'>'}20%)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-slate-300" />
+                  <span>Not Started</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="text-muted-foreground">Status:</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-slate-400" />
+                  <span>Planned</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-blue-500" />
+                  <span>In Progress</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-green-500" />
+                  <span>Completed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded bg-orange-500" />
+                  <span>Delayed</span>
+                </div>
+              </>
+            )}
           </div>
+
+          {/* Hint for comparison mode when no actual data */}
+          {viewMode === 'comparison' && !hasActualData && (
+            <p className="mt-2 text-xs text-muted-foreground italic">
+              No actual dates recorded yet. Edit milestones to add actual start/end dates for comparison.
+            </p>
+          )}
         </div>
       )}
 
@@ -195,4 +250,3 @@ export function DealTimelineSection({ dealId }: DealTimelineSectionProps): JSX.E
     </div>
   );
 }
-

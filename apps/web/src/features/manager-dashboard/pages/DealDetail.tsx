@@ -422,6 +422,34 @@ export function DealDetail() {
     ];
   };
 
+  // Helper to get the correct display value based on selected data type
+  const getDisplayValue = (kpi: KpiCardDataWithDimensions): string => {
+    let rawValue: number | null;
+    switch (dataType) {
+      case 'forecast':
+        rawValue = kpi.forecastValue;
+        break;
+      case 'budget':
+        rawValue = kpi.budgetValue;
+        break;
+      default:
+        rawValue = kpi.actualValue;
+    }
+    if (rawValue === null) return '—';
+    
+    // Format based on KPI format type
+    switch (kpi.format) {
+      case 'currency':
+        return formatCurrency(rawValue);
+      case 'percentage':
+        return formatPercentage(rawValue);
+      case 'ratio':
+        return `${rawValue.toFixed(2)}x`;
+      default:
+        return rawValue.toLocaleString();
+    }
+  };
+
   // Get chart title and format based on category
   const getChartInfo = () => {
     if (selectedCategory === 'all' || selectedCategory === 'outliers') {
@@ -1031,12 +1059,12 @@ export function DealDetail() {
                       <KPICard
                         key={kpi.id}
                         title={kpi.name}
-                        value={kpi.value}
+                        value={getDisplayValue(kpi)}
                         icon={iconConfig.icon}
                         iconColor={iconConfig.color}
                         iconBg={iconConfig.bg}
-                        change={kpi.change}
-                        changeLabel={kpi.changeLabel}
+                        change={dataType === 'actual' ? kpi.change : null}
+                        changeLabel={dataType === 'actual' ? kpi.changeLabel : ''}
                       />
                     );
                   })

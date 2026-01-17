@@ -60,22 +60,27 @@ function generateActualRows(): SampleDataRow[] {
     const grossPotentialRent = Math.round(BASE.gpr * trendFactor);
     const totalRevenue = Math.round(BASE.revenue * seasonalFactor * trendFactor * randomFactor);
     const totalExpenses = Math.round(BASE.expenses * (1 + index * 0.002) * (1 + (seededRandom(seed + 1) - 0.5) * 0.01));
-    const occupancyRate = Number(Math.min(97, Math.max(92, BASE.occupancy + (index * 0.12) + (seededRandom(seed + 2) - 0.5) * 1.5)).toFixed(1));
+    const occupancyPct = Number(Math.min(97, Math.max(92, BASE.occupancy + (index * 0.12) + (seededRandom(seed + 2) - 0.5) * 1.5)).toFixed(1));
     const currentPropertyValue = Math.round(BASE.propertyValue * (1 + index * 0.003));
     const currentLoanBalance = Math.round(BASE.loanBalance - (index * 45000));
 
-    const concessions = Math.round(grossPotentialRent * 0.018 * (1 - occupancyRate / 100) * 2);
+    const concessions = Math.round(grossPotentialRent * 0.018 * (1 - occupancyPct / 100) * 2);
     const lossToLease = Math.round(grossPotentialRent * 0.028);
     const moveIns = Math.round(4 + seededRandom(seed + 3) * 4);
     const moveOuts = Math.round(3 + seededRandom(seed + 4) * 4);
     const avgDaysVacant = Math.round(18 + seededRandom(seed + 5) * 10);
-    const renewalRate = Number((76 + seededRandom(seed + 6) * 14).toFixed(1));
+    const renewalPct = Number((76 + seededRandom(seed + 6) * 14).toFixed(1));
 
     const noi = totalRevenue - totalExpenses;
-    const noiMargin = Number((noi / totalRevenue * 100).toFixed(1));
-    const capRate = Number((noi * 12 / currentPropertyValue * 100).toFixed(2));
     const dscr = Number((noi / BASE.monthlyDebtService).toFixed(2));
-    const ltv = Number((currentLoanBalance / currentPropertyValue * 100).toFixed(1));
+    
+    // Store percentages as decimals (0.94 = 94%) for proper formatting
+    const occupancyDecimal = Number((occupancyPct / 100).toFixed(4));
+    const renewalDecimal = Number((renewalPct / 100).toFixed(4));
+    const interestDecimal = Number((BASE.interestRate / 100).toFixed(4));
+    const noiMarginDecimal = Number((noi / totalRevenue).toFixed(4));
+    const capRateDecimal = Number((noi * 12 / currentPropertyValue).toFixed(4));
+    const ltvDecimal = Number((currentLoanBalance / currentPropertyValue).toFixed(4));
 
     return {
       date,
@@ -84,7 +89,7 @@ function generateActualRows(): SampleDataRow[] {
       'Total Revenue': totalRevenue,
       'Gross Potential Rent': grossPotentialRent,
       'Operating Expenses': totalExpenses,
-      'Occupancy Rate': occupancyRate,
+      'Occupancy Rate': occupancyDecimal,
       'Property Value': currentPropertyValue,
       'Loan Balance': currentLoanBalance,
       'Monthly Debt Service': BASE.monthlyDebtService,
@@ -93,13 +98,13 @@ function generateActualRows(): SampleDataRow[] {
       'Move-Ins': moveIns,
       'Move-Outs': moveOuts,
       'Avg Days Vacant': avgDaysVacant,
-      'Renewal Rate': renewalRate,
-      'Interest Rate': BASE.interestRate,
+      'Renewal Rate': renewalDecimal,
+      'Interest Rate': interestDecimal,
       'Net Operating Income': noi,
-      'NOI Margin': noiMargin,
-      'Cap Rate': capRate,
+      'NOI Margin': noiMarginDecimal,
+      'Cap Rate': capRateDecimal,
       'DSCR': dscr,
-      'LTV': ltv,
+      'LTV': ltvDecimal,
     };
   });
 }
@@ -118,7 +123,7 @@ function generateBudgetRows(): SampleDataRow[] {
     const grossPotentialRent = Math.round(BASE.gpr * growthFactor);
     const totalRevenue = Math.round(BASE.revenue * growthFactor);
     const totalExpenses = Math.round(BASE.expenses * (1 + index * 0.0015)); // Lower expense growth budgeted
-    const occupancyRate = Number(Math.min(96, BASE.occupancy + (index * 0.1)).toFixed(1)); // Steady improvement target
+    const occupancyPct = Number(Math.min(96, BASE.occupancy + (index * 0.1)).toFixed(1)); // Steady improvement target
     const currentPropertyValue = Math.round(BASE.propertyValue * (1 + index * 0.0025));
     const currentLoanBalance = Math.round(BASE.loanBalance - (index * 45000));
 
@@ -127,13 +132,18 @@ function generateBudgetRows(): SampleDataRow[] {
     const moveIns = 5; // Steady state target
     const moveOuts = 4;
     const avgDaysVacant = 20; // Target days vacant
-    const renewalRate = 82.0; // Target renewal rate
+    const renewalPct = 82.0; // Target renewal rate
 
     const noi = totalRevenue - totalExpenses;
-    const noiMargin = Number((noi / totalRevenue * 100).toFixed(1));
-    const capRate = Number((noi * 12 / currentPropertyValue * 100).toFixed(2));
     const dscr = Number((noi / BASE.monthlyDebtService).toFixed(2));
-    const ltv = Number((currentLoanBalance / currentPropertyValue * 100).toFixed(1));
+    
+    // Store percentages as decimals (0.94 = 94%) for proper formatting
+    const occupancyDecimal = Number((occupancyPct / 100).toFixed(4));
+    const renewalDecimal = Number((renewalPct / 100).toFixed(4));
+    const interestDecimal = Number((BASE.interestRate / 100).toFixed(4));
+    const noiMarginDecimal = Number((noi / totalRevenue).toFixed(4));
+    const capRateDecimal = Number((noi * 12 / currentPropertyValue).toFixed(4));
+    const ltvDecimal = Number((currentLoanBalance / currentPropertyValue).toFixed(4));
 
     return {
       date,
@@ -142,7 +152,7 @@ function generateBudgetRows(): SampleDataRow[] {
       'Total Revenue': totalRevenue,
       'Gross Potential Rent': grossPotentialRent,
       'Operating Expenses': totalExpenses,
-      'Occupancy Rate': occupancyRate,
+      'Occupancy Rate': occupancyDecimal,
       'Property Value': currentPropertyValue,
       'Loan Balance': currentLoanBalance,
       'Monthly Debt Service': BASE.monthlyDebtService,
@@ -151,13 +161,13 @@ function generateBudgetRows(): SampleDataRow[] {
       'Move-Ins': moveIns,
       'Move-Outs': moveOuts,
       'Avg Days Vacant': avgDaysVacant,
-      'Renewal Rate': renewalRate,
-      'Interest Rate': BASE.interestRate,
+      'Renewal Rate': renewalDecimal,
+      'Interest Rate': interestDecimal,
       'Net Operating Income': noi,
-      'NOI Margin': noiMargin,
-      'Cap Rate': capRate,
+      'NOI Margin': noiMarginDecimal,
+      'Cap Rate': capRateDecimal,
       'DSCR': dscr,
-      'LTV': ltv,
+      'LTV': ltvDecimal,
     };
   });
 }
@@ -176,7 +186,7 @@ function generateForecastRows(): SampleDataRow[] {
     const grossPotentialRent = Math.round(BASE.gpr * trendFactor);
     const totalRevenue = Math.round(BASE.revenue * trendFactor * optimismFactor);
     const totalExpenses = Math.round(BASE.expenses * (1 + index * 0.0018)); // Slightly better expense control expected
-    const occupancyRate = Number(Math.min(97.5, BASE.occupancy + (index * 0.15) + 0.5).toFixed(1)); // Higher occupancy forecast
+    const occupancyPct = Number(Math.min(97.5, BASE.occupancy + (index * 0.15) + 0.5).toFixed(1)); // Higher occupancy forecast
     const currentPropertyValue = Math.round(BASE.propertyValue * (1 + index * 0.0035));
     const currentLoanBalance = Math.round(BASE.loanBalance - (index * 45000));
 
@@ -185,13 +195,18 @@ function generateForecastRows(): SampleDataRow[] {
     const moveIns = 6; // Slightly more optimistic
     const moveOuts = 4;
     const avgDaysVacant = 18; // Better turnover expected
-    const renewalRate = 84.0; // Higher renewal target
+    const renewalPct = 84.0; // Higher renewal target
 
     const noi = totalRevenue - totalExpenses;
-    const noiMargin = Number((noi / totalRevenue * 100).toFixed(1));
-    const capRate = Number((noi * 12 / currentPropertyValue * 100).toFixed(2));
     const dscr = Number((noi / BASE.monthlyDebtService).toFixed(2));
-    const ltv = Number((currentLoanBalance / currentPropertyValue * 100).toFixed(1));
+    
+    // Store percentages as decimals (0.94 = 94%) for proper formatting
+    const occupancyDecimal = Number((occupancyPct / 100).toFixed(4));
+    const renewalDecimal = Number((renewalPct / 100).toFixed(4));
+    const interestDecimal = Number((BASE.interestRate / 100).toFixed(4));
+    const noiMarginDecimal = Number((noi / totalRevenue).toFixed(4));
+    const capRateDecimal = Number((noi * 12 / currentPropertyValue).toFixed(4));
+    const ltvDecimal = Number((currentLoanBalance / currentPropertyValue).toFixed(4));
 
     return {
       date,
@@ -200,7 +215,7 @@ function generateForecastRows(): SampleDataRow[] {
       'Total Revenue': totalRevenue,
       'Gross Potential Rent': grossPotentialRent,
       'Operating Expenses': totalExpenses,
-      'Occupancy Rate': occupancyRate,
+      'Occupancy Rate': occupancyDecimal,
       'Property Value': currentPropertyValue,
       'Loan Balance': currentLoanBalance,
       'Monthly Debt Service': BASE.monthlyDebtService,
@@ -209,13 +224,13 @@ function generateForecastRows(): SampleDataRow[] {
       'Move-Ins': moveIns,
       'Move-Outs': moveOuts,
       'Avg Days Vacant': avgDaysVacant,
-      'Renewal Rate': renewalRate,
-      'Interest Rate': BASE.interestRate,
+      'Renewal Rate': renewalDecimal,
+      'Interest Rate': interestDecimal,
       'Net Operating Income': noi,
-      'NOI Margin': noiMargin,
-      'Cap Rate': capRate,
+      'NOI Margin': noiMarginDecimal,
+      'Cap Rate': capRateDecimal,
       'DSCR': dscr,
-      'LTV': ltv,
+      'LTV': ltvDecimal,
     };
   });
 }

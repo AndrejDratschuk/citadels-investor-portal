@@ -29,7 +29,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage, calculateChangePercent } from '@altsui/shared';
-import type { KpiCategory, KpiCardDataWithDimensions, DealKpiSummaryWithDimensions, KpiViewMode } from '@altsui/shared';
+import type { KpiCategory, KpiCardDataWithDimensions, DealKpiSummary, KpiDataType } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

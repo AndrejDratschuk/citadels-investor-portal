@@ -46,4 +46,5 @@ export * from './utils/validators';
 export * from './utils/calculations';
 export * from './utils/prospectStatusTransitions';
 export * from './utils/columnMappingSuggestions';
+export * from './utils/milestoneVariance';
 

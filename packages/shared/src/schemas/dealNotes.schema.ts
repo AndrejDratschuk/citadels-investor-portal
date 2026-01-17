@@ -49,6 +49,7 @@ export const updateDealMilestoneSchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   status: milestoneStatusSchema.optional(),
   category: milestoneCategorySchema.optional(),
+  actualStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   actualCompletionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   sortOrder: z.number().int().optional(),
 });

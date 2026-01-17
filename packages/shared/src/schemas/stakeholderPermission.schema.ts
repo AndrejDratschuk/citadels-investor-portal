@@ -92,15 +92,12 @@ export const checkPermissionSchema = z.object({
 });
 
 // ============================================
-// Inferred Types
+// Inferred Types (non-conflicting only)
+// Types that conflict with stakeholderPermission.types.ts are omitted here.
+// Use the explicit interfaces from that file instead.
 // ============================================
 
-export type CreateRoleInput = z.infer<typeof createRoleSchema>;
-export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type RoleIdParam = z.infer<typeof roleIdParamSchema>;
-export type PermissionGrant = z.infer<typeof permissionGrantSchema>;
-export type PermissionUpdateInput = z.infer<typeof permissionUpdateSchema>;
 export type CopyPermissionsParam = z.infer<typeof copyPermissionsParamSchema>;
 export type DealOverrideParam = z.infer<typeof dealOverrideParamSchema>;
-export type DealOverrideInput = z.infer<typeof dealOverrideSchema>;
 export type CheckPermissionInput = z.infer<typeof checkPermissionSchema>;

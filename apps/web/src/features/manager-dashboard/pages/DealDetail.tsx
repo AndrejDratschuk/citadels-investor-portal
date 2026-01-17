@@ -297,7 +297,7 @@ const statusStyles: Record<string, string> = {
   sold: 'bg-gray-100 text-gray-700',
 };
 
-type TabType = 'overview' | 'investors' | 'documents' | 'financials' | 'kpis';
+type TabType = 'overview' | 'milestones' | 'investors' | 'documents' | 'financials' | 'kpis';
 
 interface DealWithKpis extends Deal {
   kpis?: {
@@ -495,6 +495,7 @@ export function DealDetail() {
 
   const tabs: { id: TabType; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
+    { id: 'milestones', label: 'Milestones' },
     { id: 'investors', label: 'Investors', count: isRealDeal ? dealInvestors.length : mockInvestors.length },
     { id: 'documents', label: 'Documents', count: mockDocuments.length },
     { id: 'financials', label: 'Financials' },
@@ -637,9 +638,6 @@ export function DealDetail() {
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Deal Timeline */}
-          {id && <DealTimelineSection dealId={id} />}
-
           {/* Property Details & Renovation Progress */}
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-xl border bg-card p-6">
@@ -693,6 +691,10 @@ export function DealDetail() {
           {/* Deal Notes */}
           {id && <DealNotesSection dealId={id} />}
         </div>
+      )}
+
+      {activeTab === 'milestones' && id && (
+        <DealTimelineSection dealId={id} />
       )}
 
       {activeTab === 'investors' && (

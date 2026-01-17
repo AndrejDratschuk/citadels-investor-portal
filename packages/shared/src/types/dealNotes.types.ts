@@ -12,6 +12,12 @@ export type MilestoneCategory =
   | 'disposition' 
   | 'other';
 
+// View modes for milestone timeline display
+export type MilestoneViewMode = 'planned' | 'actual' | 'comparison';
+
+// Variance status for color coding
+export type MilestoneVarianceStatus = 'ahead' | 'on_track' | 'slight_delay' | 'major_delay' | 'not_started';
+
 export interface DealNote {
   id: string;
   dealId: string;
@@ -35,6 +41,7 @@ export interface DealMilestone {
   endDate: string | null;
   status: MilestoneStatus;
   category: MilestoneCategory;
+  actualStartDate: string | null;
   actualCompletionDate: string | null;
   sortOrder: number;
   createdBy: string | null;
@@ -71,6 +78,7 @@ export interface UpdateDealMilestoneInput {
   endDate?: string | null;
   status?: MilestoneStatus;
   category?: MilestoneCategory;
+  actualStartDate?: string | null;
   actualCompletionDate?: string | null;
   sortOrder?: number;
 }

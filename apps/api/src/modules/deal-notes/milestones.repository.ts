@@ -16,6 +16,7 @@ interface MilestoneRow {
   end_date: string | null;
   status: MilestoneStatus;
   category: MilestoneCategory;
+  actual_start_date: string | null;
   actual_completion_date: string | null;
   sort_order: number;
   created_by: string | null;
@@ -34,6 +35,7 @@ function mapRowToMilestone(row: MilestoneRow): DealMilestone {
     endDate: row.end_date,
     status: row.status,
     category: row.category,
+    actualStartDate: row.actual_start_date,
     actualCompletionDate: row.actual_completion_date,
     sortOrder: row.sort_order,
     createdBy: row.created_by,
@@ -119,6 +121,7 @@ export class MilestonesRepository {
     endDate?: string | null;
     status?: MilestoneStatus;
     category?: MilestoneCategory;
+    actualStartDate?: string | null;
     actualCompletionDate?: string | null;
     sortOrder?: number;
   }): Promise<DealMilestone> {
@@ -129,6 +132,7 @@ export class MilestonesRepository {
     if (input.endDate !== undefined) updateData.end_date = input.endDate;
     if (input.status !== undefined) updateData.status = input.status;
     if (input.category !== undefined) updateData.category = input.category;
+    if (input.actualStartDate !== undefined) updateData.actual_start_date = input.actualStartDate;
     if (input.actualCompletionDate !== undefined) updateData.actual_completion_date = input.actualCompletionDate;
     if (input.sortOrder !== undefined) updateData.sort_order = input.sortOrder;
 

@@ -44,6 +44,7 @@ export class MilestonesService {
       endDate?: string | null;
       status?: MilestoneStatus;
       category?: MilestoneCategory;
+      actualStartDate?: string | null;
       actualCompletionDate?: string | null;
       sortOrder?: number;
     }

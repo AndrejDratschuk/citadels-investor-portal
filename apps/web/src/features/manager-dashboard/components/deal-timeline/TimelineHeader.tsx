@@ -41,7 +41,7 @@ export function TimelineHeader({ startMonth, totalMonths }: TimelineHeaderProps)
   }
 
   return (
-    <div className="ml-40 flex flex-col border-b">
+    <div className="flex flex-col border-b">
       {/* Year Row */}
       <div className="flex">
         {years.map((y, idx) => (

@@ -1,24 +1,33 @@
 /**
  * Timeline Chart - CSS-based Gantt visualization
+ * Supports planned-only, actual-only, and comparison view modes
  */
 
 import { useMemo } from 'react';
 import { TimelineHeader } from './TimelineHeader';
 import { MilestoneBar } from './MilestoneBar';
-import type { DealMilestone } from '@altsui/shared';
+import { ComparisonMilestoneBar } from './ComparisonMilestoneBar';
+import type { DealMilestone, MilestoneViewMode } from '@altsui/shared';
 
 interface TimelineChartProps {
   milestones: DealMilestone[];
+  viewMode: MilestoneViewMode;
+  currentDate: string;
   onMilestoneClick: (milestone: DealMilestone) => void;
   onMilestoneDateChange?: (milestoneId: string, startDate: string, endDate: string | null) => void;
 }
 
-export function TimelineChart({ milestones, onMilestoneClick, onMilestoneDateChange }: TimelineChartProps): JSX.Element {
-  // Calculate date range from milestones
+export function TimelineChart({
+  milestones,
+  viewMode,
+  currentDate,
+  onMilestoneClick,
+  onMilestoneDateChange,
+}: TimelineChartProps): JSX.Element {
+  // Calculate date range from milestones (including actual dates for comparison)
   const { startMonth, totalMonths } = useMemo(() => {
     if (milestones.length === 0) {
-      // Default: current month + 24 months
-      const now = new Date();
+      const now = new Date(currentDate);
       return {
         startMonth: new Date(now.getFullYear(), now.getMonth(), 1),
         totalMonths: 24,
@@ -26,14 +35,27 @@ export function TimelineChart({ milestones, onMilestoneClick, onMilestoneDateCha
     }
 
     let minDate = new Date(milestones[0].startDate);
-    let maxDate = new Date(milestones[0].endDate || milestones[0].startDate);
+    let maxDate = new Date(milestones[0].endDate ?? milestones[0].startDate);
 
     for (const m of milestones) {
-      const start = new Date(m.startDate);
-      const end = new Date(m.endDate || m.startDate);
+      // Always consider planned dates
+      const plannedStart = new Date(m.startDate);
+      const plannedEnd = new Date(m.endDate ?? m.startDate);
 
-      if (start < minDate) minDate = start;
-      if (end > maxDate) maxDate = end;
+      if (plannedStart < minDate) minDate = plannedStart;
+      if (plannedEnd > maxDate) maxDate = plannedEnd;
+
+      // In comparison or actual mode, also consider actual dates
+      if (viewMode !== 'planned') {
+        if (m.actualStartDate) {
+          const actualStart = new Date(m.actualStartDate);
+          if (actualStart < minDate) minDate = actualStart;
+        }
+        if (m.actualCompletionDate) {
+          const actualEnd = new Date(m.actualCompletionDate);
+          if (actualEnd > maxDate) maxDate = actualEnd;
+        }
+      }
     }
 
     // Add 2 months padding on each side
@@ -47,9 +69,9 @@ export function TimelineChart({ milestones, onMilestoneClick, onMilestoneDateCha
     );
 
     return { startMonth, totalMonths };
-  }, [milestones]);
+  }, [milestones, viewMode, currentDate]);
 
-  // Sort milestones by start date and then by category
+  // Sort milestones by start date and then by sort order
   const sortedMilestones = useMemo(() => {
     return [...milestones].sort((a, b) => {
       const dateA = new Date(a.startDate).getTime();
@@ -59,17 +81,22 @@ export function TimelineChart({ milestones, onMilestoneClick, onMilestoneDateCha
     });
   }, [milestones]);
 
+  // Adjust grid offset based on view mode (comparison needs more label space)
+  const gridMarginLeft = viewMode === 'comparison' ? 'ml-56' : 'ml-40';
+
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[800px]">
         {/* Header with months/years */}
-        <TimelineHeader startMonth={startMonth} totalMonths={totalMonths} />
+        <div className={gridMarginLeft}>
+          <TimelineHeader startMonth={startMonth} totalMonths={totalMonths} />
+        </div>
 
         {/* Grid background */}
         <div className="relative">
           {/* Vertical grid lines */}
           <div
-            className="absolute inset-0 ml-40 flex pointer-events-none"
+            className={`absolute inset-0 ${gridMarginLeft} flex pointer-events-none`}
             style={{ zIndex: 0 }}
           >
             {Array.from({ length: totalMonths }).map((_, i) => (
@@ -83,23 +110,49 @@ export function TimelineChart({ milestones, onMilestoneClick, onMilestoneDateCha
 
           {/* Milestone bars */}
           <div className="relative py-2" style={{ zIndex: 1 }}>
-            {sortedMilestones.map((milestone) => (
-              <MilestoneBar
-                key={milestone.id}
-                milestone={milestone}
-                startMonth={startMonth}
-                totalMonths={totalMonths}
-                onClick={() => onMilestoneClick(milestone)}
-                onDateChange={onMilestoneDateChange 
-                  ? (startDate, endDate) => onMilestoneDateChange(milestone.id, startDate, endDate)
-                  : undefined
-                }
-              />
-            ))}
+            {sortedMilestones.map((milestone) => {
+              if (viewMode === 'comparison') {
+                return (
+                  <ComparisonMilestoneBar
+                    key={milestone.id}
+                    milestone={milestone}
+                    startMonth={startMonth}
+                    totalMonths={totalMonths}
+                    currentDate={currentDate}
+                    onClick={() => onMilestoneClick(milestone)}
+                  />
+                );
+              }
+
+              // For planned or actual view, use the standard bar
+              // but with appropriate dates based on viewMode
+              const displayMilestone = viewMode === 'actual' && milestone.actualStartDate
+                ? {
+                    ...milestone,
+                    startDate: milestone.actualStartDate,
+                    endDate: milestone.actualCompletionDate,
+                  }
+                : milestone;
+
+              return (
+                <MilestoneBar
+                  key={milestone.id}
+                  milestone={displayMilestone}
+                  startMonth={startMonth}
+                  totalMonths={totalMonths}
+                  onClick={() => onMilestoneClick(milestone)}
+                  onDateChange={
+                    onMilestoneDateChange
+                      ? (startDate, endDate) =>
+                          onMilestoneDateChange(milestone.id, startDate, endDate)
+                      : undefined
+                  }
+                />
+              );
+            })}
           </div>
         </div>
       </div>
     </div>
   );
 }
-

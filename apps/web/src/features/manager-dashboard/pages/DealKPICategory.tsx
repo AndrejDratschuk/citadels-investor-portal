@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { kpiDefinitionsApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import { useDealKpiSummaryWithDimensions } from '../hooks/useDealKpis';
 import {

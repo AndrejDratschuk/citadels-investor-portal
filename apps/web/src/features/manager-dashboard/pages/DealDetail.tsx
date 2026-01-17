@@ -29,7 +29,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage, calculateChangePercent } from '@altsui/shared';
-import type { KpiCategory, KpiCardDataWithDimensions, DealKpiSummary, KpiDataType } from '@altsui/shared';
+import type { KpiCategory, KpiCardDataWithDimensions, DealKpiSummaryWithDimensions, KpiDataType } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -196,16 +196,16 @@ function formatKpiValue(value: number | null, format: string): string {
 }
 
 // Mock KPI Summary Data (featured KPIs for "All" view)
-const MOCK_KPI_SUMMARY: DealKpiSummary = {
+const MOCK_KPI_SUMMARY: DealKpiSummaryWithDimensions = {
   dealId: '1',
   dealName: 'Riverside Apartments',
   featured: [
-    { id: '1', code: 'noi', name: 'NOI', value: '$985K', rawValue: 985000, change: 12, changeLabel: 'vs Last Month', format: 'currency', category: 'property_performance' },
-    { id: '2', code: 'cap_rate', name: 'Cap Rate', value: '6.93%', rawValue: 0.0693, change: 5, changeLabel: 'vs Last Month', format: 'percentage', category: 'property_performance' },
-    { id: '3', code: 'physical_occupancy', name: 'Occupancy', value: '94%', rawValue: 0.94, change: -2, changeLabel: 'vs Last Month', format: 'percentage', category: 'occupancy' },
-    { id: '4', code: 'dscr', name: 'DSCR', value: '1.45x', rawValue: 1.45, change: 8, changeLabel: 'vs Last Month', format: 'ratio', category: 'debt_service' },
-    { id: '5', code: 'gpr', name: 'GPR', value: '$125K', rawValue: 125000, change: 10, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue' },
-    { id: '6', code: 'egi', name: 'EGI', value: '$118K', rawValue: 118000, change: 9, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue' },
+    { id: '1', code: 'noi', name: 'NOI', value: '$985K', rawValue: 985000, change: 12, changeLabel: 'vs Last Month', format: 'currency', category: 'property_performance', actualValue: 985000, forecastValue: 950000, budgetValue: 900000, previousPeriodValue: 879464, vsForecast: null, vsBudget: null, vsLastPeriod: null, isInverseMetric: false },
+    { id: '2', code: 'cap_rate', name: 'Cap Rate', value: '6.93%', rawValue: 0.0693, change: 5, changeLabel: 'vs Last Month', format: 'percentage', category: 'property_performance', actualValue: 0.0693, forecastValue: 0.068, budgetValue: 0.065, previousPeriodValue: 0.066, vsForecast: null, vsBudget: null, vsLastPeriod: null, isInverseMetric: false },
+    { id: '3', code: 'physical_occupancy', name: 'Occupancy', value: '94%', rawValue: 0.94, change: -2, changeLabel: 'vs Last Month', format: 'percentage', category: 'occupancy', actualValue: 0.94, forecastValue: 0.95, budgetValue: 0.92, previousPeriodValue: 0.96, vsForecast: null, vsBudget: null, vsLastPeriod: null, isInverseMetric: false },
+    { id: '4', code: 'dscr', name: 'DSCR', value: '1.45x', rawValue: 1.45, change: 8, changeLabel: 'vs Last Month', format: 'ratio', category: 'debt_service', actualValue: 1.45, forecastValue: 1.40, budgetValue: 1.35, previousPeriodValue: 1.34, vsForecast: null, vsBudget: null, vsLastPeriod: null, isInverseMetric: false },
+    { id: '5', code: 'gpr', name: 'GPR', value: '$125K', rawValue: 125000, change: 10, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue', actualValue: 125000, forecastValue: 120000, budgetValue: 115000, previousPeriodValue: 113636, vsForecast: null, vsBudget: null, vsLastPeriod: null, isInverseMetric: false },
+    { id: '6', code: 'egi', name: 'EGI', value: '$118K', rawValue: 118000, change: 9, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue', actualValue: 118000, forecastValue: 115000, budgetValue: 110000, previousPeriodValue: 109259, vsForecast: null, vsBudget: null, vsLastPeriod: null, isInverseMetric: false },
   ],
   byCategory: {
     rent_revenue: [],

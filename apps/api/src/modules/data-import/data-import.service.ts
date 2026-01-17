@@ -411,6 +411,13 @@ export class DataImportService {
       const { rows, mappings } = SAMPLE_DATA_BY_DIMENSION[dimension];
       const sampleData = rows();
 
+      // Debug logging for sample data import
+      console.log(`[Sample Data Import] Importing ${dimension} data:`);
+      console.log(`  - Rows: ${sampleData.length}`);
+      console.log(`  - First row Total Revenue: ${sampleData[0]?.['Total Revenue']}`);
+      console.log(`  - First row NOI: ${sampleData[0]?.['Net Operating Income']}`);
+      console.log(`  - Mappings dataType: ${mappings[0]?.dataType}`);
+
       const mappingsWithIds = mappings.map(m => ({
         columnName: m.columnName,
         kpiCode: m.kpiCode,

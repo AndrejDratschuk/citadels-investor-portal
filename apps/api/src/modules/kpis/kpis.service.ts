@@ -287,6 +287,14 @@ export class KpisService {
       }),
     ]);
 
+    // Debug logging
+    const dataTypeCount = kpiData.reduce((acc, d) => {
+      acc[d.dataType] = (acc[d.dataType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`[KPI Summary] Deal ${dealId}: Fetched ${kpiData.length} data points`);
+    console.log(`[KPI Summary] By data type:`, dataTypeCount);
+
     const defsMap = new Map(definitions.map(d => [d.id, d]));
     const prefsMap = new Map(preferences.map(p => [p.kpiId, p]));
     const configsMap = new Map(outlierConfigs.map(c => [c.kpiId, c]));

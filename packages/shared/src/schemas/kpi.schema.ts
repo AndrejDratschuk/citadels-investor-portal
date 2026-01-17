@@ -137,6 +137,23 @@ export const kpiDataQuerySchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
+/** View modes for KPI comparison dashboard */
+export const KPI_VIEW_MODES = [
+  'actual',
+  'forecast', 
+  'budget',
+  'vs_forecast',
+  'vs_budget',
+  'vs_last_period',
+] as const;
+
+/** Schema for KPI summary with dimensions query */
+export const kpiSummaryWithDimensionsQuerySchema = z.object({
+  dealName: z.string().optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
 // ============================================
 // Outlier Configuration Schemas
 // ============================================
@@ -177,6 +194,7 @@ export type GoogleSheetsConnectInput = z.infer<typeof googleSheetsConnectSchema>
 export type ColumnMappingUpdateInput = z.infer<typeof columnMappingUpdateSchema>;
 export type ExcelImportInput = z.infer<typeof excelImportSchema>;
 export type KpiDataQueryInput = z.infer<typeof kpiDataQuerySchema>;
+export type KpiSummaryWithDimensionsQueryInput = z.infer<typeof kpiSummaryWithDimensionsQuerySchema>;
 export type OutlierConfigItemInput = z.infer<typeof outlierConfigItemSchema>;
 export type OutlierConfigUpdateInput = z.infer<typeof outlierConfigUpdateSchema>;
 export type OutliersQueryInput = z.infer<typeof outliersQuerySchema>;

@@ -4,11 +4,17 @@
  */
 
 import { kpisRepository } from './kpis.repository';
+import { outliersRepository } from './outliers.repository';
 import {
   calculateChangePercent,
   formatCurrency,
   formatPercentage,
+  DEFAULT_INVERSE_METRIC_CODES,
 } from '@altsui/shared';
+import {
+  groupKpiDataByKpiAndType,
+  calculateKpiVariance,
+} from './calculateOutlierVariance';
 import type {
   KpiDefinition,
   KpiPreference,
@@ -20,9 +26,13 @@ import type {
   KpiTimeSeries,
   KpiTimeSeriesPoint,
   DealKpiSummary,
+  DealKpiSummaryWithDimensions,
+  KpiCardDataWithDimensions,
+  KpiVariance,
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
+  KpiOutlierConfig,
 } from '@altsui/shared';
 
 // ============================================
@@ -252,6 +262,154 @@ export class KpisService {
       byCategory,
       lastUpdated: latestUpdate,
     };
+  }
+
+  // ========== KPI Summary with All Dimensions ==========
+
+  /**
+   * Get deal KPI summary with actual, forecast, and budget values plus variances.
+   * Used for comparison views in the dashboard.
+   */
+  async getDealKpiSummaryWithDimensions(
+    dealId: string,
+    fundId: string,
+    dealName: string,
+    options?: { startDate?: string; endDate?: string }
+  ): Promise<DealKpiSummaryWithDimensions> {
+    // Fetch all required data in parallel
+    const [definitions, preferences, outlierConfigs, kpiData] = await Promise.all([
+      kpisRepository.getAllDefinitions(),
+      kpisRepository.getPreferencesByFundId(fundId),
+      outliersRepository.getConfigsByFundId(fundId),
+      kpisRepository.getKpiDataByDeal(dealId, {
+        startDate: options?.startDate,
+        endDate: options?.endDate,
+      }),
+    ]);
+
+    const defsMap = new Map(definitions.map(d => [d.id, d]));
+    const prefsMap = new Map(preferences.map(p => [p.kpiId, p]));
+    const configsMap = new Map(outlierConfigs.map(c => [c.kpiId, c]));
+
+    // Group data by KPI and type
+    const groupedData = groupKpiDataByKpiAndType(kpiData);
+
+    // Build previous period data for vs_last_period comparison
+    const previousPeriodData = this.buildPreviousPeriodData(kpiData);
+
+    // Build card data with all dimensions
+    const buildCardDataWithDimensions = (def: KpiDefinition): KpiCardDataWithDimensions => {
+      const dataByType = groupedData.get(def.id);
+      const config = configsMap.get(def.id);
+      const prevValue = previousPeriodData.get(def.id);
+
+      const actualValue = dataByType?.actual?.value ?? null;
+      const forecastValue = dataByType?.forecast?.value ?? null;
+      const budgetValue = dataByType?.budget?.value ?? null;
+      const previousPeriodValue = prevValue ?? null;
+
+      // Determine if this is an inverse metric
+      const isInverseMetric = config?.isInverseMetric ?? DEFAULT_INVERSE_METRIC_CODES.includes(def.code);
+
+      // Calculate variances
+      const vsForecast = calculateKpiVariance(actualValue, forecastValue, def.format, isInverseMetric);
+      const vsBudget = calculateKpiVariance(actualValue, budgetValue, def.format, isInverseMetric);
+      const vsLastPeriod = calculateKpiVariance(actualValue, previousPeriodValue, def.format, isInverseMetric);
+
+      // Calculate primary change (vs last period) for backward compatibility
+      const change = actualValue !== null && previousPeriodValue !== null
+        ? calculateChangePercent(actualValue, previousPeriodValue)
+        : null;
+
+      return {
+        id: def.id,
+        code: def.code,
+        name: def.name,
+        value: this.formatKpiValue(actualValue, def.format),
+        rawValue: actualValue,
+        change,
+        changeLabel: 'vs Last Period',
+        format: def.format,
+        category: def.category,
+        actualValue,
+        forecastValue,
+        budgetValue,
+        previousPeriodValue,
+        vsForecast,
+        vsBudget,
+        vsLastPeriod,
+        isInverseMetric,
+      };
+    };
+
+    // Build featured KPIs
+    const featuredPrefs = preferences.filter(p => p.isFeatured);
+    const featuredDefs = featuredPrefs.length > 0
+      ? featuredPrefs.map(p => defsMap.get(p.kpiId)).filter((d): d is KpiDefinition => !!d)
+      : await this.getDefaultFeaturedKpis();
+
+    const featured = featuredDefs.map(buildCardDataWithDimensions);
+
+    // Group by category
+    const byCategory: Record<KpiCategory, KpiCardDataWithDimensions[]> = {
+      rent_revenue: [],
+      occupancy: [],
+      property_performance: [],
+      financial: [],
+      debt_service: [],
+    };
+
+    for (const def of definitions) {
+      const pref = prefsMap.get(def.id);
+      if (!pref || pref.isEnabled) {
+        byCategory[def.category].push(buildCardDataWithDimensions(def));
+      }
+    }
+
+    // Find latest update timestamp
+    const latestUpdate = kpiData.length > 0
+      ? kpiData.reduce((max, p) => p.updatedAt > max ? p.updatedAt : max, kpiData[0].updatedAt)
+      : null;
+
+    return {
+      dealId,
+      dealName,
+      featured,
+      byCategory,
+      lastUpdated: latestUpdate,
+    };
+  }
+
+  /**
+   * Build a map of previous period actual values for each KPI.
+   * Used for vs_last_period comparison.
+   */
+  private buildPreviousPeriodData(kpiData: KpiDataPoint[]): Map<string, number> {
+    const result = new Map<string, number>();
+    const actualsByKpi = new Map<string, KpiDataPoint[]>();
+
+    // Group actuals by KPI
+    for (const point of kpiData) {
+      if (point.dataType !== 'actual') continue;
+      
+      if (!actualsByKpi.has(point.kpiId)) {
+        actualsByKpi.set(point.kpiId, []);
+      }
+      actualsByKpi.get(point.kpiId)!.push(point);
+    }
+
+    // Find the second most recent for each KPI
+    for (const [kpiId, points] of actualsByKpi) {
+      if (points.length < 2) continue;
+      
+      // Sort by date descending
+      points.sort((a, b) => b.periodDate.localeCompare(a.periodDate));
+      
+      // Second item is previous period
+      result.set(kpiId, points[1].value);
+    }
+
+    return result;
   }
 
   // ========== KPI Time Series (for charts) ==========

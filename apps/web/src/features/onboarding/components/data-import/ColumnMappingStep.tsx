@@ -42,11 +42,13 @@ export interface MappingState {
   confidence: MappingConfidence;
 }
 
-const DATA_TYPES: { value: KpiDataType; label: string }[] = [
-  { value: 'actual', label: 'Actual' },
-  { value: 'forecast', label: 'Forecast' },
-  { value: 'budget', label: 'Budget' },
+const DATA_TYPES: { value: KpiDataType; label: string; description: string }[] = [
+  { value: 'actual', label: 'Actual', description: 'Real results that occurred' },
+  { value: 'forecast', label: 'Forecast', description: 'Predicted/planned values' },
+  { value: 'budget', label: 'Budget', description: 'Approved targets' },
 ];
+
+type BulkDataTypeOption = KpiDataType | 'mixed';
 
 function getConfidenceBadge(confidence: MappingConfidence): JSX.Element | null {
   switch (confidence) {
@@ -91,6 +93,29 @@ export function ColumnMappingStep({
       confidence: s.confidence,
     }))
   );
+
+  // Bulk data type selection
+  const [bulkDataType, setBulkDataType] = useState<BulkDataTypeOption>('mixed');
+
+  // Apply bulk data type to all mapped columns
+  const applyBulkDataType = (dataType: BulkDataTypeOption): void => {
+    setBulkDataType(dataType);
+    if (dataType === 'mixed') return;
+
+    const newMappings = mappings.map(m => {
+      // Skip date columns
+      if (['date', 'period', 'month', 'year'].includes(m.columnName.toLowerCase())) {
+        return m;
+      }
+      // Only update mapped columns
+      if (m.kpiCode) {
+        return { ...m, dataType: dataType as KpiDataType };
+      }
+      return m;
+    });
+    setMappings(newMappings);
+    onMappingsChange(newMappings);
+  };
 
   const updateMapping = (columnName: string, updates: Partial<MappingState>): void => {
     const newMappings = mappings.map(m => {
@@ -202,6 +227,42 @@ export function ColumnMappingStep({
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Bulk Data Type Selector */}
+      <div className="border rounded-xl p-4 bg-slate-50">
+        <h3 className="font-medium text-slate-900 mb-2">What type of data is this file?</h3>
+        <p className="text-sm text-slate-500 mb-3">
+          Select a data type to apply to all columns, or choose "Mixed" to set each column individually.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => applyBulkDataType('mixed')}
+            className={cn(
+              'px-3 py-2 text-sm rounded-lg border transition-colors',
+              bulkDataType === 'mixed'
+                ? 'bg-primary text-white border-primary'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+            )}
+          >
+            Mixed (set per column)
+          </button>
+          {DATA_TYPES.map(dt => (
+            <button
+              key={dt.value}
+              onClick={() => applyBulkDataType(dt.value)}
+              className={cn(
+                'px-3 py-2 text-sm rounded-lg border transition-colors',
+                bulkDataType === dt.value
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              )}
+            >
+              <span className="font-medium">{dt.label}</span>
+              <span className="text-xs opacity-75 ml-1">({dt.description})</span>
+            </button>
+          ))}
         </div>
       </div>
 

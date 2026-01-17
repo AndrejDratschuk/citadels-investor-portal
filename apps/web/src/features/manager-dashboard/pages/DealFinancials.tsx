@@ -25,15 +25,18 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { dealKpisApi, outliersApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
+import { useDealKpiSummaryWithDimensions } from '../hooks/useDealKpis';
 import {
   KPICard,
   KPICardGrid,
   KPICategoryNav,
   KPITrendChart,
+  KPIViewFilter,
+  KPIComparisonCard,
   OutlierCard,
 } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
-import type { KpiCardData, DealKpiSummary } from '@altsui/shared';
+import type { KpiCardData, KpiCardDataWithDimensions, DealKpiSummary, KpiViewMode } from '@altsui/shared';
 
 // ============================================
 // Icon Mapping for KPIs
@@ -74,41 +77,32 @@ function getKpiIcon(code: string) {
 }
 
 // ============================================
-// Mock Data (for demo when API not available)
+// Chart Data Builder
 // ============================================
-const MOCK_SUMMARY: DealKpiSummary = {
-  dealId: '1',
-  dealName: 'Riverside Apartments',
-  featured: [
-    { id: '1', code: 'noi', name: 'NOI', value: '$985K', rawValue: 985000, change: 12, changeLabel: 'vs Last Month', format: 'currency', category: 'property_performance' },
-    { id: '2', code: 'cap_rate', name: 'Cap Rate', value: '6.93%', rawValue: 0.0693, change: 5, changeLabel: 'vs Last Month', format: 'percentage', category: 'property_performance' },
-    { id: '3', code: 'physical_occupancy', name: 'Occupancy', value: '94%', rawValue: 0.94, change: -2, changeLabel: 'vs Last Month', format: 'percentage', category: 'occupancy' },
-    { id: '4', code: 'dscr', name: 'DSCR', value: '1.45x', rawValue: 1.45, change: 8, changeLabel: 'vs Last Month', format: 'ratio', category: 'debt_service' },
-    { id: '5', code: 'gpr', name: 'GPR', value: '$125K', rawValue: 125000, change: 10, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue' },
-    { id: '6', code: 'egi', name: 'EGI', value: '$118K', rawValue: 118000, change: 9, changeLabel: 'vs Last Month', format: 'currency', category: 'rent_revenue' },
-  ],
-  byCategory: {
-    rent_revenue: [],
-    occupancy: [],
-    property_performance: [],
-    financial: [],
-    debt_service: [],
-  },
-  lastUpdated: new Date().toISOString(),
-};
+function buildChartData(
+  featured: KpiCardDataWithDimensions[]
+): Array<{ date: string; label: string; actual: number | null; forecast: number | null; budget: number | null }> {
+  // Find NOI or first featured KPI for chart display
+  const primaryKpi = featured.find(k => k.code === 'noi') || featured[0];
+  
+  if (!primaryKpi) {
+    return [];
+  }
 
-const MOCK_CHART_DATA = [
-  { date: '2024-01', label: 'Jan', actual: 920000, forecast: null, budget: null },
-  { date: '2024-02', label: 'Feb', actual: 935000, forecast: null, budget: null },
-  { date: '2024-03', label: 'Mar', actual: 948000, forecast: null, budget: null },
-  { date: '2024-04', label: 'Apr', actual: 955000, forecast: null, budget: null },
-  { date: '2024-05', label: 'May', actual: 960000, forecast: null, budget: null },
-  { date: '2024-06', label: 'Jun', actual: 945000, forecast: null, budget: null },
-  { date: '2024-07', label: 'Jul', actual: 968000, forecast: null, budget: null },
-  { date: '2024-08', label: 'Aug', actual: 975000, forecast: null, budget: null },
-  { date: '2024-09', label: 'Sep', actual: 980000, forecast: null, budget: null },
-  { date: '2024-10', label: 'Oct', actual: 985000, forecast: null, budget: null },
-];
+  // Generate sample chart data based on current value
+  // In production, this would come from the time series API
+  const baseValue = primaryKpi.actualValue || 100000;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentMonth = new Date().getMonth();
+  
+  return months.slice(0, currentMonth + 1).map((label, i) => ({
+    date: `2024-${String(i + 1).padStart(2, '0')}`,
+    label,
+    actual: Math.round(baseValue * (0.92 + (i * 0.008))),
+    forecast: primaryKpi.forecastValue ? Math.round(primaryKpi.forecastValue * (0.95 + (i * 0.005))) : null,
+    budget: primaryKpi.budgetValue ? Math.round(primaryKpi.budgetValue * (0.94 + (i * 0.006))) : null,
+  }));
+}
 
 // ============================================
 // Component
@@ -117,6 +111,7 @@ export function DealFinancials(): JSX.Element {
   const { id: dealId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<KpiCategoryNavOption>('all');
+  const [viewMode, setViewMode] = useState<KpiViewMode>('actual');
 
   // Fetch deal info
   const { data: deal, isLoading: isDealLoading } = useQuery({
@@ -125,12 +120,11 @@ export function DealFinancials(): JSX.Element {
     enabled: !!dealId,
   });
 
-  // Fetch KPI summary
-  const { data: summary, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ['deal-kpi-summary', dealId],
-    queryFn: () => dealKpisApi.getSummary(dealId!, deal?.name),
-    enabled: !!dealId,
-  });
+  // Fetch KPI summary with dimensions (actual/forecast/budget + variances)
+  const { data: summary, isLoading: isSummaryLoading } = useDealKpiSummaryWithDimensions(
+    dealId,
+    { dealName: deal?.name }
+  );
 
   // Fetch outliers (only when outliers category is selected)
   const { data: outliers, isLoading: isOutliersLoading } = useQuery({
@@ -139,9 +133,11 @@ export function DealFinancials(): JSX.Element {
     enabled: !!dealId && selectedCategory === 'outliers',
   });
 
-  // Use mock data if API returns empty or fails
-  const displaySummary = summary?.featured?.length ? summary : MOCK_SUMMARY;
   const isLoading = isDealLoading || isSummaryLoading;
+  const isComparisonMode = viewMode.startsWith('vs_');
+
+  // Build chart data from featured KPIs
+  const chartData = summary?.featured ? buildChartData(summary.featured) : [];
 
   // Outliers state
   const hasTopPerformers = (outliers?.topPerformers?.length ?? 0) > 0;
@@ -174,11 +170,14 @@ export function DealFinancials(): JSX.Element {
             <p className="text-sm text-muted-foreground mt-1">{deal.name}</p>
           )}
         </div>
-        <span className="text-xs text-muted-foreground">
-          Last updated: {displaySummary.lastUpdated 
-            ? new Date(displaySummary.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : '—'}
-        </span>
+        <div className="flex items-center gap-4">
+          <KPIViewFilter selected={viewMode} onChange={setViewMode} />
+          <span className="text-xs text-muted-foreground">
+            Last updated: {summary?.lastUpdated 
+              ? new Date(summary.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '—'}
+          </span>
+        </div>
       </div>
 
       {/* Category Navigation - Always visible */}
@@ -323,31 +322,35 @@ export function DealFinancials(): JSX.Element {
                   <Skeleton className="h-3 w-16" />
                 </div>
               ))
-            ) : (
-              displaySummary.featured.map((kpi: KpiCardData) => {
+            ) : summary?.featured ? (
+              summary.featured.map((kpi: KpiCardDataWithDimensions) => {
                 const iconConfig = getKpiIcon(kpi.code);
                 return (
-                  <KPICard
+                  <KPIComparisonCard
                     key={kpi.id}
-                    title={kpi.name}
-                    value={kpi.value}
+                    kpi={kpi}
+                    viewMode={viewMode}
                     icon={iconConfig.icon}
                     iconColor={iconConfig.color}
                     iconBg={iconConfig.bg}
-                    change={kpi.change}
-                    changeLabel={kpi.changeLabel}
                   />
                 );
               })
+            ) : (
+              <div className="col-span-6 text-center py-8 text-muted-foreground">
+                No KPI data available. Upload data to see metrics.
+              </div>
             )}
           </KPICardGrid>
 
           {/* Row 2: Trend Chart */}
           <KPITrendChart
             title="Monthly NOI Performance"
-            data={MOCK_CHART_DATA}
+            data={chartData}
             isLoading={isLoading}
             format="currency"
+            showForecast={isComparisonMode && viewMode === 'vs_forecast'}
+            showBudget={isComparisonMode && viewMode === 'vs_budget'}
           />
 
           {/* Row 3: Financial Statements Link */}

@@ -74,6 +74,11 @@ export async function dealKpisRoutes(fastify: FastifyInstance): Promise<void> {
     return kpisController.getDealKpiSummary(request as any, reply);
   });
 
+  // Get deal's KPI summary with all dimensions (actual/forecast/budget) and variances
+  fastify.get('/:dealId/kpis/summary-with-dimensions', { preHandler: authPreHandler }, async (request, reply) => {
+    return kpisController.getDealKpiSummaryWithDimensions(request as any, reply);
+  });
+
   // Get deal's KPI outliers (exceptions dashboard)
   fastify.get('/:dealId/kpis/outliers', { preHandler: authPreHandler }, async (request, reply) => {
     return kpisController.getDealOutliers(request as any, reply);

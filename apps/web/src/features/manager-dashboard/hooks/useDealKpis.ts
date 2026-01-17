@@ -10,6 +10,8 @@ import type {
   KpiCategory,
   KpiDataType,
   DealKpiSummary,
+  DealKpiSummaryWithDimensions,
+  KpiViewMode,
 } from '@altsui/shared';
 
 export interface UseDealKpisOptions {
@@ -43,6 +45,31 @@ export function useDealKpiSummary(
   return useQuery<DealKpiSummary, Error>({
     queryKey: ['deal-kpi-summary', dealId, dealName, options?.startDate, options?.endDate],
     queryFn: () => dealKpisApi.getSummary(dealId!, dealName, options?.startDate, options?.endDate),
+    enabled: !!dealId && (options?.enabled !== false),
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Fetch deal's KPI summary with all dimensions (actual/forecast/budget) and variances.
+ * Used for comparison views in the dashboard.
+ */
+export function useDealKpiSummaryWithDimensions(
+  dealId: string | undefined,
+  options?: {
+    dealName?: string;
+    startDate?: string;
+    endDate?: string;
+    enabled?: boolean;
+  }
+) {
+  return useQuery<DealKpiSummaryWithDimensions, Error>({
+    queryKey: ['deal-kpi-summary-dimensions', dealId, options?.dealName, options?.startDate, options?.endDate],
+    queryFn: () => dealKpisApi.getSummaryWithDimensions(dealId!, {
+      dealName: options?.dealName,
+      startDate: options?.startDate,
+      endDate: options?.endDate,
+    }),
     enabled: !!dealId && (options?.enabled !== false),
     staleTime: 30_000,
   });

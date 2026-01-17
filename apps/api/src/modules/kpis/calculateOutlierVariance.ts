@@ -248,3 +248,60 @@ export function groupKpiDataByKpiAndType(
   return grouped;
 }
 
+// ============================================
+// KPI Variance Calculation (Pure)
+// ============================================
+
+import type { KpiVariance, KpiFormat } from '@altsui/shared';
+
+/**
+ * Calculate variance between actual and baseline values.
+ * For percentage KPIs, returns point difference instead of percent-of-percent.
+ * For inverse metrics (expenses), flips the status interpretation.
+ */
+export function calculateKpiVariance(
+  actualValue: number | null,
+  baselineValue: number | null,
+  format: KpiFormat,
+  isInverse: boolean
+): KpiVariance | null {
+  if (actualValue === null || baselineValue === null || baselineValue === 0) {
+    return null;
+  }
+
+  const amount = actualValue - baselineValue;
+  
+  // For percentage KPIs, don't calculate percent-of-percent
+  // Instead, return the point difference
+  const isPercentageKpi = format === 'percentage';
+  const percent = isPercentageKpi 
+    ? null 
+    : ((actualValue - baselineValue) / baselineValue) * 100;
+
+  // Determine status based on variance
+  const varianceForStatus = isPercentageKpi 
+    ? amount * 100 // Convert decimal difference to percentage points for status
+    : percent!;
+  
+  const status = determineVarianceStatus(varianceForStatus, isInverse);
+
+  return { amount, percent, status };
+}
+
+/**
+ * Determine variance status color based on percentage and direction.
+ * For inverse metrics (expenses), lower is better.
+ */
+export function determineVarianceStatus(
+  variancePercent: number,
+  isInverse: boolean
+): 'green' | 'yellow' | 'red' | 'neutral' {
+  // Flip interpretation for inverse metrics
+  const adjustedVariance = isInverse ? -variancePercent : variancePercent;
+
+  if (adjustedVariance >= 10) return 'green';     // Significantly above baseline
+  if (adjustedVariance >= 0) return 'neutral';    // At or slightly above
+  if (adjustedVariance >= -10) return 'yellow';   // Slightly below
+  return 'red';                                    // Significantly below
+}
+

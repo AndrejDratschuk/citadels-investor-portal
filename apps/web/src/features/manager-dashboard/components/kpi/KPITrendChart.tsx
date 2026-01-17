@@ -1,7 +1,7 @@
 /**
  * KPI Trend Chart Component
  * SVG area chart for displaying KPI trends over time
- * Based on DealsRow pattern from testing branch
+ * Supports actual, forecast, and budget lines for comparison views
  */
 
 import { useState } from 'react';
@@ -30,6 +30,13 @@ interface KPITrendChartProps {
   className?: string;
   onMoreClick?: () => void;
 }
+
+// Line colors
+const LINE_COLORS = {
+  actual: '#6366f1',    // Indigo
+  forecast: '#f59e0b',  // Amber
+  budget: '#10b981',    // Emerald
+};
 
 // ============================================
 // Helper Functions
@@ -90,11 +97,31 @@ export function KPITrendChart({
     index: i,
   }));
 
-  // Generate path strings
+  // Generate actual line path
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const areaPath = `${linePath} L ${points[points.length - 1]?.x || padding.left} ${
     padding.top + chartHeight
   } L ${padding.left} ${padding.top + chartHeight} Z`;
+
+  // Generate forecast line points and path
+  const forecastPoints = showForecast ? validData
+    .filter(d => d.forecast !== null && d.forecast !== undefined)
+    .map((d, i, arr) => ({
+      x: padding.left + (validData.indexOf(d) / Math.max(validData.length - 1, 1)) * chartWidth,
+      y: padding.top + chartHeight - ((d.forecast! - minValue) / range) * chartHeight,
+      value: d.forecast!,
+    })) : [];
+  const forecastPath = forecastPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+  // Generate budget line points and path
+  const budgetPoints = showBudget ? validData
+    .filter(d => d.budget !== null && d.budget !== undefined)
+    .map((d, i, arr) => ({
+      x: padding.left + (validData.indexOf(d) / Math.max(validData.length - 1, 1)) * chartWidth,
+      y: padding.top + chartHeight - ((d.budget! - minValue) / range) * chartHeight,
+      value: d.budget!,
+    })) : [];
+  const budgetPath = budgetPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
   const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
   const prevValue =
@@ -103,6 +130,8 @@ export function KPITrendChart({
     hoveredPoint && prevValue !== null
       ? (((hoveredPoint.actual! - prevValue) / prevValue) * 100).toFixed(1)
       : null;
+
+  const hasMultipleLines = showForecast || showBudget;
 
   if (isLoading) {
     return (
@@ -139,14 +168,37 @@ export function KPITrendChart({
           <TrendingUp className="h-5 w-5 text-muted-foreground" />
           <h2 className="font-semibold">{title}</h2>
         </div>
-        {onMoreClick && (
-          <button
-            onClick={onMoreClick}
-            className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-          >
-            <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {/* Legend when multiple lines shown */}
+          {hasMultipleLines && (
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 rounded" style={{ backgroundColor: LINE_COLORS.actual }} />
+                <span className="text-muted-foreground">Actual</span>
+              </div>
+              {showForecast && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded" style={{ backgroundColor: LINE_COLORS.forecast, borderStyle: 'dashed' }} />
+                  <span className="text-muted-foreground">Forecast</span>
+                </div>
+              )}
+              {showBudget && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-0.5 rounded" style={{ backgroundColor: LINE_COLORS.budget }} />
+                  <span className="text-muted-foreground">Budget</span>
+                </div>
+              )}
+            </div>
+          )}
+          {onMoreClick && (
+            <button
+              onClick={onMoreClick}
+              className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+            >
+              <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="relative">
@@ -187,19 +239,45 @@ export function KPITrendChart({
           {/* Area gradient */}
           <defs>
             <linearGradient id="kpiGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+              <stop offset="0%" stopColor={LINE_COLORS.actual} stopOpacity={hasMultipleLines ? 0.15 : 0.25} />
+              <stop offset="100%" stopColor={LINE_COLORS.actual} stopOpacity={0.02} />
             </linearGradient>
           </defs>
 
-          {/* Area fill */}
+          {/* Area fill (only for actual) */}
           <path d={areaPath} fill="url(#kpiGradient)" />
 
-          {/* Line */}
+          {/* Budget line (dashed) */}
+          {showBudget && budgetPath && (
+            <path
+              d={budgetPath}
+              fill="none"
+              stroke={LINE_COLORS.budget}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray="8 4"
+            />
+          )}
+
+          {/* Forecast line (dotted) */}
+          {showForecast && forecastPath && (
+            <path
+              d={forecastPath}
+              fill="none"
+              stroke={LINE_COLORS.forecast}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray="4 4"
+            />
+          )}
+
+          {/* Actual line (solid) */}
           <path
             d={linePath}
             fill="none"
-            stroke="#6366f1"
+            stroke={LINE_COLORS.actual}
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"

@@ -12,6 +12,7 @@ import {
   kpiPreferencesUpdateSchema,
   financialStatementWriteSchema,
   kpiDataQuerySchema,
+  kpiSummaryWithDimensionsQuerySchema,
   outlierConfigUpdateSchema,
   KPI_CATEGORIES,
   KPI_DATA_TYPES,
@@ -228,6 +229,46 @@ export class KpisController {
       reply.status(500).send({
         success: false,
         error: 'Failed to fetch KPI summary',
+      });
+    }
+  }
+
+  /**
+   * Get deal KPI summary with all dimensions (actual, forecast, budget)
+   * and variance calculations for comparison views.
+   */
+  async getDealKpiSummaryWithDimensions(
+    request: AuthenticatedRequest & { params: DealParams },
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const { dealId } = request.params;
+      const { fundId } = request.user;
+
+      const queryValidation = kpiSummaryWithDimensionsQuerySchema.safeParse(request.query);
+      const options = queryValidation.success ? queryValidation.data : {};
+
+      const dealName = options.dealName || 'Deal';
+
+      const summary = await kpisService.getDealKpiSummaryWithDimensions(
+        dealId,
+        fundId,
+        dealName,
+        {
+          startDate: options.startDate,
+          endDate: options.endDate,
+        }
+      );
+
+      reply.send({
+        success: true,
+        data: summary,
+      });
+    } catch (error) {
+      console.error('Error getting deal KPI summary with dimensions:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to fetch KPI summary with dimensions',
       });
     }
   }

@@ -14,6 +14,10 @@ import type {
   KpiCardData,
   KpiTimeSeries,
   DealKpiSummary,
+  DealKpiSummaryWithDimensions,
+  KpiCardDataWithDimensions,
+  KpiVariance,
+  KpiViewMode,
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
@@ -33,6 +37,10 @@ export type {
   KpiCardData,
   KpiTimeSeries,
   DealKpiSummary,
+  DealKpiSummaryWithDimensions,
+  KpiCardDataWithDimensions,
+  KpiVariance,
+  KpiViewMode,
   FinancialStatement,
   StatementType,
   KpiDefinitionWithPreference,
@@ -124,6 +132,21 @@ export const dealKpisApi = {
     const query = params.toString();
     // api.get already extracts .data from the ApiResponse
     return api.get<DealKpiSummary>(`/deals/${dealId}/kpis/summary${query ? `?${query}` : ''}`);
+  },
+
+  /** Get deal's KPI summary with all dimensions (actual/forecast/budget) and variances */
+  getSummaryWithDimensions: async (
+    dealId: string,
+    options?: { dealName?: string; startDate?: string; endDate?: string }
+  ): Promise<DealKpiSummaryWithDimensions> => {
+    const params = new URLSearchParams();
+    if (options?.dealName) params.append('dealName', options.dealName);
+    if (options?.startDate) params.append('startDate', options.startDate);
+    if (options?.endDate) params.append('endDate', options.endDate);
+    const query = params.toString();
+    return api.get<DealKpiSummaryWithDimensions>(
+      `/deals/${dealId}/kpis/summary-with-dimensions${query ? `?${query}` : ''}`
+    );
   },
 
   /** Get deal's KPIs by category */

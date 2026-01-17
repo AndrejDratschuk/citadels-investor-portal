@@ -23,16 +23,17 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { dealKpisApi, kpiDefinitionsApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
+import { useDealKpiSummaryWithDimensions } from '../hooks/useDealKpis';
 import {
-  KPICard,
   KPICardGrid,
   KPICategoryNav,
   KPITrendChart,
-  KPITimeFilter,
+  KPIViewFilter,
+  KPIComparisonCard,
   getCategoryConfig,
 } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
-import type { KpiCategory, KpiDataType } from '@altsui/shared';
+import type { KpiCategory, KpiViewMode, KpiCardDataWithDimensions } from '@altsui/shared';
 import { formatCurrency, formatPercentage, calculateChangePercent } from '@altsui/shared';
 
 // ============================================
@@ -92,82 +93,6 @@ function getKpiIcon(code: string) {
   return KPI_ICONS[code] || DEFAULT_ICON;
 }
 
-// ============================================
-// Format Value Helper
-// ============================================
-function formatKpiValue(value: number | null, format: string): string {
-  if (value === null) return '—';
-
-  switch (format) {
-    case 'currency':
-      return formatCurrency(value);
-    case 'percentage':
-      return formatPercentage(value);
-    case 'ratio':
-      return `${value.toFixed(2)}x`;
-    case 'number':
-    default:
-      return value.toLocaleString();
-  }
-}
-
-// ============================================
-// Mock Data for Demo
-// ============================================
-const MOCK_CATEGORY_DATA: Record<KpiCategory, Array<{
-  code: string;
-  name: string;
-  value: number;
-  previousValue: number;
-  format: 'currency' | 'percentage' | 'number' | 'ratio';
-}>> = {
-  rent_revenue: [
-    { code: 'gpr', name: 'Gross Potential Rent', value: 125000, previousValue: 113636, format: 'currency' },
-    { code: 'egi', name: 'Effective Gross Income', value: 118000, previousValue: 109259, format: 'currency' },
-    { code: 'total_revenue', name: 'Total Revenue', value: 142000, previousValue: 126785, format: 'currency' },
-    { code: 'revenue_per_unit', name: 'Revenue Per Unit', value: 1183, previousValue: 1126, format: 'currency' },
-    { code: 'revenue_per_sqft', name: 'Revenue Per Sq Ft', value: 1.25, previousValue: 1.19, format: 'currency' },
-    { code: 'rent_growth', name: 'Rent Growth', value: 0.032, previousValue: 0.028, format: 'percentage' },
-    { code: 'loss_to_lease', name: 'Loss to Lease', value: 4200, previousValue: 4800, format: 'currency' },
-    { code: 'concessions', name: 'Concessions', value: 2100, previousValue: 2500, format: 'currency' },
-  ],
-  occupancy: [
-    { code: 'physical_occupancy', name: 'Physical Occupancy Rate', value: 0.94, previousValue: 0.96, format: 'percentage' },
-    { code: 'economic_occupancy', name: 'Economic Occupancy Rate', value: 0.92, previousValue: 0.93, format: 'percentage' },
-    { code: 'vacancy_rate', name: 'Vacancy Rate', value: 0.06, previousValue: 0.04, format: 'percentage' },
-    { code: 'lease_renewal_rate', name: 'Lease Renewal Rate', value: 0.72, previousValue: 0.68, format: 'percentage' },
-    { code: 'avg_days_vacant', name: 'Average Days Vacant', value: 18, previousValue: 21, format: 'number' },
-    { code: 'move_ins', name: 'Move-Ins', value: 8, previousValue: 6, format: 'number' },
-    { code: 'move_outs', name: 'Move-Outs', value: 5, previousValue: 7, format: 'number' },
-  ],
-  property_performance: [
-    { code: 'noi', name: 'Net Operating Income', value: 985000, previousValue: 879464, format: 'currency' },
-    { code: 'noi_margin', name: 'NOI Margin', value: 0.693, previousValue: 0.68, format: 'percentage' },
-    { code: 'operating_expense_ratio', name: 'Operating Expense Ratio', value: 0.307, previousValue: 0.32, format: 'percentage' },
-    { code: 'cap_rate', name: 'Cap Rate', value: 0.0693, previousValue: 0.066, format: 'percentage' },
-    { code: 'cash_on_cash', name: 'Cash on Cash Return', value: 0.092, previousValue: 0.085, format: 'percentage' },
-    { code: 'total_expenses', name: 'Total Operating Expenses', value: 437000, previousValue: 421153, format: 'currency' },
-    { code: 'expense_per_unit', name: 'Expense Per Unit', value: 3641, previousValue: 3509, format: 'currency' },
-  ],
-  financial: [
-    { code: 'ebitda', name: 'EBITDA', value: 1050000, previousValue: 970588, format: 'currency' },
-    { code: 'free_cash_flow', name: 'Free Cash Flow', value: 620000, previousValue: 564545, format: 'currency' },
-    { code: 'roi', name: 'Return on Investment', value: 0.145, previousValue: 0.132, format: 'percentage' },
-    { code: 'irr', name: 'Internal Rate of Return', value: 0.182, previousValue: 0.168, format: 'percentage' },
-    { code: 'equity_multiple', name: 'Equity Multiple', value: 1.45, previousValue: 1.38, format: 'ratio' },
-    { code: 'property_value', name: 'Current Property Value', value: 14200000, previousValue: 13333333, format: 'currency' },
-    { code: 'appreciation', name: 'Appreciation', value: 0.065, previousValue: 0.052, format: 'percentage' },
-  ],
-  debt_service: [
-    { code: 'dscr', name: 'Debt Service Coverage Ratio', value: 1.45, previousValue: 1.34, format: 'ratio' },
-    { code: 'ltv', name: 'Loan-to-Value', value: 0.62, previousValue: 0.65, format: 'percentage' },
-    { code: 'interest_coverage', name: 'Interest Coverage Ratio', value: 2.1, previousValue: 1.95, format: 'ratio' },
-    { code: 'principal_balance', name: 'Principal Balance', value: 8804000, previousValue: 8900000, format: 'currency' },
-    { code: 'monthly_debt_service', name: 'Monthly Debt Service', value: 56000, previousValue: 56000, format: 'currency' },
-    { code: 'annual_debt_service', name: 'Annual Debt Service', value: 672000, previousValue: 672000, format: 'currency' },
-    { code: 'interest_rate', name: 'Interest Rate', value: 0.0575, previousValue: 0.0575, format: 'percentage' },
-  ],
-};
 
 // ============================================
 // Component
@@ -175,8 +100,7 @@ const MOCK_CATEGORY_DATA: Record<KpiCategory, Array<{
 export function DealKPICategory(): JSX.Element {
   const { id: dealId, category } = useParams<{ id: string; category: string }>();
   const navigate = useNavigate();
-  const [dataType, setDataType] = useState<KpiDataType>('actual');
-  const [showComparison, setShowComparison] = useState(false);
+  const [viewMode, setViewMode] = useState<KpiViewMode>('actual');
 
   const categoryConfig = getCategoryConfig(category as KpiCategory);
 
@@ -187,42 +111,17 @@ export function DealKPICategory(): JSX.Element {
     enabled: !!dealId,
   });
 
-  // Fetch KPI definitions for this category
-  const { isLoading: isDefsLoading } = useQuery({
-    queryKey: ['kpi-definitions', category],
-    queryFn: () => kpiDefinitionsApi.getByCategory(category as KpiCategory),
-    enabled: !!category,
-  });
+  // Fetch KPI summary with dimensions
+  const { data: summary, isLoading: isSummaryLoading } = useDealKpiSummaryWithDimensions(
+    dealId,
+    { dealName: deal?.name }
+  );
 
-  // Fetch KPI data for this category
-  const { isLoading: isDataLoading } = useQuery({
-    queryKey: ['deal-kpis', dealId, category, dataType],
-    queryFn: () => dealKpisApi.getByCategory(dealId!, category as KpiCategory, { dataType }),
-    enabled: !!dealId && !!category,
-  });
+  const isLoading = isDealLoading || isSummaryLoading;
+  const isComparisonMode = viewMode.startsWith('vs_');
 
-  const isLoading = isDealLoading || isDefsLoading || isDataLoading;
-
-  // Get mock data for this category
-  const mockData = MOCK_CATEGORY_DATA[category as KpiCategory] || [];
-
-  // Build KPI cards from mock data
-  const kpiCards = mockData.map((item) => {
-    const iconConfig = getKpiIcon(item.code);
-    const change = calculateChangePercent(item.value, item.previousValue);
-
-    return {
-      code: item.code,
-      name: item.name,
-      value: formatKpiValue(item.value, item.format),
-      rawValue: item.value,
-      change,
-      icon: iconConfig.icon,
-      iconColor: iconConfig.color,
-      iconBg: iconConfig.bg,
-      format: item.format,
-    };
-  });
+  // Get KPIs for this category
+  const categoryKpis = summary?.byCategory[category as KpiCategory] || [];
 
   // Handle category navigation
   const handleCategoryChange = (newCategory: KpiCategoryNavOption): void => {
@@ -233,6 +132,17 @@ export function DealKPICategory(): JSX.Element {
       navigate(`/manager/deals/${dealId}/financials/category/${newCategory}`);
     }
   };
+
+  // Build chart data for the primary KPI
+  const primaryKpi = categoryKpis[0];
+  const chartData = primaryKpi ? [
+    { date: '2024-01', label: 'Jan', actual: (primaryKpi.actualValue || 100) * 0.92, forecast: primaryKpi.forecastValue ? primaryKpi.forecastValue * 0.95 : null, budget: primaryKpi.budgetValue ? primaryKpi.budgetValue * 0.94 : null },
+    { date: '2024-02', label: 'Feb', actual: (primaryKpi.actualValue || 100) * 0.94, forecast: primaryKpi.forecastValue ? primaryKpi.forecastValue * 0.96 : null, budget: primaryKpi.budgetValue ? primaryKpi.budgetValue * 0.95 : null },
+    { date: '2024-03', label: 'Mar', actual: (primaryKpi.actualValue || 100) * 0.95, forecast: primaryKpi.forecastValue ? primaryKpi.forecastValue * 0.97 : null, budget: primaryKpi.budgetValue ? primaryKpi.budgetValue * 0.96 : null },
+    { date: '2024-04', label: 'Apr', actual: (primaryKpi.actualValue || 100) * 0.96, forecast: primaryKpi.forecastValue ? primaryKpi.forecastValue * 0.98 : null, budget: primaryKpi.budgetValue ? primaryKpi.budgetValue * 0.97 : null },
+    { date: '2024-05', label: 'May', actual: (primaryKpi.actualValue || 100) * 0.97, forecast: primaryKpi.forecastValue ? primaryKpi.forecastValue * 0.99 : null, budget: primaryKpi.budgetValue ? primaryKpi.budgetValue * 0.98 : null },
+    { date: '2024-06', label: 'Jun', actual: (primaryKpi.actualValue || 100) * 0.98, forecast: primaryKpi.forecastValue || null, budget: primaryKpi.budgetValue || null },
+  ] : [];
 
   return (
     <div className="space-y-6">
@@ -251,16 +161,7 @@ export function DealKPICategory(): JSX.Element {
             <p className="text-sm text-muted-foreground mt-1">{deal.name}</p>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <KPITimeFilter selected={dataType} onChange={setDataType} />
-          <Button
-            variant={showComparison ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowComparison(!showComparison)}
-          >
-            Compare
-          </Button>
-        </div>
+        <KPIViewFilter selected={viewMode} onChange={setViewMode} />
       </div>
 
       {/* Category Navigation */}
@@ -282,59 +183,58 @@ export function DealKPICategory(): JSX.Element {
                 <Skeleton className="h-3 w-16" />
               </div>
             ))
+          ) : categoryKpis.length > 0 ? (
+            categoryKpis.slice(0, 4).map((kpi: KpiCardDataWithDimensions) => {
+              const iconConfig = getKpiIcon(kpi.code);
+              return (
+                <KPIComparisonCard
+                  key={kpi.id}
+                  kpi={kpi}
+                  viewMode={viewMode}
+                  icon={iconConfig.icon}
+                  iconColor={iconConfig.color}
+                  iconBg={iconConfig.bg}
+                />
+              );
+            })
           ) : (
-            kpiCards.slice(0, 4).map((kpi) => (
-              <KPICard
-                key={kpi.code}
-                title={kpi.name}
-                value={kpi.value}
-                icon={kpi.icon}
-                iconColor={kpi.iconColor}
-                iconBg={kpi.iconBg}
-                change={kpi.change}
-                changeLabel={showComparison ? 'vs Budget' : 'vs Last Period'}
-              />
-            ))
+            <div className="col-span-4 text-center py-8 text-muted-foreground">
+              No KPI data available for this category.
+            </div>
           )}
         </KPICardGrid>
       </div>
 
       {/* Trend Chart */}
-      <KPITrendChart
-        title={`${categoryConfig.name} Performance (${mockData[0]?.name || 'Primary KPI'})`}
-        data={[
-          { date: '2024-01', label: 'Jan', actual: mockData[0]?.value ? mockData[0].value * 0.92 : 100, forecast: null },
-          { date: '2024-02', label: 'Feb', actual: mockData[0]?.value ? mockData[0].value * 0.94 : 102, forecast: null },
-          { date: '2024-03', label: 'Mar', actual: mockData[0]?.value ? mockData[0].value * 0.95 : 104, forecast: null },
-          { date: '2024-04', label: 'Apr', actual: mockData[0]?.value ? mockData[0].value * 0.96 : 103, forecast: null },
-          { date: '2024-05', label: 'May', actual: mockData[0]?.value ? mockData[0].value * 0.97 : 105, forecast: null },
-          { date: '2024-06', label: 'Jun', actual: mockData[0]?.value ? mockData[0].value * 0.96 : 104, forecast: null },
-          { date: '2024-07', label: 'Jul', actual: mockData[0]?.value ? mockData[0].value * 0.98 : 107, forecast: null },
-          { date: '2024-08', label: 'Aug', actual: mockData[0]?.value ? mockData[0].value * 0.99 : 109, forecast: null },
-          { date: '2024-09', label: 'Sep', actual: mockData[0]?.value ? mockData[0].value * 0.995 : 110, forecast: null },
-          { date: '2024-10', label: 'Oct', actual: mockData[0]?.value || 112, forecast: null },
-        ]}
-        format={mockData[0]?.format === 'percentage' ? 'percentage' : 'currency'}
-        isLoading={isLoading}
-      />
+      {primaryKpi && (
+        <KPITrendChart
+          title={`${categoryConfig.name} Performance (${primaryKpi.name})`}
+          data={chartData}
+          format={primaryKpi.format === 'percentage' ? 'percentage' : 'currency'}
+          isLoading={isLoading}
+          showForecast={isComparisonMode && viewMode === 'vs_forecast'}
+          showBudget={isComparisonMode && viewMode === 'vs_budget'}
+        />
+      )}
 
       {/* Secondary KPIs (remaining) */}
-      {kpiCards.length > 4 && (
+      {categoryKpis.length > 4 && (
         <div>
           <h2 className="font-semibold mb-4">Additional Metrics</h2>
           <KPICardGrid columns={4}>
-            {kpiCards.slice(4).map((kpi) => (
-              <KPICard
-                key={kpi.code}
-                title={kpi.name}
-                value={kpi.value}
-                icon={kpi.icon}
-                iconColor={kpi.iconColor}
-                iconBg={kpi.iconBg}
-                change={kpi.change}
-                changeLabel={showComparison ? 'vs Budget' : 'vs Last Period'}
-              />
-            ))}
+            {categoryKpis.slice(4).map((kpi: KpiCardDataWithDimensions) => {
+              const iconConfig = getKpiIcon(kpi.code);
+              return (
+                <KPIComparisonCard
+                  key={kpi.id}
+                  kpi={kpi}
+                  viewMode={viewMode}
+                  icon={iconConfig.icon}
+                  iconColor={iconConfig.color}
+                  iconBg={iconConfig.bg}
+                />
+              );
+            })}
           </KPICardGrid>
         </div>
       )}

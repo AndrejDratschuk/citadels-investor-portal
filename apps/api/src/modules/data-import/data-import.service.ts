@@ -8,8 +8,7 @@ import { dataImportRepository } from './data-import.repository';
 import { kpisRepository } from '../kpis/kpis.repository';
 import { 
   SAMPLE_DATA_CONFIG, 
-  getSampleDataRows, 
-  SAMPLE_DATA_MAPPINGS,
+  SAMPLE_DATA_BY_DIMENSION,
 } from './sample-data';
 import { parseDateValue, parseNumericValue } from '@altsui/shared';
 import type {
@@ -376,6 +375,7 @@ export class DataImportService {
 
   /**
    * Import sample data for exploration
+   * Imports all three dimensions: Actual, Forecast, and Budget
    */
   async importSampleData(
     input: {
@@ -385,32 +385,68 @@ export class DataImportService {
     },
     deps: ServiceDeps
   ): Promise<ImportResult> {
-    const sampleData = getSampleDataRows();
-    
-    // Get KPI definitions for ID lookup
     const definitions = await kpisRepository.getAllDefinitions();
+    if (definitions.length === 0) {
+      return {
+        success: false,
+        rowsImported: 0,
+        rowsSkipped: 0,
+        columnsMapped: 0,
+        errors: [{ row: null, column: null, message: 'No KPI definitions found. Please configure KPIs first.', severity: 'error' }],
+        connectionId: null,
+        importedAt: null,
+      };
+    }
+
     const codeToId = new Map(definitions.map(d => [d.code, d.id]));
 
-    // Build mappings with real KPI IDs
-    const mappingsWithIds = SAMPLE_DATA_MAPPINGS.map(m => ({
-      columnName: m.columnName,
-      kpiCode: m.kpiCode,
-      kpiId: codeToId.get(m.kpiCode) || '',
-      dataType: m.dataType,
-      include: true,
-    })).filter(m => m.kpiId);
+    const dimensions = ['actual', 'forecast', 'budget'] as const;
+    let totalRowsImported = 0;
+    let totalRowsSkipped = 0;
+    let totalColumnsMapped = 0;
+    const allErrors: ImportResult['errors'][number][] = [];
+    let lastConnectionId: string | null = null;
 
-    return this.createConnectionAndImport(
-      {
-        fundId: input.fundId,
-        dealId: input.dealId,
-        connectionName: 'Sample Data - Oakwood Apartments',
-        mappings: mappingsWithIds,
-        data: sampleData,
-        userId: input.userId,
-      },
-      deps
-    );
+    for (const dimension of dimensions) {
+      const { rows, mappings } = SAMPLE_DATA_BY_DIMENSION[dimension];
+      const sampleData = rows();
+
+      const mappingsWithIds = mappings.map(m => ({
+        columnName: m.columnName,
+        kpiCode: m.kpiCode,
+        kpiId: codeToId.get(m.kpiCode) || '',
+        dataType: m.dataType,
+        include: true,
+      })).filter(m => m.kpiId);
+
+      const result = await this.createConnectionAndImport(
+        {
+          fundId: input.fundId,
+          dealId: input.dealId,
+          connectionName: `Sample Data - Oakwood Apartments (${dimension.charAt(0).toUpperCase() + dimension.slice(1)})`,
+          mappings: mappingsWithIds,
+          data: sampleData,
+          userId: input.userId,
+        },
+        deps
+      );
+
+      totalRowsImported += result.rowsImported;
+      totalRowsSkipped += result.rowsSkipped;
+      totalColumnsMapped += result.columnsMapped;
+      allErrors.push(...result.errors);
+      lastConnectionId = result.connectionId;
+    }
+
+    return {
+      success: allErrors.filter(e => e.severity === 'error').length === 0,
+      rowsImported: totalRowsImported,
+      rowsSkipped: totalRowsSkipped,
+      columnsMapped: totalColumnsMapped,
+      errors: allErrors,
+      connectionId: lastConnectionId,
+      importedAt: deps.now.toISOString(),
+    };
   }
 
   /**

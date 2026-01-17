@@ -323,6 +323,47 @@ export interface OutlierConfigUpdateRequest {
   }[];
 }
 
+// ============================================
+// Comparison View Types
+// ============================================
+
+/** View mode for KPI dashboard */
+export type KpiViewMode = 
+  | 'actual' 
+  | 'forecast' 
+  | 'budget' 
+  | 'vs_forecast' 
+  | 'vs_budget' 
+  | 'vs_last_period';
+
+/** Variance calculation result */
+export interface KpiVariance {
+  amount: number;
+  percent: number | null; // null for percentage KPIs (show point diff instead)
+  status: 'green' | 'yellow' | 'red' | 'neutral';
+}
+
+/** Extended KPI card data with all three dimension values */
+export interface KpiCardDataWithDimensions extends KpiCardData {
+  actualValue: number | null;
+  forecastValue: number | null;
+  budgetValue: number | null;
+  previousPeriodValue: number | null;
+  vsForecast: KpiVariance | null;
+  vsBudget: KpiVariance | null;
+  vsLastPeriod: KpiVariance | null;
+  isInverseMetric: boolean;
+}
+
+/** Summary response with all dimension data for comparison views */
+export interface DealKpiSummaryWithDimensions {
+  dealId: string;
+  dealName: string;
+  featured: KpiCardDataWithDimensions[];
+  byCategory: Record<KpiCategory, KpiCardDataWithDimensions[]>;
+  lastUpdated: string | null;
+}
+
 /** Default inverse metrics (lower is better) */
 export const DEFAULT_INVERSE_METRIC_CODES = [
   'operating_expense_ratio',

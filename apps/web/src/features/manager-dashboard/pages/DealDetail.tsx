@@ -322,7 +322,6 @@ export function DealDetail() {
   const [showInvestorsModal, setShowInvestorsModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<KpiCategoryNavOption>('all');
   const [dataType, setDataType] = useState<KpiDataType>('actual');
-  const [showComparison, setShowComparison] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodPreset>('30d');
   const [dateRange, setDateRange] = useState<DateRange>(() => 
     getDateRangeFromPreset('30d', new Date())
@@ -366,7 +365,35 @@ export function DealDetail() {
   // Use real data if available, otherwise fall back to mock for demo
   const displayKpiSummary = hasRealKpiData ? kpiSummary! : MOCK_KPI_SUMMARY;
 
-  // Get KPIs based on selected category
+  // Helper to get the correct display value based on selected data type
+  const getDisplayValue = (kpi: KpiCardDataWithDimensions): string => {
+    let rawValue: number | null;
+    switch (dataType) {
+      case 'forecast':
+        rawValue = kpi.forecastValue;
+        break;
+      case 'budget':
+        rawValue = kpi.budgetValue;
+        break;
+      default:
+        rawValue = kpi.actualValue;
+    }
+    if (rawValue === null) return '—';
+    
+    // Format based on KPI format type
+    switch (kpi.format) {
+      case 'currency':
+        return formatCurrency(rawValue);
+      case 'percentage':
+        return formatPercentage(rawValue);
+      case 'ratio':
+        return `${rawValue.toFixed(2)}x`;
+      default:
+        return rawValue.toLocaleString();
+    }
+  };
+
+  // Get KPIs based on selected category with display values computed based on dataType
   // When "all" or "outliers" is selected, return empty array (featured KPIs or outliers view used instead)
   // When a specific category is selected, get from API response's byCategory
   const categoryKpis = (selectedCategory === 'all' || selectedCategory === 'outliers')
@@ -374,12 +401,24 @@ export function DealDetail() {
     : (hasRealKpiData && kpiSummary?.byCategory[selectedCategory]?.length
         ? kpiSummary.byCategory[selectedCategory].map((kpi) => {
             const iconConfig = getKpiIcon(kpi.code);
+            // Get the appropriate raw value based on dataType
+            let rawValue: number | null;
+            switch (dataType) {
+              case 'forecast':
+                rawValue = kpi.forecastValue;
+                break;
+              case 'budget':
+                rawValue = kpi.budgetValue;
+                break;
+              default:
+                rawValue = kpi.actualValue;
+            }
             return {
               code: kpi.code,
               name: kpi.name,
-              value: kpi.value,
-              rawValue: kpi.rawValue,
-              change: kpi.change,
+              value: getDisplayValue(kpi), // Use dimension-aware display value
+              rawValue: rawValue,
+              change: dataType === 'actual' ? kpi.change : null, // Only show change for actual
               icon: iconConfig.icon,
               iconColor: iconConfig.color,
               iconBg: iconConfig.bg,
@@ -420,34 +459,6 @@ export function DealDetail() {
       { date: '2024-09', label: 'Sep', actual: primaryKpi.value * 0.995, forecast: null, budget: null },
       { date: '2024-10', label: 'Oct', actual: primaryKpi.value, forecast: null, budget: null },
     ];
-  };
-
-  // Helper to get the correct display value based on selected data type
-  const getDisplayValue = (kpi: KpiCardDataWithDimensions): string => {
-    let rawValue: number | null;
-    switch (dataType) {
-      case 'forecast':
-        rawValue = kpi.forecastValue;
-        break;
-      case 'budget':
-        rawValue = kpi.budgetValue;
-        break;
-      default:
-        rawValue = kpi.actualValue;
-    }
-    if (rawValue === null) return '—';
-    
-    // Format based on KPI format type
-    switch (kpi.format) {
-      case 'currency':
-        return formatCurrency(rawValue);
-      case 'percentage':
-        return formatPercentage(rawValue);
-      case 'ratio':
-        return `${rawValue.toFixed(2)}x`;
-      default:
-        return rawValue.toLocaleString();
-    }
   };
 
   // Get chart title and format based on category
@@ -898,16 +909,7 @@ export function DealDetail() {
               <h2 className="text-lg font-semibold">
                 {selectedCategory === 'all' ? 'All KPIs' : `${getCategoryConfig(selectedCategory).name} KPIs`}
               </h2>
-              <div className="flex items-center gap-3">
-                <KPITimeFilter selected={dataType} onChange={setDataType} />
-                <Button
-                  variant={showComparison ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowComparison(!showComparison)}
-                >
-                  Compare
-                </Button>
-              </div>
+              <KPITimeFilter selected={dataType} onChange={setDataType} />
             </div>
           )}
 
@@ -1105,7 +1107,7 @@ export function DealDetail() {
                         iconColor={kpi.iconColor}
                         iconBg={kpi.iconBg}
                         change={kpi.change}
-                        changeLabel={showComparison ? 'vs Budget' : 'vs Last Period'}
+                        changeLabel={dataType === 'actual' ? 'vs Last Period' : ''}
                       />
                     ))
                   )}
@@ -1134,7 +1136,7 @@ export function DealDetail() {
                     iconColor={kpi.iconColor}
                     iconBg={kpi.iconBg}
                     change={kpi.change}
-                        changeLabel={showComparison ? 'vs Budget' : 'vs Last Period'}
+                    changeLabel={dataType === 'actual' ? 'vs Last Period' : ''}
                   />
                 ))}
               </KPICardGrid>

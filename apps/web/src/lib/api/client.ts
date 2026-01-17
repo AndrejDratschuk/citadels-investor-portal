@@ -58,7 +58,7 @@ export const api = {
   post: <T>(endpoint: string, body?: unknown) =>
     apiRequest<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
   put: <T>(endpoint: string, body?: unknown) =>
     apiRequest<T>(endpoint, {

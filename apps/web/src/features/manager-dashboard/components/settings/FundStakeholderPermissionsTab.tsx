@@ -76,14 +76,16 @@ export function FundStakeholderPermissionsTab(): JSX.Element {
   // Initialize roles for fund
   const initializeRoles = async (): Promise<void> => {
     setSaving(true);
+    setError(null);
     try {
-      const data = await api.post<StakeholderRole[]>('/stakeholders/initialize');
+      const data = await api.post<StakeholderRole[]>('/stakeholders/initialize', {});
       setRoles(data);
       if (data.length > 0) {
         setSelectedRoleId(data[0].id);
       }
-    } catch {
-      setError('Failed to initialize roles');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to initialize roles';
+      setError(message);
     } finally {
       setSaving(false);
     }

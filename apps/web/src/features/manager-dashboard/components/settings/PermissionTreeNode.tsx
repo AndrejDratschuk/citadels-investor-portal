@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { ChevronRight, ChevronDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PermissionNode, PermissionType, PermissionTreeState, CheckState } from '@altsui/shared';

@@ -29,7 +29,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatPercentage, calculateChangePercent } from '@altsui/shared';
-import type { KpiCategory, KpiCardData, DealKpiSummary, KpiDataType } from '@altsui/shared';
+import type { KpiCategory, KpiCardDataWithDimensions, DealKpiSummaryWithDimensions, KpiViewMode } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 import { DealInvestorsModal } from '../components/DealInvestorsModal';
 import { dealsApi, Deal, DealKPIs, DealInvestor } from '@/lib/api/deals';
 import { outliersApi } from '@/lib/api/kpis';
-import { useDealKpiSummary } from '../hooks/useDealKpis';
+import { useDealKpiSummaryWithDimensions } from '../hooks/useDealKpis';
 import {
   KPICard,
   KPICardGrid,
@@ -335,10 +335,12 @@ export function DealDetail() {
   };
 
   // Fetch KPI summary for financials tab - using hook for proper caching
-  const { data: kpiSummary, isLoading: isKpiLoading } = useDealKpiSummary(
+  const { data: kpiSummary, isLoading: isKpiLoading } = useDealKpiSummaryWithDimensions(
     id,
-    deal?.name,
-    { enabled: activeTab === 'financials' }
+    { 
+      dealName: deal?.name,
+      enabled: activeTab === 'financials' 
+    }
   );
 
   // Fetch outliers data (only when outliers category is selected)
@@ -1023,7 +1025,7 @@ export function DealDetail() {
                     </div>
                   ))
                 ) : (
-                  displayKpiSummary.featured.map((kpi: KpiCardData) => {
+                  displayKpiSummary.featured.map((kpi: KpiCardDataWithDimensions) => {
                     const iconConfig = getKpiIcon(kpi.code);
                     return (
                       <KPICard

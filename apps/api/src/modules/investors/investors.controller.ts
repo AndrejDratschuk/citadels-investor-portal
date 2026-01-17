@@ -1,11 +1,11 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { InvestorsService } from './investors.service';
-import { stakeholderPermissionsService } from '../stakeholders/stakeholderPermissions.service';
+import { stakeholderRolesService } from '../stakeholders';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { createInvestorSchema } from './dtos/createInvestor.dto';
 import { updateInvestorSchema } from './dtos/updateInvestor.dto';
-import { updateStakeholderPermissionSchema, stakeholderTypeSchema } from '@altsui/shared';
+import { stakeholderTypeSchema } from '@altsui/shared';
 import type { StakeholderType } from '@altsui/shared';
 
 const investorsService = new InvestorsService();
@@ -442,7 +442,7 @@ export class InvestorsController {
 
     try {
       const investor = await investorsService.getInvestorByUserId(request.user.id);
-      const permissions = await stakeholderPermissionsService.getPermissionsForInvestor(investor.id);
+      const permissions = await stakeholderRolesService.getPermissionsForInvestor(investor.id);
 
       return reply.send({
         success: true,
@@ -479,7 +479,7 @@ export class InvestorsController {
     }
 
     try {
-      const permissions = await stakeholderPermissionsService.getAllPermissionsForFund(manager.fund_id);
+      const permissions = await stakeholderRolesService.getAllRolesForFund(manager.fund_id);
 
       return reply.send({
         success: true,
@@ -527,26 +527,11 @@ export class InvestorsController {
       return reply.status(404).send({ success: false, error: 'Fund not found' });
     }
 
-    try {
-      const updates = updateStakeholderPermissionSchema.parse(request.body);
-      const permission = await stakeholderPermissionsService.updatePermissions(
-        manager.fund_id,
-        stakeholderType,
-        updates
-      );
-
-      return reply.send({
-        success: true,
-        data: permission,
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to update permissions';
-      console.error('[updateTypePermissions] Error:', message);
-      return reply.status(400).send({
-        success: false,
-        error: message,
-      });
-    }
+    // This endpoint is deprecated - use /api/stakeholders/roles/:roleId/permissions instead
+    return reply.status(410).send({
+      success: false,
+      error: 'This endpoint is deprecated. Use /api/stakeholders/roles/:roleId/permissions instead.',
+    });
   }
 
   /**
@@ -570,7 +555,7 @@ export class InvestorsController {
     }
 
     try {
-      const permissions = await stakeholderPermissionsService.seedDefaultPermissions(manager.fund_id);
+      const permissions = await stakeholderRolesService.initializeRolesForFund(manager.fund_id);
 
       return reply.send({
         success: true,

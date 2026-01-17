@@ -38,6 +38,7 @@ export * from './types/stakeholderPermission.types';
 export * from './constants/roles';
 export * from './constants/status';
 export * from './constants/stakeholderType.constants';
+export * from './constants/permissionTree.constants';
 
 // Utils
 export * from './utils/formatters';

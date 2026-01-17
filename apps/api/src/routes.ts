@@ -20,9 +20,9 @@ import { teamInvitesRoutes } from './modules/team-invites/teamInvites.routes';
 import { reportsRoutes } from './modules/reports/reports.routes';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { notesRoutes, milestonesRoutes } from './modules/deal-notes';
-import { stakeholderPermissionsRoutes } from './modules/stakeholders';
+import { stakeholderRolesRoutes } from './modules/stakeholders';
 
-export async function registerRoutes(fastify: FastifyInstance) {
+export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   // Register all module routes
   await fastify.register(authRoutes, { prefix: '/auth' });
   await fastify.register(investorsRoutes, { prefix: '/investors' });
@@ -47,11 +47,10 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(dashboardRoutes, { prefix: '/dashboard' });
   await fastify.register(notesRoutes); // Routes have full paths: /deals/:dealId/notes
   await fastify.register(milestonesRoutes); // Routes have full paths: /deals/:dealId/milestones
-  await fastify.register(stakeholderPermissionsRoutes, { prefix: '/stakeholders' });
+  await fastify.register(stakeholderRolesRoutes, { prefix: '/stakeholders' });
 
   // Health check
   fastify.get('/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
 }
-

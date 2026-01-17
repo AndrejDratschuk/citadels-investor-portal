@@ -1,11 +1,9 @@
 /**
  * Stakeholders Module
- * Exports for stakeholder permission management
+ * Exports for stakeholder role and permission management
  */
 
-export { stakeholderPermissionsRoutes } from './stakeholderPermissions.routes';
-export { stakeholderPermissionsService } from './stakeholderPermissions.service';
-export { stakeholderPermissionsRepository } from './stakeholderPermissions.repository';
-export { getDefaultStakeholderPermissions, getAllDefaultPermissions } from './getDefaultStakeholderPermissions';
-export { formatPermissionRow, formatPermissionRows } from './formatPermissionRow';
-
+export { stakeholderRolesRoutes } from './stakeholderRoles.routes';
+export { stakeholderRolesService } from './stakeholderRoles.service';
+export { stakeholderRolesRepository } from './stakeholderRoles.repository';
+export { getDefaultPermissionsForType } from './defaultPermissionPresets';

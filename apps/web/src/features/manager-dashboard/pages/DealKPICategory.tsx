@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { dealKpisApi, kpiDefinitionsApi } from '@/lib/api/kpis';
+import { kpiDefinitionsApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import { useDealKpiSummaryWithDimensions } from '../hooks/useDealKpis';
 import {
@@ -34,7 +34,6 @@ import {
 } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
 import type { KpiCategory, KpiViewMode, KpiCardDataWithDimensions } from '@altsui/shared';
-import { formatCurrency, formatPercentage, calculateChangePercent } from '@altsui/shared';
 
 // ============================================
 // Icon Mapping for KPIs

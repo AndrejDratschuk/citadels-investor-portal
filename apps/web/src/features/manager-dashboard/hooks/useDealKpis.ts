@@ -11,7 +11,6 @@ import type {
   KpiDataType,
   DealKpiSummary,
   DealKpiSummaryWithDimensions,
-  KpiViewMode,
 } from '@altsui/shared';
 
 export interface UseDealKpisOptions {

@@ -23,11 +23,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { dealKpisApi, outliersApi } from '@/lib/api/kpis';
+import { outliersApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
 import { useDealKpiSummaryWithDimensions } from '../hooks/useDealKpis';
 import {
-  KPICard,
   KPICardGrid,
   KPICategoryNav,
   KPITrendChart,
@@ -36,7 +35,7 @@ import {
   OutlierCard,
 } from '../components/kpi';
 import type { KpiCategoryNavOption } from '../components/kpi';
-import type { KpiCardData, KpiCardDataWithDimensions, DealKpiSummary, KpiViewMode } from '@altsui/shared';
+import type { KpiCardDataWithDimensions, KpiViewMode } from '@altsui/shared';
 
 // ============================================
 // Icon Mapping for KPIs

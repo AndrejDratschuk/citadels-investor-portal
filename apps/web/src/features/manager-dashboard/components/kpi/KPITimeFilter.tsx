@@ -195,7 +195,6 @@ export function KPIComparisonBadge({
   
   // For inverse metrics, flip the color interpretation
   const adjustedDiff = isInverse ? -percentDiff : percentDiff;
-  const isPositive = adjustedDiff >= 0;
 
   // Determine status color
   const getStatusColor = (): string => {

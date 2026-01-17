@@ -106,7 +106,7 @@ export function KPITrendChart({
   // Generate forecast line points and path
   const forecastPoints = showForecast ? validData
     .filter(d => d.forecast !== null && d.forecast !== undefined)
-    .map((d, i, arr) => ({
+    .map((d) => ({
       x: padding.left + (validData.indexOf(d) / Math.max(validData.length - 1, 1)) * chartWidth,
       y: padding.top + chartHeight - ((d.forecast! - minValue) / range) * chartHeight,
       value: d.forecast!,
@@ -116,7 +116,7 @@ export function KPITrendChart({
   // Generate budget line points and path
   const budgetPoints = showBudget ? validData
     .filter(d => d.budget !== null && d.budget !== undefined)
-    .map((d, i, arr) => ({
+    .map((d) => ({
       x: padding.left + (validData.indexOf(d) / Math.max(validData.length - 1, 1)) * chartWidth,
       y: padding.top + chartHeight - ((d.budget! - minValue) / range) * chartHeight,
       value: d.budget!,

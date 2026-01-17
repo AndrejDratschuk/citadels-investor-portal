@@ -1,10 +1,13 @@
 /**
  * Stakeholder Permission Types
  * Types for hierarchical role-based permissions system
+ * 
+ * NOTE: Input types (CreateRoleInput, UpdateRoleInput, etc.) are defined 
+ * in stakeholderPermission.schema.ts via Zod inference to avoid duplication.
  */
 
 import type { StakeholderType } from '../constants/stakeholderType.constants';
-import type { PermissionType, RoleType, PermissionTreeState } from '../constants/permissionTree.constants';
+import type { PermissionType, RoleType } from '../constants/permissionTree.constants';
 
 // ============================================
 // Stakeholder Role
@@ -22,23 +25,11 @@ export interface StakeholderRole {
   updatedAt: string;
 }
 
-/** Input for creating a new role */
-export interface CreateRoleInput {
-  roleName: string;
-  copyFromRoleId?: string;
-  baseStakeholderType?: StakeholderType;
-}
-
-/** Input for updating a role */
-export interface UpdateRoleInput {
-  roleName?: string;
-}
-
 // ============================================
 // Role Permission
 // ============================================
 
-/** A single permission entry for a role */
+/** A single permission entry for a role (database record) */
 export interface RolePermission {
   id: string;
   roleId: string;
@@ -49,23 +40,11 @@ export interface RolePermission {
   updatedAt: string;
 }
 
-/** Permission entry without metadata (for API responses) */
-export interface PermissionGrant {
-  path: string;
-  type: PermissionType;
-  granted: boolean;
-}
-
-/** Batch permission update input */
-export interface PermissionUpdateInput {
-  permissions: PermissionGrant[];
-}
-
 // ============================================
 // Deal Permission Override
 // ============================================
 
-/** Deal-specific permission override */
+/** Deal-specific permission override (database record) */
 export interface DealPermissionOverride {
   id: string;
   roleId: string;
@@ -76,14 +55,12 @@ export interface DealPermissionOverride {
   createdAt: string;
 }
 
-/** Input for setting deal overrides */
-export interface DealOverrideInput {
-  permissions: PermissionGrant[];
-}
-
 // ============================================
 // Permission Tree State (for UI)
 // ============================================
+
+import type { PermissionTreeState } from '../constants/permissionTree.constants';
+import type { PermissionGrant } from '../schemas/stakeholderPermission.schema';
 
 /** State of a single node in the permission tree */
 export interface PermissionNodeState {

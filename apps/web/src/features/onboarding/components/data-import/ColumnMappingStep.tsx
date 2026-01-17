@@ -31,6 +31,7 @@ interface ColumnMappingStepProps {
   onBack: () => void;
   isLoading?: boolean;
   error?: string | null;
+  isSampleData?: boolean;
 }
 
 export interface MappingState {
@@ -79,6 +80,7 @@ export function ColumnMappingStep({
   onBack,
   isLoading = false,
   error = null,
+  isSampleData = false,
 }: ColumnMappingStepProps): JSX.Element {
   // Initialize mappings from suggestions
   const [mappings, setMappings] = useState<MappingState[]>(() => 
@@ -182,6 +184,21 @@ export function ColumnMappingStep({
           <div>
             <p className="font-medium">Date column required</p>
             <p>Your data must include a Date or Period column for time-series tracking.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Sample Data Info Banner */}
+      {isSampleData && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 text-blue-700 text-sm border border-blue-200">
+          <Info className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Sample Data: All Dimensions Included</p>
+            <p>
+              This sample data will import <strong>Actual</strong>, <strong>Forecast</strong>, and{' '}
+              <strong>Budget</strong> values for each metric. This lets you immediately explore
+              the comparison features on your dashboard.
+            </p>
           </div>
         </div>
       )}

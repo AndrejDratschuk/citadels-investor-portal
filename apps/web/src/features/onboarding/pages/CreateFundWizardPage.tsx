@@ -534,6 +534,7 @@ export function CreateFundWizardPage(): JSX.Element {
               onBack={dataImport.goBack}
               isLoading={dataImport.state.isLoading}
               error={dataImport.state.error}
+              isSampleData={dataImport.state.useSampleData}
             />
           )}
         </div>

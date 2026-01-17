@@ -51,6 +51,7 @@ interface AddConnectionState {
   importResult: ImportResult | null;
   isLoading: boolean;
   error: string | null;
+  isSampleData: boolean;
 }
 
 const INITIAL_ADD_STATE: AddConnectionState = {
@@ -65,6 +66,7 @@ const INITIAL_ADD_STATE: AddConnectionState = {
   importResult: null,
   isLoading: false,
   error: null,
+  isSampleData: false,
 };
 
 // Lock body scroll when modal is open
@@ -335,6 +337,7 @@ export function DataConnectionsPage(): JSX.Element {
         kpiDefinitions: definitions,
         step: 'mapping',
         isLoading: false,
+        isSampleData: true,
       }));
     } catch (err) {
       setAddState(prev => ({
@@ -350,29 +353,41 @@ export function DataConnectionsPage(): JSX.Element {
   };
 
   const handleImport = async (): Promise<void> => {
-    if (!addState.parsedFile || !user?.fundId) return;
+    if (!user?.fundId) return;
 
     try {
       setAddState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      const mappingsToSend = addState.mappings
-        .filter(m => m.include && m.kpiCode && m.kpiId)
-        .map(m => ({
-          columnName: m.columnName,
-          kpiCode: m.kpiCode!,
-          kpiId: m.kpiId!,
-          dataType: m.dataType,
-          include: m.include,
-        }));
+      let result: ImportResult;
 
-      // Import data with selected deal
-      const result = await dataImportApi.importData({
-        fundId: user.fundId,
-        dealId: addState.selectedDealId, // Use selected deal or null for auto-create
-        connectionName: addState.connectionName,
-        mappings: mappingsToSend,
-        data: addState.parsedFile.rows as Array<Record<string, unknown>>,
-      });
+      // Use special import endpoint for sample data (imports all 3 dimensions)
+      if (addState.isSampleData) {
+        result = await dataImportApi.importSampleData({
+          fundId: user.fundId,
+          dealId: addState.selectedDealId,
+        });
+      } else {
+        // Regular import for user-uploaded files
+        if (!addState.parsedFile) return;
+
+        const mappingsToSend = addState.mappings
+          .filter(m => m.include && m.kpiCode && m.kpiId)
+          .map(m => ({
+            columnName: m.columnName,
+            kpiCode: m.kpiCode!,
+            kpiId: m.kpiId!,
+            dataType: m.dataType,
+            include: m.include,
+          }));
+
+        result = await dataImportApi.importData({
+          fundId: user.fundId,
+          dealId: addState.selectedDealId,
+          connectionName: addState.connectionName,
+          mappings: mappingsToSend,
+          data: addState.parsedFile.rows as Array<Record<string, unknown>>,
+        });
+      }
 
       setAddState(prev => ({
         ...prev,
@@ -544,6 +559,7 @@ export function DataConnectionsPage(): JSX.Element {
                   onBack={() => setAddState(prev => ({ ...prev, step: 'upload' }))}
                   isLoading={addState.isLoading}
                   error={addState.error}
+                  isSampleData={addState.isSampleData}
                 />
               )}
             </div>

@@ -294,6 +294,16 @@ export class KpisService {
     }, {} as Record<string, number>);
     console.log(`[KPI Summary] Deal ${dealId}: Fetched ${kpiData.length} data points`);
     console.log(`[KPI Summary] By data type:`, dataTypeCount);
+    
+    // Log sample values for first KPI to verify different values per dimension
+    if (kpiData.length > 0) {
+      const firstKpiId = kpiData[0].kpiId;
+      const samplesForKpi = kpiData.filter(d => d.kpiId === firstKpiId);
+      console.log(`[KPI Summary] Sample values for KPI ${firstKpiId}:`);
+      samplesForKpi.slice(0, 6).forEach(d => {
+        console.log(`  - ${d.dataType} @ ${d.periodDate}: ${d.value}`);
+      });
+    }
 
     const defsMap = new Map(definitions.map(d => [d.id, d]));
     const prefsMap = new Map(preferences.map(p => [p.kpiId, p]));
@@ -357,6 +367,15 @@ export class KpisService {
       : await this.getDefaultFeaturedKpis();
 
     const featured = featuredDefs.map(buildCardDataWithDimensions);
+
+    // Debug: log first featured KPI's dimension values
+    if (featured.length > 0) {
+      const first = featured[0];
+      console.log(`[KPI Summary] First featured KPI (${first.code}):`);
+      console.log(`  - actualValue: ${first.actualValue}`);
+      console.log(`  - forecastValue: ${first.forecastValue}`);
+      console.log(`  - budgetValue: ${first.budgetValue}`);
+    }
 
     // Group by category
     const byCategory: Record<KpiCategory, KpiCardDataWithDimensions[]> = {

@@ -97,6 +97,7 @@ export const checkPermissionSchema = z.object({
 // Use the explicit interfaces from that file instead.
 // ============================================
 
+export type PermissionGrant = z.infer<typeof permissionGrantSchema>;
 export type RoleIdParam = z.infer<typeof roleIdParamSchema>;
 export type CopyPermissionsParam = z.infer<typeof copyPermissionsParamSchema>;
 export type DealOverrideParam = z.infer<typeof dealOverrideParamSchema>;

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import type { StakeholderRole, StakeholderType } from '@altsui/shared';
 import { STAKEHOLDER_TYPE_LABELS, STAKEHOLDER_TYPE } from '@altsui/shared';
 
@@ -144,7 +143,7 @@ export function CreateRoleModal({
                     className="w-full px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">None (blank)</option>
-                    {Object.entries(STAKEHOLDER_TYPE).map(([key, value]) => (
+                    {Object.entries(STAKEHOLDER_TYPE).map(([, value]) => (
                       <option key={value} value={value}>
                         {STAKEHOLDER_TYPE_LABELS[value as StakeholderType]}
                       </option>

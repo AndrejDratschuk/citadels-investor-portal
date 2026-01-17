@@ -36,11 +36,6 @@ export function daysBetween(startDateStr: string, endDateStr: string): number {
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
-/** Format ISO date string to Date object (UTC normalized) */
-function parseDate(dateStr: string): Date {
-  return new Date(dateStr + 'T00:00:00Z');
-}
-
 // ============================================
 // Variance Status Calculation
 // ============================================

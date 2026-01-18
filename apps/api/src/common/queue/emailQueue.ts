@@ -34,8 +34,16 @@ export type InvestorEmailJobType =
   | 'signature_reminder_1'
   | 'signature_reminder_2';
 
+// Capital Call email job types (Stage 03)
+export type CapitalCallEmailJobType =
+  | 'capital_call_reminder_7d'
+  | 'capital_call_reminder_3d'
+  | 'capital_call_reminder_1d'
+  | 'capital_call_past_due'
+  | 'capital_call_past_due_7';
+
 // Combined email job type
-export type EmailJobType = ProspectEmailJobType | InvestorEmailJobType;
+export type EmailJobType = ProspectEmailJobType | InvestorEmailJobType | CapitalCallEmailJobType;
 
 // Job data structure for prospects
 export interface ProspectEmailJobData {
@@ -55,8 +63,18 @@ export interface InvestorEmailJobData {
   metadata?: Record<string, unknown>;
 }
 
+// Job data structure for capital calls (Stage 03)
+export interface CapitalCallEmailJobData {
+  type: CapitalCallEmailJobType;
+  capitalCallItemId: string;
+  investorId: string;
+  fundId: string;
+  scheduledAt: string; // ISO timestamp when job was scheduled
+  metadata?: Record<string, unknown>;
+}
+
 // Union type for all email job data
-export type EmailJobData = ProspectEmailJobData | InvestorEmailJobData;
+export type EmailJobData = ProspectEmailJobData | InvestorEmailJobData | CapitalCallEmailJobData;
 
 // Singleton queue instance
 let emailQueue: Queue<ProspectEmailJobData, unknown, string> | null = null;
@@ -237,6 +255,76 @@ export async function cancelInvestorEmailsByPattern(
  */
 export function isRedisAvailable(): boolean {
   return !!process.env.REDIS_URL;
+}
+
+// ============================================================
+// Capital Call Email Functions (Stage 03)
+// ============================================================
+
+/**
+ * Generate a unique job ID for capital call emails
+ * Format: {type}:capital_call:{capitalCallItemId}
+ */
+export function generateCapitalCallJobId(type: CapitalCallEmailJobType, capitalCallItemId: string): string {
+  return `${type}:capital_call:${capitalCallItemId}`;
+}
+
+/**
+ * Schedule a capital call email job with delay
+ */
+export async function scheduleCapitalCallEmail(
+  data: CapitalCallEmailJobData,
+  delayMs: number
+): Promise<string> {
+  const queue = getEmailQueue();
+  const jobId = generateCapitalCallJobId(data.type, data.capitalCallItemId);
+
+  const job = await queue.add(data.type, data as unknown as ProspectEmailJobData, {
+    jobId,
+    delay: delayMs,
+  });
+
+  console.log(
+    `[EmailQueue] Scheduled ${data.type} for capital call item ${data.capitalCallItemId} ` +
+      `in ${Math.round(delayMs / 1000 / 60)} minutes, jobId: ${job.id}`
+  );
+
+  return job.id ?? jobId;
+}
+
+/**
+ * Cancel a scheduled capital call email job
+ */
+export async function cancelCapitalCallEmail(
+  type: CapitalCallEmailJobType,
+  capitalCallItemId: string
+): Promise<boolean> {
+  const queue = getEmailQueue();
+  const jobId = generateCapitalCallJobId(type, capitalCallItemId);
+
+  const job = await queue.getJob(jobId);
+  if (job) {
+    await job.remove();
+    console.log(`[EmailQueue] Cancelled ${type} for capital call item ${capitalCallItemId}`);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Cancel multiple capital call email jobs by type pattern
+ */
+export async function cancelCapitalCallEmailsByPattern(
+  types: CapitalCallEmailJobType[],
+  capitalCallItemId: string
+): Promise<number> {
+  let cancelled = 0;
+  for (const type of types) {
+    const success = await cancelCapitalCallEmail(type, capitalCallItemId);
+    if (success) cancelled++;
+  }
+  return cancelled;
 }
 
 /**

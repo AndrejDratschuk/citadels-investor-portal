@@ -99,17 +99,45 @@ export type {
   PostMeetingOnboardingTemplateData,
 } from './prospectTemplates';
 
-// Capital call templates
+// Capital call templates (Stage 03 - Capital Operations)
 export {
+  // Original templates
   capitalCallRequestTemplate,
   wireConfirmationTemplate,
   wireIssueTemplate,
+  // Capital call reminders
+  capitalCallReminder7Template,
+  capitalCallReminder3Template,
+  capitalCallReminder1Template,
+  // Past due and default
+  capitalCallPastDueTemplate,
+  capitalCallPastDue7Template,
+  capitalCallDefaultTemplate,
+  // Distributions
+  distributionNoticeTemplate,
+  distributionSentTemplate,
+  distributionElectionTemplate,
+  // Refinancing
+  refinanceNoticeTemplate,
 } from './capitalCallTemplates';
 
 export type {
+  // Original types
   CapitalCallRequestTemplateData,
   WireConfirmationTemplateData,
   WireIssueTemplateData,
+  // Capital call reminders
+  CapitalCallReminderTemplateData,
+  // Past due and default
+  CapitalCallPastDueTemplateData,
+  CapitalCallPastDue7TemplateData,
+  CapitalCallDefaultTemplateData,
+  // Distributions
+  DistributionNoticeTemplateData,
+  DistributionSentTemplateData,
+  DistributionElectionTemplateData,
+  // Refinancing
+  RefinanceNoticeTemplateData,
 } from './capitalCallTemplates';
 
 // Investor onboarding templates (Stage 02)
@@ -195,6 +223,16 @@ import {
   capitalCallRequestTemplate,
   wireConfirmationTemplate,
   wireIssueTemplate,
+  capitalCallReminder7Template,
+  capitalCallReminder3Template,
+  capitalCallReminder1Template,
+  capitalCallPastDueTemplate,
+  capitalCallPastDue7Template,
+  capitalCallDefaultTemplate,
+  distributionNoticeTemplate,
+  distributionSentTemplate,
+  distributionElectionTemplate,
+  refinanceNoticeTemplate,
 } from './capitalCallTemplates';
 
 import {
@@ -257,10 +295,22 @@ export const emailTemplates = {
   nurtureDay23: nurtureDay23Template,
   nurtureDay30: nurtureDay30Template,
   dormantCloseout: dormantCloseoutTemplate,
-  // Capital Calls
+  // Capital Calls (Stage 03)
   capitalCallRequest: capitalCallRequestTemplate,
   wireConfirmation: wireConfirmationTemplate,
   wireIssue: wireIssueTemplate,
+  capitalCallReminder7: capitalCallReminder7Template,
+  capitalCallReminder3: capitalCallReminder3Template,
+  capitalCallReminder1: capitalCallReminder1Template,
+  capitalCallPastDue: capitalCallPastDueTemplate,
+  capitalCallPastDue7: capitalCallPastDue7Template,
+  capitalCallDefault: capitalCallDefaultTemplate,
+  // Distributions (Stage 03)
+  distributionNotice: distributionNoticeTemplate,
+  distributionSent: distributionSentTemplate,
+  distributionElection: distributionElectionTemplate,
+  // Refinancing (Stage 03)
+  refinanceNotice: refinanceNoticeTemplate,
   // Team Invites
   teamInvite: teamInviteTemplate,
   teamInviteReminder: teamInviteReminderTemplate,

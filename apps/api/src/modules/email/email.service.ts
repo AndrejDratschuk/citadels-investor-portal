@@ -43,6 +43,15 @@ import {
   FundingDiscrepancyTemplateData,
   WelcomeInvestorEnhancedTemplateData,
   AccountInvitationEnhancedTemplateData,
+  // Capital Operations templates (Stage 03)
+  CapitalCallReminderTemplateData,
+  CapitalCallPastDueTemplateData,
+  CapitalCallPastDue7TemplateData,
+  CapitalCallDefaultTemplateData,
+  DistributionNoticeTemplateData,
+  DistributionSentTemplateData,
+  DistributionElectionTemplateData,
+  RefinanceNoticeTemplateData,
   // Legacy types
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,
@@ -498,6 +507,126 @@ export class EmailService {
       subject: `Action Required - Wire Transfer Issue - ${data.fundName}`,
       body: `Hi ${data.recipientName}, there was an issue with your wire transfer: ${data.issueDescription}. Please contact us to resolve.`,
       html: emailTemplates.wireIssue(data),
+    });
+  }
+
+  /**
+   * 03.01.A2 - Capital Call Reminder (7 Day)
+   */
+  async sendCapitalCallReminder7(to: string, data: CapitalCallReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Capital Call Reminder - 7 Days Remaining - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, Capital Call #${data.capitalCallNumber} is due in 7 days. Amount: $${data.amountDue}. Deadline: ${data.deadline}`,
+      html: emailTemplates.capitalCallReminder7(data),
+    });
+  }
+
+  /**
+   * 03.01.A3 - Capital Call Reminder (3 Day)
+   */
+  async sendCapitalCallReminder3(to: string, data: CapitalCallReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Capital Call Reminder - 3 Days Remaining - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, Capital Call #${data.capitalCallNumber} is due in 3 days. Amount: $${data.amountDue}. Deadline: ${data.deadline}`,
+      html: emailTemplates.capitalCallReminder3(data),
+    });
+  }
+
+  /**
+   * 03.01.A4 - Capital Call Reminder (1 Day)
+   */
+  async sendCapitalCallReminder1(to: string, data: CapitalCallReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `REMINDER: Capital Call Due Tomorrow - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, Capital Call #${data.capitalCallNumber} is due tomorrow. Amount: $${data.amountDue}. Deadline: ${data.deadline}`,
+      html: emailTemplates.capitalCallReminder1(data),
+    });
+  }
+
+  /**
+   * 03.01.B2 - Capital Call Past Due
+   */
+  async sendCapitalCallPastDue(to: string, data: CapitalCallPastDueTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `URGENT: Capital Call Past Due - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, Capital Call #${data.capitalCallNumber} was due on ${data.deadline} and remains unfunded. Amount: $${data.amountDue}. Days past due: ${data.daysPastDue}. Please contact us immediately.`,
+      html: emailTemplates.capitalCallPastDue(data),
+    });
+  }
+
+  /**
+   * 03.01.B3 - Capital Call Past Due +7
+   */
+  async sendCapitalCallPastDue7(to: string, data: CapitalCallPastDue7TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `URGENT: Capital Call 7+ Days Past Due - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, Capital Call #${data.capitalCallNumber} is now ${data.daysPastDue} days past due. Amount: $${data.amountDue}. Per ${data.defaultSection}, continued failure to fund may result in default proceedings.`,
+      html: emailTemplates.capitalCallPastDue7(data),
+    });
+  }
+
+  /**
+   * 03.01.B4 - Capital Call Default Notice
+   */
+  async sendCapitalCallDefault(to: string, data: CapitalCallDefaultTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Notice of Default - Capital Call #${data.capitalCallNumber} - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, this is formal notice that you are in default on Capital Call #${data.capitalCallNumber}. Amount: $${data.amountDue}. Days past due: ${data.daysPastDue}.`,
+      html: emailTemplates.capitalCallDefault(data),
+    });
+  }
+
+  /**
+   * 03.02.A1 - Distribution Notice
+   */
+  async sendDistributionNotice(to: string, data: DistributionNoticeTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Distribution Notice - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, a distribution of $${data.distributionAmount} has been approved for your investment in ${data.fundName}. Payment date: ${data.paymentDate}. Method: ${data.paymentMethod}.`,
+      html: emailTemplates.distributionNotice(data),
+    });
+  }
+
+  /**
+   * 03.02.A2 - Distribution Sent
+   */
+  async sendDistributionSent(to: string, data: DistributionSentTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Distribution Sent - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your distribution of $${data.distributionAmount} has been sent. Confirmation: ${data.confirmationNumber}. Funds should arrive within ${data.arrivalTimeframe}.`,
+      html: emailTemplates.distributionSent(data),
+    });
+  }
+
+  /**
+   * 03.02.B1 - Distribution Election Request
+   */
+  async sendDistributionElection(to: string, data: DistributionElectionTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Distribution Election Required - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, proceeds of $${data.eligibleAmount} are available from ${data.source}. Please elect to receive distribution or reinvest by ${data.electionDeadline}.`,
+      html: emailTemplates.distributionElection(data),
+    });
+  }
+
+  /**
+   * 03.03.A1 - Refinance Notice
+   */
+  async sendRefinanceNotice(to: string, data: RefinanceNoticeTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Refinance Completed - ${data.propertyName} - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, the refinance of ${data.propertyName} has been completed. You will be notified separately regarding any distribution elections if proceeds are available.`,
+      html: emailTemplates.refinanceNotice(data),
     });
   }
 

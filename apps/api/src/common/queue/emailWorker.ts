@@ -1,15 +1,26 @@
 /**
  * Email Worker
- * BullMQ worker that processes scheduled prospect email jobs
+ * BullMQ worker that processes scheduled prospect, investor, and capital call email jobs
  */
 
 import { Worker, Job } from 'bullmq';
-import { EMAIL_QUEUE_NAME, ProspectEmailJobData, ProspectEmailJobType, InvestorEmailJobData, InvestorEmailJobType, EmailJobType } from './emailQueue';
+import { 
+  EMAIL_QUEUE_NAME, 
+  ProspectEmailJobData, 
+  ProspectEmailJobType, 
+  InvestorEmailJobData, 
+  InvestorEmailJobType, 
+  CapitalCallEmailJobData,
+  CapitalCallEmailJobType,
+  EmailJobType,
+  EmailJobData,
+} from './emailQueue';
 import { getRedisConnectionOptions } from '../redis/connection';
 
 // Import will be done lazily to avoid circular dependencies
 let prospectEmailTriggers: typeof import('../../modules/prospects/prospectEmailTriggers').prospectEmailTriggers | null = null;
 let investorEmailTriggers: typeof import('../../modules/investors/investorEmailTriggers').investorEmailTriggers | null = null;
+let capitalCallEmailTriggers: typeof import('../../modules/capital-calls/capitalCallEmailTriggers').capitalCallEmailTriggers | null = null;
 
 async function getProspectEmailTriggers() {
   if (!prospectEmailTriggers) {
@@ -27,8 +38,16 @@ async function getInvestorEmailTriggers() {
   return investorEmailTriggers;
 }
 
+async function getCapitalCallEmailTriggers() {
+  if (!capitalCallEmailTriggers) {
+    const module = await import('../../modules/capital-calls/capitalCallEmailTriggers');
+    capitalCallEmailTriggers = module.capitalCallEmailTriggers;
+  }
+  return capitalCallEmailTriggers;
+}
+
 // Worker instance
-let emailWorker: Worker<ProspectEmailJobData | InvestorEmailJobData> | null = null;
+let emailWorker: Worker<EmailJobData> | null = null;
 
 /**
  * Structured log entry for email job processing
@@ -39,6 +58,7 @@ interface EmailJobLogEntry {
   jobType: EmailJobType;
   prospectId?: string;
   investorId?: string;
+  capitalCallItemId?: string;
   fundId: string;
   status: 'started' | 'completed' | 'failed' | 'skipped';
   durationMs?: number;
@@ -53,6 +73,11 @@ interface EmailJobLogEntry {
 // Helper to check if job is an investor job
 function isInvestorJob(type: string): type is InvestorEmailJobType {
   return type.startsWith('onboarding_reminder_') || type.startsWith('signature_reminder_');
+}
+
+// Helper to check if job is a capital call job
+function isCapitalCallJob(type: string): type is CapitalCallEmailJobType {
+  return type.startsWith('capital_call_');
 }
 
 /**
@@ -183,29 +208,81 @@ async function processInvestorEmailJob(
 }
 
 /**
- * Process an email job (prospect or investor)
+ * Process a capital call email job
  */
-async function processEmailJob(job: Job<ProspectEmailJobData | InvestorEmailJobData>): Promise<void> {
+async function processCapitalCallEmailJob(
+  job: Job<CapitalCallEmailJobData>,
+  startTime: number
+): Promise<void> {
+  const { type, capitalCallItemId, fundId } = job.data;
+  const triggers = await getCapitalCallEmailTriggers();
+  const timestamp = new Date();
+
+  // Dispatch to the appropriate handler
+  switch (type) {
+    case 'capital_call_reminder_7d':
+      await triggers.sendScheduledReminder7d(capitalCallItemId, timestamp);
+      break;
+    case 'capital_call_reminder_3d':
+      await triggers.sendScheduledReminder3d(capitalCallItemId, timestamp);
+      break;
+    case 'capital_call_reminder_1d':
+      await triggers.sendScheduledReminder1d(capitalCallItemId, timestamp);
+      break;
+    case 'capital_call_past_due':
+      await triggers.sendScheduledPastDue(capitalCallItemId, timestamp);
+      break;
+    case 'capital_call_past_due_7':
+      await triggers.sendScheduledPastDue7(capitalCallItemId, timestamp);
+      break;
+    default:
+      logJobEvent({
+        timestamp: new Date().toISOString(),
+        jobId: job.id,
+        jobType: type,
+        capitalCallItemId,
+        fundId,
+        status: 'skipped',
+        durationMs: Date.now() - startTime,
+        metadata: { reason: 'Unknown capital call job type' },
+      });
+      return;
+  }
+}
+
+/**
+ * Process an email job (prospect, investor, or capital call)
+ */
+async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   const { type, fundId } = job.data;
   const startTime = Date.now();
   const isInvestor = isInvestorJob(type);
+  const isCapitalCall = isCapitalCallJob(type);
 
   // Get the entity ID based on job type
-  const entityId = isInvestor 
-    ? (job.data as InvestorEmailJobData).investorId 
-    : (job.data as ProspectEmailJobData).prospectId;
+  let entityLogProps: Partial<EmailJobLogEntry> = {};
+  if (isCapitalCall) {
+    const data = job.data as CapitalCallEmailJobData;
+    entityLogProps = { capitalCallItemId: data.capitalCallItemId, investorId: data.investorId };
+  } else if (isInvestor) {
+    entityLogProps = { investorId: (job.data as InvestorEmailJobData).investorId };
+  } else {
+    entityLogProps = { prospectId: (job.data as ProspectEmailJobData).prospectId };
+  }
 
   logJobEvent({
     timestamp: new Date().toISOString(),
     jobId: job.id,
     jobType: type as EmailJobType,
-    ...(isInvestor ? { investorId: entityId } : { prospectId: entityId }),
+    ...entityLogProps,
     fundId,
     status: 'started',
   });
 
   try {
-    if (isInvestor) {
+    if (isCapitalCall) {
+      await processCapitalCallEmailJob(job as Job<CapitalCallEmailJobData>, startTime);
+    } else if (isInvestor) {
       await processInvestorEmailJob(job as Job<InvestorEmailJobData>, startTime);
     } else {
       await processProspectEmailJob(job as Job<ProspectEmailJobData>, startTime);
@@ -215,7 +292,7 @@ async function processEmailJob(job: Job<ProspectEmailJobData | InvestorEmailJobD
       timestamp: new Date().toISOString(),
       jobId: job.id,
       jobType: type as EmailJobType,
-      ...(isInvestor ? { investorId: entityId } : { prospectId: entityId }),
+      ...entityLogProps,
       fundId,
       status: 'completed',
       durationMs: Date.now() - startTime,
@@ -227,7 +304,7 @@ async function processEmailJob(job: Job<ProspectEmailJobData | InvestorEmailJobD
       timestamp: new Date().toISOString(),
       jobId: job.id,
       jobType: type as EmailJobType,
-      ...(isInvestor ? { investorId: entityId } : { prospectId: entityId }),
+      ...entityLogProps,
       fundId,
       status: 'failed',
       durationMs: Date.now() - startTime,
@@ -246,7 +323,7 @@ async function processEmailJob(job: Job<ProspectEmailJobData | InvestorEmailJobD
 /**
  * Start the email worker
  */
-export function startEmailWorker(): Worker<ProspectEmailJobData | InvestorEmailJobData> {
+export function startEmailWorker(): Worker<EmailJobData> {
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
     console.warn('[EmailWorker] REDIS_URL not set - worker not started');
@@ -257,7 +334,7 @@ export function startEmailWorker(): Worker<ProspectEmailJobData | InvestorEmailJ
     return emailWorker;
   }
 
-  emailWorker = new Worker<ProspectEmailJobData | InvestorEmailJobData>(
+  emailWorker = new Worker<EmailJobData>(
     EMAIL_QUEUE_NAME,
     processEmailJob,
     {
@@ -276,10 +353,18 @@ export function startEmailWorker(): Worker<ProspectEmailJobData | InvestorEmailJ
     // Only log if this is a final failure (after all retries)
     // The actual error is already logged in processEmailJob
     if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
+      const isCapitalCall = isCapitalCallJob(job.data.type);
       const isInvestor = isInvestorJob(job.data.type);
-      const entityId = isInvestor
-        ? (job.data as InvestorEmailJobData).investorId
-        : (job.data as ProspectEmailJobData).prospectId;
+
+      let entityProps: Record<string, string> = {};
+      if (isCapitalCall) {
+        const data = job.data as CapitalCallEmailJobData;
+        entityProps = { capitalCallItemId: data.capitalCallItemId, investorId: data.investorId };
+      } else if (isInvestor) {
+        entityProps = { investorId: (job.data as InvestorEmailJobData).investorId };
+      } else {
+        entityProps = { prospectId: (job.data as ProspectEmailJobData).prospectId };
+      }
 
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
@@ -287,7 +372,7 @@ export function startEmailWorker(): Worker<ProspectEmailJobData | InvestorEmailJ
         event: 'job_exhausted_retries',
         jobId: job.id,
         jobType: job.data.type,
-        ...(isInvestor ? { investorId: entityId } : { prospectId: entityId }),
+        ...entityProps,
         fundId: job.data.fundId,
         attempts: job.attemptsMade,
         error: err.message,

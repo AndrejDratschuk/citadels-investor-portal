@@ -208,6 +208,23 @@ export type {
   K1AmendedTemplateData,
 } from './reportingTaxTemplates';
 
+// Compliance & Re-Verification templates (Stage 05)
+export {
+  rekycRequiredTemplate,
+  accreditationReverificationTemplate,
+  bankingUpdateRequestTemplate,
+  ppmAmendmentTemplate,
+  materialEventTemplate,
+} from './complianceTemplates';
+
+export type {
+  RekycRequiredTemplateData,
+  AccreditationReverificationTemplateData,
+  BankingUpdateRequestTemplateData,
+  PpmAmendmentTemplateData,
+  MaterialEventTemplateData,
+} from './complianceTemplates';
+
 // Exit & Transfer templates (Stage 06)
 export {
   transferRequestReceivedTemplate,
@@ -308,6 +325,14 @@ import {
 } from './reportingTaxTemplates';
 
 import {
+  rekycRequiredTemplate,
+  accreditationReverificationTemplate,
+  bankingUpdateRequestTemplate,
+  ppmAmendmentTemplate,
+  materialEventTemplate,
+} from './complianceTemplates';
+
+import {
   transferRequestReceivedTemplate,
   transferApprovedTemplate,
   transferDeniedTemplate,
@@ -395,6 +420,12 @@ export const emailTemplates = {
   k1Available: k1AvailableTemplate,
   k1Estimate: k1EstimateTemplate,
   k1Amended: k1AmendedTemplate,
+  // Compliance & Re-Verification (Stage 05)
+  rekycRequired: rekycRequiredTemplate,
+  accreditationReverification: accreditationReverificationTemplate,
+  bankingUpdateRequest: bankingUpdateRequestTemplate,
+  ppmAmendment: ppmAmendmentTemplate,
+  materialEvent: materialEventTemplate,
   // Exit & Transfer (Stage 06)
   transferRequestReceived: transferRequestReceivedTemplate,
   transferApproved: transferApprovedTemplate,

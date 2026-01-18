@@ -52,6 +52,15 @@ import {
   DistributionSentTemplateData,
   DistributionElectionTemplateData,
   RefinanceNoticeTemplateData,
+  // Reporting & Tax templates (Stage 04)
+  QuarterlyReportTemplateData,
+  AnnualReportTemplateData,
+  AnnualMeetingInviteTemplateData,
+  PropertyAcquisitionTemplateData,
+  PropertyDispositionTemplateData,
+  K1AvailableTemplateData,
+  K1EstimateTemplateData,
+  K1AmendedTemplateData,
   // Legacy types
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,
@@ -777,6 +786,114 @@ export class EmailService {
       html: emailTemplates.welcomeInvestorEnhanced(data),
     });
   }
+
+  // ===========================================================================
+  // STAGE 04: REPORTING & TAX EMAILS
+  // ===========================================================================
+
+  /**
+   * 04.01.A1 - Quarterly Report
+   * Sent when quarterly report is published (Q+30 days per PPM)
+   */
+  async sendQuarterlyReport(to: string, data: QuarterlyReportTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Q${data.quarter} ${data.year} Report Available - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your Q${data.quarter} ${data.year} performance report is now available in your portal: ${data.reportUrl}`,
+      html: emailTemplates.quarterlyReport(data),
+    });
+  }
+
+  /**
+   * 04.02.A1 - Annual Report
+   * Sent when annual report is published
+   */
+  async sendAnnualReport(to: string, data: AnnualReportTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `${data.year} Annual Report Available - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, the ${data.year} Annual Report for ${data.fundName} is now available in your portal: ${data.reportUrl}`,
+      html: emailTemplates.annualReport(data),
+    });
+  }
+
+  /**
+   * 04.03.A1 - Annual Meeting Invite
+   * Sent when manager schedules the annual investor meeting
+   */
+  async sendAnnualMeetingInvite(to: string, data: AnnualMeetingInviteTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Annual Investor Meeting Invitation - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, you are invited to the ${data.year} Annual Investor Meeting for ${data.fundName}. Date: ${data.meetingDate}, Time: ${data.meetingTime} ${data.timezone}. RSVP: ${data.rsvpUrl}`,
+      html: emailTemplates.annualMeetingInvite(data),
+    });
+  }
+
+  /**
+   * 04.04.A1 - Property Acquisition
+   * Sent when acquisition closes
+   */
+  async sendPropertyAcquisition(to: string, data: PropertyAcquisitionTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `New Acquisition: ${data.propertyName} - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we are pleased to announce the acquisition of ${data.propertyName}. View details: ${data.propertyDetailsUrl}`,
+      html: emailTemplates.propertyAcquisition(data),
+    });
+  }
+
+  /**
+   * 04.04.A2 - Property Disposition
+   * Sent when sale closes
+   */
+  async sendPropertyDisposition(to: string, data: PropertyDispositionTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Property Sale Completed: ${data.propertyName} - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we have completed the sale of ${data.propertyName}. View details: ${data.detailsUrl}`,
+      html: emailTemplates.propertyDisposition(data),
+    });
+  }
+
+  /**
+   * 04.05.A1 - K-1 Available
+   * Sent when K-1 is uploaded to portal
+   */
+  async sendK1Available(to: string, data: K1AvailableTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `${data.taxYear} Schedule K-1 Available - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your ${data.taxYear} Schedule K-1 for ${data.fundName} is now available: ${data.downloadUrl}`,
+      html: emailTemplates.k1Available(data),
+    });
+  }
+
+  /**
+   * 04.05.B1 - K-1 Estimate
+   * Sent when estimate is ready (final delayed)
+   */
+  async sendK1Estimate(to: string, data: K1EstimateTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `${data.taxYear} K-1 Estimate Available - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, preliminary K-1 estimates for ${data.taxYear} are now available for tax planning purposes. Final K-1s expected by ${data.expectedFinalDate}. View: ${data.estimateUrl}`,
+      html: emailTemplates.k1Estimate(data),
+    });
+  }
+
+  /**
+   * 04.05.B2 - K-1 Amended
+   * Sent when amended K-1 is issued
+   */
+  async sendK1Amended(to: string, data: K1AmendedTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Amended ${data.taxYear} Schedule K-1 - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, an amended Schedule K-1 for ${data.taxYear} has been issued for your investment in ${data.fundName}. Reason: ${data.amendmentReason}. Download: ${data.downloadUrl}`,
+      html: emailTemplates.k1Amended(data),
+    });
+  }
 }
 
 export const emailService = new EmailService();
@@ -825,6 +942,15 @@ export type {
   FundingDiscrepancyTemplateData,
   WelcomeInvestorEnhancedTemplateData,
   AccountInvitationEnhancedTemplateData,
+  // Reporting & Tax templates (Stage 04)
+  QuarterlyReportTemplateData,
+  AnnualReportTemplateData,
+  AnnualMeetingInviteTemplateData,
+  PropertyAcquisitionTemplateData,
+  PropertyDispositionTemplateData,
+  K1AvailableTemplateData,
+  K1EstimateTemplateData,
+  K1AmendedTemplateData,
   // Legacy types
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,

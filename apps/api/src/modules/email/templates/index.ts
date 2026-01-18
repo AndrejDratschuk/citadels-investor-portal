@@ -182,6 +182,32 @@ export type {
   TeamInviteReminderTemplateData,
 } from './teamInviteTemplate';
 
+// Reporting & Tax templates (Stage 04)
+export {
+  // Periodic Reports
+  quarterlyReportTemplate,
+  annualReportTemplate,
+  annualMeetingInviteTemplate,
+  // Property Updates
+  propertyAcquisitionTemplate,
+  propertyDispositionTemplate,
+  // Tax Documents
+  k1AvailableTemplate,
+  k1EstimateTemplate,
+  k1AmendedTemplate,
+} from './reportingTaxTemplates';
+
+export type {
+  QuarterlyReportTemplateData,
+  AnnualReportTemplateData,
+  AnnualMeetingInviteTemplateData,
+  PropertyAcquisitionTemplateData,
+  PropertyDispositionTemplateData,
+  K1AvailableTemplateData,
+  K1EstimateTemplateData,
+  K1AmendedTemplateData,
+} from './reportingTaxTemplates';
+
 // Import all templates for the combined object export
 import {
   accountInviteTemplate,
@@ -255,6 +281,17 @@ import {
   accountInvitationEnhancedTemplate,
 } from './investorOnboardingTemplates';
 
+import {
+  quarterlyReportTemplate,
+  annualReportTemplate,
+  annualMeetingInviteTemplate,
+  propertyAcquisitionTemplate,
+  propertyDispositionTemplate,
+  k1AvailableTemplate,
+  k1EstimateTemplate,
+  k1AmendedTemplate,
+} from './reportingTaxTemplates';
+
 /**
  * Combined emailTemplates object for backwards compatibility
  * Matches the original email.templates.ts export structure
@@ -327,4 +364,13 @@ export const emailTemplates = {
   fundingDiscrepancy: fundingDiscrepancyTemplate,
   welcomeInvestorEnhanced: welcomeInvestorEnhancedTemplate,
   accountInvitationEnhanced: accountInvitationEnhancedTemplate,
+  // Reporting & Tax (Stage 04)
+  quarterlyReport: quarterlyReportTemplate,
+  annualReport: annualReportTemplate,
+  annualMeetingInvite: annualMeetingInviteTemplate,
+  propertyAcquisition: propertyAcquisitionTemplate,
+  propertyDisposition: propertyDispositionTemplate,
+  k1Available: k1AvailableTemplate,
+  k1Estimate: k1EstimateTemplate,
+  k1Amended: k1AmendedTemplate,
 };

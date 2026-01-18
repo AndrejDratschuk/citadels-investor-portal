@@ -14,6 +14,7 @@ export const INVESTOR_STATUS = {
   ONBOARDING: 'onboarding',
   ACTIVE: 'active',
   INACTIVE: 'inactive',
+  EXITED: 'exited',
 } as const;
 
 export type InvestorStatus = typeof INVESTOR_STATUS[keyof typeof INVESTOR_STATUS];

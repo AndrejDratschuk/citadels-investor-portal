@@ -307,3 +307,92 @@ All templates are injected into this base HTML structure.
 <p>Your invitation is still pending. Click below to accept and create your account.</p>
 <!-- Button: Accept Invitation ({{acceptInviteUrl}}) -->
 ```
+
+---
+
+## 6. Exit & Transfer (Stage 06)
+
+### Transfer Request Received (`transferRequestReceivedTemplate`)
+*   **Subject**: `Transfer Request Received - {{fundName}}`
+*   **Purpose**: Sent when an investor submits a transfer request.
+*   **Trigger**: Investor submits request
+
+```html
+<h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">Transfer Request Received</h1>
+<p>Hi {{recipientName}},</p>
+<p>We have received your request to transfer your interest in {{fundName}}.</p>
+<div style="background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb;">
+  <p><strong>Transfer Type:</strong> {{transferType}}</p>
+</div>
+<p>We will review your request and respond within <strong>{{reviewTimeframe}}</strong>.</p>
+<p style="padding: 16px; background-color: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af;">{{transferProcessNote}}</p>
+<p>If you have any questions in the meantime, please reply to this email.</p>
+<p><strong>{{fundName}} Team</strong></p>
+```
+
+### Transfer Approved (`transferApprovedTemplate`)
+*   **Subject**: `Transfer Approved - {{fundName}}`
+*   **Purpose**: Sent when manager approves a transfer request.
+*   **Trigger**: Manager approves
+
+```html
+<h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">Transfer Approved</h1>
+<p>Hi {{recipientName}},</p>
+<p style="padding: 16px; background-color: #f0fdf4; border-left: 4px solid #22c55e; color: #166534;">Your transfer request has been approved.</p>
+<div style="background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb;">
+  <p><strong>Effective Date:</strong> {{effectiveDate}}</p>
+</div>
+<p>{{transferNextSteps}}</p>
+<p>If this is a full transfer, you will receive a final exit statement once the transfer is complete.</p>
+<p>Thank you for your investment in {{fundName}}.</p>
+<p><strong>{{fundName}} Team</strong></p>
+```
+
+### Transfer Denied (`transferDeniedTemplate`)
+*   **Subject**: `Transfer Request Update - {{fundName}}`
+*   **Purpose**: Sent when manager denies a transfer request.
+*   **Trigger**: Manager denies
+
+```html
+<h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">Transfer Request Update</h1>
+<p>Hi {{recipientName}},</p>
+<p>We have reviewed your transfer request and are unable to approve it at this time.</p>
+<div style="background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb;">
+  <p><strong>Reason:</strong> {{denialReason}}</p>
+</div>
+<p>{{transferDenialOptions}}</p>
+<p>If you have questions or would like to discuss alternative options, please reply to this email or contact us directly.</p>
+<p><strong>{{fundName}} Team</strong></p>
+```
+
+### Final Exit Statement (`finalExitStatementTemplate`)
+*   **Subject**: `Final Statement - {{fundName}}`
+*   **Purpose**: Sent when an investor fully exits the fund.
+*   **Trigger**: Investor fully exits fund
+
+```html
+<h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">Final Statement</h1>
+<p>Hi {{recipientName}},</p>
+<p>Your investment in {{fundName}} has been fully liquidated.</p>
+<div style="background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb;">
+  <p style="font-weight: 600;">Exit Summary</p>
+  <p><strong>Total Invested:</strong> ${{totalInvested}}</p>
+  <p><strong>Total Distributions:</strong> ${{totalDistributions}}</p>
+  <p><strong>Final Payout:</strong> ${{finalPayout}}</p>
+  <p><strong>Exit Date:</strong> {{exitDate}}</p>
+</div>
+<p style="padding: 16px; background-color: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af;">Final K-1 documents will be provided following the applicable tax year.</p>
+<p>{{exitClosingMessage}}</p>
+<p>Thank you for your investment in {{fundName}}. We appreciate your partnership.</p>
+<p><strong>{{fundName}} Team</strong></p>
+```
+
+---
+
+## Stage 06 Suppression Rules
+
+| Scenario | Suppression |
+|----------|-------------|
+| Approval sent | Cannot send denial for same request |
+| Denial sent | Cannot send approval for same request |
+| Exit complete | No more transfer emails for this investor |

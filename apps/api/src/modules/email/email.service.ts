@@ -61,6 +61,11 @@ import {
   K1AvailableTemplateData,
   K1EstimateTemplateData,
   K1AmendedTemplateData,
+  // Exit & Transfer templates (Stage 06)
+  TransferRequestReceivedTemplateData,
+  TransferApprovedTemplateData,
+  TransferDeniedTemplateData,
+  FinalExitStatementTemplateData,
   // Legacy types
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,
@@ -894,6 +899,75 @@ export class EmailService {
       html: emailTemplates.k1Amended(data),
     });
   }
+
+  // ===========================================================================
+  // STAGE 06: EXIT & TRANSFER EMAILS
+  // ===========================================================================
+
+  /**
+   * 06.01.A1 - Transfer Request Received
+   * Sent when an investor submits a transfer request
+   */
+  async sendTransferRequestReceived(
+    to: string,
+    data: TransferRequestReceivedTemplateData
+  ): Promise<SendEmailResult> {
+    const transferTypeLabel = data.transferType === 'full' ? 'Full' : 'Partial';
+    return this.sendEmail({
+      to,
+      subject: `Transfer Request Received - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we have received your ${transferTypeLabel} Transfer request for ${data.fundName}. We will review and respond within ${data.reviewTimeframe}.`,
+      html: emailTemplates.transferRequestReceived(data),
+    });
+  }
+
+  /**
+   * 06.01.A2 - Transfer Approved
+   * Sent when manager approves a transfer request
+   */
+  async sendTransferApproved(
+    to: string,
+    data: TransferApprovedTemplateData
+  ): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Transfer Approved - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your transfer request for ${data.fundName} has been approved. Effective date: ${data.effectiveDate}.`,
+      html: emailTemplates.transferApproved(data),
+    });
+  }
+
+  /**
+   * 06.01.C1 - Transfer Denied
+   * Sent when manager denies a transfer request
+   */
+  async sendTransferDenied(
+    to: string,
+    data: TransferDeniedTemplateData
+  ): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Transfer Request Update - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we have reviewed your transfer request for ${data.fundName} and are unable to approve it at this time. Reason: ${data.denialReason}.`,
+      html: emailTemplates.transferDenied(data),
+    });
+  }
+
+  /**
+   * 06.02.A1 - Final Exit Statement
+   * Sent when an investor fully exits the fund
+   */
+  async sendFinalExitStatement(
+    to: string,
+    data: FinalExitStatementTemplateData
+  ): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Final Statement - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your investment in ${data.fundName} has been fully liquidated. Total invested: $${data.exitSummary.totalInvested}, Total distributions: $${data.exitSummary.totalDistributions}, Final payout: $${data.exitSummary.finalPayout}.`,
+      html: emailTemplates.finalExitStatement(data),
+    });
+  }
 }
 
 export const emailService = new EmailService();
@@ -951,6 +1025,11 @@ export type {
   K1AvailableTemplateData,
   K1EstimateTemplateData,
   K1AmendedTemplateData,
+  // Exit & Transfer templates (Stage 06)
+  TransferRequestReceivedTemplateData,
+  TransferApprovedTemplateData,
+  TransferDeniedTemplateData,
+  FinalExitStatementTemplateData,
   // Legacy types
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,

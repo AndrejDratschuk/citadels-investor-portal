@@ -208,6 +208,21 @@ export type {
   K1AmendedTemplateData,
 } from './reportingTaxTemplates';
 
+// Exit & Transfer templates (Stage 06)
+export {
+  transferRequestReceivedTemplate,
+  transferApprovedTemplate,
+  transferDeniedTemplate,
+  finalExitStatementTemplate,
+} from './exitTransferTemplates';
+
+export type {
+  TransferRequestReceivedTemplateData,
+  TransferApprovedTemplateData,
+  TransferDeniedTemplateData,
+  FinalExitStatementTemplateData,
+} from './exitTransferTemplates';
+
 // Import all templates for the combined object export
 import {
   accountInviteTemplate,
@@ -292,6 +307,13 @@ import {
   k1AmendedTemplate,
 } from './reportingTaxTemplates';
 
+import {
+  transferRequestReceivedTemplate,
+  transferApprovedTemplate,
+  transferDeniedTemplate,
+  finalExitStatementTemplate,
+} from './exitTransferTemplates';
+
 /**
  * Combined emailTemplates object for backwards compatibility
  * Matches the original email.templates.ts export structure
@@ -373,4 +395,9 @@ export const emailTemplates = {
   k1Available: k1AvailableTemplate,
   k1Estimate: k1EstimateTemplate,
   k1Amended: k1AmendedTemplate,
+  // Exit & Transfer (Stage 06)
+  transferRequestReceived: transferRequestReceivedTemplate,
+  transferApproved: transferApprovedTemplate,
+  transferDenied: transferDeniedTemplate,
+  finalExitStatement: finalExitStatementTemplate,
 };

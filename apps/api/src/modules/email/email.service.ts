@@ -61,6 +61,17 @@ import {
   K1AvailableTemplateData,
   K1EstimateTemplateData,
   K1AmendedTemplateData,
+  // Compliance & Re-Verification templates (Stage 05)
+  RekycRequiredTemplateData,
+  AccreditationReverificationTemplateData,
+  BankingUpdateRequestTemplateData,
+  PpmAmendmentTemplateData,
+  MaterialEventTemplateData,
+  // Exit & Transfer templates (Stage 06)
+  TransferRequestReceivedTemplateData,
+  TransferApprovedTemplateData,
+  TransferDeniedTemplateData,
+  FinalExitStatementTemplateData,
   // Internal Notification templates (Stage 07)
   InternalNewInvestorTemplateData,
   InternalDocumentReviewTemplateData,
@@ -903,6 +914,144 @@ export class EmailService {
   }
 
   // ===========================================================================
+  // STAGE 05: COMPLIANCE & RE-VERIFICATION EMAILS
+  // ===========================================================================
+
+  /**
+   * 05.01.A1 - Re-KYC Required
+   * Sent when periodic or event-based re-verification is required
+   */
+  async sendRekycRequired(to: string, data: RekycRequiredTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Verification Update Required - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, per ${data.fundName}'s compliance requirements, we need to verify your current information. Reason: ${data.reverificationReason}. Please complete this within ${data.deadline}. Update here: ${data.verificationUrl}`,
+      html: emailTemplates.rekycRequired(data),
+    });
+  }
+
+  /**
+   * 05.02.A1 - Accreditation Re-Verification
+   * Sent when accreditation status expires (506c compliance)
+   */
+  async sendAccreditationReverification(to: string, data: AccreditationReverificationTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Accreditation Verification Required - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your accredited investor status requires periodic re-verification. This is required to maintain your investment eligibility under SEC Regulation D. Complete verification here: ${data.verificationUrl}`,
+      html: emailTemplates.accreditationReverification(data),
+    });
+  }
+
+  /**
+   * 05.03.A1 - Banking Update Request
+   * Sent when ACH fails or wire is returned
+   */
+  async sendBankingUpdateRequest(to: string, data: BankingUpdateRequestTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Banking Information Update Needed - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we were unable to process a payment to your account on file. Reason: ${data.failureReason}. Please update your banking information: ${data.updateBankingUrl}`,
+      html: emailTemplates.bankingUpdateRequest(data),
+    });
+  }
+
+  /**
+   * 05.04.A1 - PPM Amendment Notice
+   * Sent when PPM/OA is amended
+   */
+  async sendPpmAmendment(to: string, data: PpmAmendmentTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Important: Fund Document Amendment - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, the ${data.documentName} for ${data.fundName} has been amended. Effective Date: ${data.effectiveDate}. Review the amendment here: ${data.reviewUrl}`,
+      html: emailTemplates.ppmAmendment(data),
+    });
+  }
+
+  /**
+   * 05.05.A1 - Material Event Notice
+   * Sent when a material event is published
+   */
+  async sendMaterialEvent(to: string, data: MaterialEventTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Important Update - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, there is an important update regarding ${data.fundName}. View details: ${data.detailsUrl}`,
+      html: emailTemplates.materialEvent(data),
+    });
+  }
+
+  // ===========================================================================
+  // STAGE 06: EXIT & TRANSFER EMAILS
+  // ===========================================================================
+
+  /**
+   * 06.01.A1 - Transfer Request Received
+   * Sent when an investor submits a transfer request
+   */
+  async sendTransferRequestReceived(
+    to: string,
+    data: TransferRequestReceivedTemplateData
+  ): Promise<SendEmailResult> {
+    const transferTypeLabel = data.transferType === 'full' ? 'Full' : 'Partial';
+    return this.sendEmail({
+      to,
+      subject: `Transfer Request Received - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we have received your ${transferTypeLabel} Transfer request for ${data.fundName}. We will review and respond within ${data.reviewTimeframe}.`,
+      html: emailTemplates.transferRequestReceived(data),
+    });
+  }
+
+  /**
+   * 06.01.A2 - Transfer Approved
+   * Sent when manager approves a transfer request
+   */
+  async sendTransferApproved(
+    to: string,
+    data: TransferApprovedTemplateData
+  ): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Transfer Approved - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your transfer request for ${data.fundName} has been approved. Effective date: ${data.effectiveDate}.`,
+      html: emailTemplates.transferApproved(data),
+    });
+  }
+
+  /**
+   * 06.01.C1 - Transfer Denied
+   * Sent when manager denies a transfer request
+   */
+  async sendTransferDenied(
+    to: string,
+    data: TransferDeniedTemplateData
+  ): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Transfer Request Update - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we have reviewed your transfer request for ${data.fundName} and are unable to approve it at this time. Reason: ${data.denialReason}.`,
+      html: emailTemplates.transferDenied(data),
+    });
+  }
+
+  /**
+   * 06.02.A1 - Final Exit Statement
+   * Sent when an investor fully exits the fund
+   */
+  async sendFinalExitStatement(
+    to: string,
+    data: FinalExitStatementTemplateData
+  ): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Final Statement - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your investment in ${data.fundName} has been fully liquidated. Total invested: $${data.exitSummary.totalInvested}, Total distributions: $${data.exitSummary.totalDistributions}, Final payout: $${data.exitSummary.finalPayout}.`,
+      html: emailTemplates.finalExitStatement(data),
+    });
+  }
+
+  // ===========================================================================
   // STAGE 07: TEAM MANAGEMENT & INTERNAL NOTIFICATIONS
   // ===========================================================================
 
@@ -1027,6 +1176,17 @@ export type {
   K1AvailableTemplateData,
   K1EstimateTemplateData,
   K1AmendedTemplateData,
+  // Compliance & Re-Verification templates (Stage 05)
+  RekycRequiredTemplateData,
+  AccreditationReverificationTemplateData,
+  BankingUpdateRequestTemplateData,
+  PpmAmendmentTemplateData,
+  MaterialEventTemplateData,
+  // Exit & Transfer templates (Stage 06)
+  TransferRequestReceivedTemplateData,
+  TransferApprovedTemplateData,
+  TransferDeniedTemplateData,
+  FinalExitStatementTemplateData,
   // Team Management & Internal Notifications (Stage 07)
   TeamInviteTemplateData,
   TeamInviteReminderTemplateData,

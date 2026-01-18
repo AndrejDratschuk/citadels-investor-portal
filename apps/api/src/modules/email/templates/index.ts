@@ -221,6 +221,38 @@ export type {
   K1AmendedTemplateData,
 } from './reportingTaxTemplates';
 
+// Compliance & Re-Verification templates (Stage 05)
+export {
+  rekycRequiredTemplate,
+  accreditationReverificationTemplate,
+  bankingUpdateRequestTemplate,
+  ppmAmendmentTemplate,
+  materialEventTemplate,
+} from './complianceTemplates';
+
+export type {
+  RekycRequiredTemplateData,
+  AccreditationReverificationTemplateData,
+  BankingUpdateRequestTemplateData,
+  PpmAmendmentTemplateData,
+  MaterialEventTemplateData,
+} from './complianceTemplates';
+
+// Exit & Transfer templates (Stage 06)
+export {
+  transferRequestReceivedTemplate,
+  transferApprovedTemplate,
+  transferDeniedTemplate,
+  finalExitStatementTemplate,
+} from './exitTransferTemplates';
+
+export type {
+  TransferRequestReceivedTemplateData,
+  TransferApprovedTemplateData,
+  TransferDeniedTemplateData,
+  FinalExitStatementTemplateData,
+} from './exitTransferTemplates';
+
 // Import all templates for the combined object export
 import {
   accountInviteTemplate,
@@ -311,6 +343,21 @@ import {
   k1AmendedTemplate,
 } from './reportingTaxTemplates';
 
+import {
+  rekycRequiredTemplate,
+  accreditationReverificationTemplate,
+  bankingUpdateRequestTemplate,
+  ppmAmendmentTemplate,
+  materialEventTemplate,
+} from './complianceTemplates';
+
+import {
+  transferRequestReceivedTemplate,
+  transferApprovedTemplate,
+  transferDeniedTemplate,
+  finalExitStatementTemplate,
+} from './exitTransferTemplates';
+
 /**
  * Combined emailTemplates object for backwards compatibility
  * Matches the original email.templates.ts export structure
@@ -392,6 +439,17 @@ export const emailTemplates = {
   k1Available: k1AvailableTemplate,
   k1Estimate: k1EstimateTemplate,
   k1Amended: k1AmendedTemplate,
+  // Compliance & Re-Verification (Stage 05)
+  rekycRequired: rekycRequiredTemplate,
+  accreditationReverification: accreditationReverificationTemplate,
+  bankingUpdateRequest: bankingUpdateRequestTemplate,
+  ppmAmendment: ppmAmendmentTemplate,
+  materialEvent: materialEventTemplate,
+  // Exit & Transfer (Stage 06)
+  transferRequestReceived: transferRequestReceivedTemplate,
+  transferApproved: transferApprovedTemplate,
+  transferDenied: transferDeniedTemplate,
+  finalExitStatement: finalExitStatementTemplate,
   // Internal Notifications (Stage 07)
   internalNewInvestor: internalNewInvestorTemplate,
   internalDocumentReview: internalDocumentReviewTemplate,

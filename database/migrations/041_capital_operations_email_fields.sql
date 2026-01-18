@@ -161,11 +161,8 @@ CREATE POLICY distributions_fund_manager_all ON distributions
   FOR ALL
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM fund_stakeholders fs
-      WHERE fs.fund_id = distributions.fund_id
-      AND fs.user_id = auth.uid()
-      AND fs.role IN ('owner', 'admin', 'manager')
+    fund_id IN (
+      SELECT fund_id FROM users WHERE id = auth.uid() AND role = 'manager'
     )
   );
 
@@ -185,11 +182,8 @@ CREATE POLICY distribution_elections_fund_manager_all ON distribution_elections
   FOR ALL
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM fund_stakeholders fs
-      WHERE fs.fund_id = distribution_elections.fund_id
-      AND fs.user_id = auth.uid()
-      AND fs.role IN ('owner', 'admin', 'manager')
+    fund_id IN (
+      SELECT fund_id FROM users WHERE id = auth.uid() AND role = 'manager'
     )
   );
 
@@ -227,11 +221,8 @@ CREATE POLICY refinance_notices_fund_manager_all ON refinance_notices
   FOR ALL
   TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM fund_stakeholders fs
-      WHERE fs.fund_id = refinance_notices.fund_id
-      AND fs.user_id = auth.uid()
-      AND fs.role IN ('owner', 'admin', 'manager')
+    fund_id IN (
+      SELECT fund_id FROM users WHERE id = auth.uid() AND role = 'manager'
     )
   );
 

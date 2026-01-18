@@ -34,6 +34,47 @@ export interface FundBrandingPublic {
   branding: FundBranding;
 }
 
+export interface EmailCustomizationSettings {
+  // Pre-meeting materials (Q3-4)
+  preMeetingMaterialsType: 'website' | 'teaser_doc' | null;
+  preMeetingMaterialsUrl: string | null;
+  // Accreditation education (Q5-6)
+  accreditationEducationType: 'standard_video' | 'custom_text';
+  accreditationEducationContent: string | null;
+  // Post-meeting communication (Q7)
+  postMeetingRecapTemplate: string | null;
+  // Nurture content (Q8-9)
+  consideringSupportMessage: string | null;
+  nurtureUpdateTemplates: string[];
+  // Investor onboarding (Q10-11)
+  documentReviewTimeframe: string | null;
+  welcomeMessage: string | null;
+  // Transfer & exit messaging (Q12-15)
+  transferProcessNote: string | null;
+  transferNextSteps: string | null;
+  transferDenialOptions: string | null;
+  exitClosingMessage: string | null;
+  // Team credentials (Q16)
+  userCredentials: string | null;
+}
+
+export interface UpdateEmailCustomizationInput {
+  preMeetingMaterialsType?: 'website' | 'teaser_doc' | null;
+  preMeetingMaterialsUrl?: string | null;
+  accreditationEducationType?: 'standard_video' | 'custom_text';
+  accreditationEducationContent?: string | null;
+  postMeetingRecapTemplate?: string | null;
+  consideringSupportMessage?: string | null;
+  nurtureUpdateTemplates?: string[];
+  documentReviewTimeframe?: string | null;
+  welcomeMessage?: string | null;
+  transferProcessNote?: string | null;
+  transferNextSteps?: string | null;
+  transferDenialOptions?: string | null;
+  exitClosingMessage?: string | null;
+  userCredentials?: string | null;
+}
+
 export const fundsApi = {
   // Get current fund (for authenticated managers)
   getCurrent: async (): Promise<Fund> => {
@@ -86,6 +127,16 @@ export const fundsApi = {
   // Delete logo
   deleteLogo: async (): Promise<void> => {
     await api.delete('/funds/logo');
+  },
+
+  // Get email customization settings
+  getEmailCustomization: async (): Promise<EmailCustomizationSettings> => {
+    return api.get<EmailCustomizationSettings>('/funds/email-customization');
+  },
+
+  // Update email customization settings
+  updateEmailCustomization: async (input: UpdateEmailCustomizationInput): Promise<EmailCustomizationSettings> => {
+    return api.patch<EmailCustomizationSettings>('/funds/email-customization', input);
   },
 };
 

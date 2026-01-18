@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { fundsController } from './funds.controller';
+import { fundEmailController } from './fund-email.controller';
 import { authenticate } from '../../common/middleware/auth.middleware';
 import { requireManager } from '../../common/middleware/rbac.middleware';
 
@@ -28,6 +29,16 @@ export async function fundsRoutes(fastify: FastifyInstance) {
   // Update branding (colors)
   fastify.patch('/branding', { preHandler: managerPreHandler }, async (request, reply) => {
     return fundsController.updateBranding(request as any, reply);
+  });
+
+  // Get email customization settings
+  fastify.get('/email-customization', { preHandler: managerPreHandler }, async (request, reply) => {
+    return fundEmailController.getEmailCustomization(request as any, reply);
+  });
+
+  // Update email customization settings
+  fastify.patch('/email-customization', { preHandler: managerPreHandler }, async (request, reply) => {
+    return fundEmailController.updateEmailCustomization(request as any, reply);
   });
 
   // Upload logo

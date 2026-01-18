@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Building2, Palette, CreditCard, Users, Plug, Shield } from 'lucide-react';
+import { Building2, Palette, CreditCard, Users, Plug, Shield, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fundsApi, Fund, FundBranding, FundAddress } from '@/lib/api/funds';
 import {
@@ -10,9 +10,10 @@ import {
   FundTeamTab,
   FundIntegrationsTab,
   FundStakeholderPermissionsTab,
+  FundEmailCustomizationTab,
 } from '../components/settings';
 
-type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'permissions' | 'integrations';
+type TabType = 'profile' | 'branding' | 'banking' | 'team' | 'permissions' | 'integrations' | 'email';
 
 const TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Fund Profile', icon: Building2 },
@@ -21,6 +22,7 @@ const TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'team', label: 'Team', icon: Users },
   { id: 'permissions', label: 'Stakeholder Permissions', icon: Shield },
   { id: 'integrations', label: 'Integrations', icon: Plug },
+  { id: 'email', label: 'Email Customization', icon: Mail },
 ];
 
 interface ProfileFormState {
@@ -102,6 +104,8 @@ export function FundSettings(): JSX.Element {
       setActiveTab('integrations');
     } else if (tabParam === 'team') {
       setActiveTab('team');
+    } else if (tabParam === 'email') {
+      setActiveTab('email');
     }
   }, [searchParams, setSearchParams]);
 
@@ -162,6 +166,8 @@ export function FundSettings(): JSX.Element {
       {activeTab === 'integrations' && (
         <FundIntegrationsTab emailMessage={emailMessage} />
       )}
+
+      {activeTab === 'email' && <FundEmailCustomizationTab />}
     </div>
   );
 }

@@ -312,6 +312,7 @@ export class FundsService {
       slug,
     };
   }
+
 }
 
 export const fundsService = new FundsService();

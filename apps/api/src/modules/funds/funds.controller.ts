@@ -299,6 +299,7 @@ export class FundsController {
       });
     }
   }
+
 }
 
 export const fundsController = new FundsController();

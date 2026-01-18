@@ -12,6 +12,8 @@ const envSchema = z.object({
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  // Redis for BullMQ job queue (optional - required for delayed emails)
+  REDIS_URL: z.string().url().optional(),
   N8N_WEBHOOK_BASE_URL: z.string().url().optional(),
   DOCUSIGN_INTEGRATION_KEY: z.string().optional(),
   DOCUSIGN_SECRET_KEY: z.string().optional(),

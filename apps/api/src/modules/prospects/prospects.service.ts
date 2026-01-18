@@ -271,11 +271,14 @@ export class ProspectsService {
     const emailTriggers: Record<ProspectStatus, string | null> = {
       kyc_sent: 'kyc_invite',
       kyc_submitted: null, // No auto-email on submission
+      submitted: null, // Legacy status - no auto-email
       pre_qualified: 'meeting_invite',
-      not_eligible: null, // Consider adding rejection email
+      not_eligible: 'kyc_not_eligible',
       meeting_scheduled: null, // Calendly handles this
-      meeting_complete: 'post_meeting_onboarding',
-      account_invite_sent: 'account_invite',
+      meeting_complete: null, // Manager chooses proceed/considering/not_fit
+      considering: 'post_meeting_considering',
+      not_a_fit: 'post_meeting_not_fit',
+      account_invite_sent: 'post_meeting_proceed',
       account_created: 'account_created',
       onboarding_submitted: null, // No auto-email
       documents_pending: null, // No auto-email

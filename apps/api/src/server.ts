@@ -5,6 +5,8 @@ import multipart from '@fastify/multipart';
 import { registerRoutes } from './routes';
 import { errorHandler } from './common/middleware/error-handler';
 import { env } from './config/env';
+import { startEmailWorker, stopEmailWorker } from './common/queue/emailWorker';
+import { closeEmailQueue } from './common/queue/emailQueue';
 
 const fastify = Fastify({
   logger: {
@@ -78,12 +80,52 @@ async function start() {
     console.log(`🚀 Server listening on port ${port}`);
     console.log(`🚀 Server address: ${address}`);
     fastify.log.info(`Server listening on ${address}`);
+
+    // Start email worker if Redis is configured
+    if (process.env.REDIS_URL) {
+      try {
+        startEmailWorker();
+        console.log('📧 Email worker started');
+      } catch (workerErr) {
+        console.warn('⚠️ Failed to start email worker:', workerErr);
+        // Don't fail startup if worker fails - it's not critical
+      }
+    } else {
+      console.log('📧 Email worker skipped - REDIS_URL not configured');
+    }
   } catch (err) {
     console.error('Failed to start server:', err);
     fastify.log.error(err);
     process.exit(1);
   }
 }
+
+// Graceful shutdown
+async function shutdown(signal: string): Promise<void> {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  
+  try {
+    // Stop accepting new requests
+    await fastify.close();
+    console.log('✅ HTTP server closed');
+
+    // Stop email worker
+    await stopEmailWorker();
+    console.log('✅ Email worker stopped');
+
+    // Close queue connections
+    await closeEmailQueue();
+    console.log('✅ Queue connections closed');
+
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 start();
 

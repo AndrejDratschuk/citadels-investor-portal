@@ -66,5 +66,31 @@ export async function prospectsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post('/:id/send-docusign', { preHandler }, async (request, reply) => {
     return prospectsController.sendDocuSign(request as any, reply);
   });
+
+  // Post-meeting: Mark as Proceed (ready to invest)
+  fastify.post('/:id/proceed', { preHandler }, async (request, reply) => {
+    return prospectsController.markProceed(request as any, reply);
+  });
+
+  // Post-meeting: Mark as Considering (needs time to decide)
+  fastify.post('/:id/considering', { preHandler }, async (request, reply) => {
+    return prospectsController.markConsidering(request as any, reply);
+  });
+
+  // Post-meeting: Mark as Not a Fit
+  fastify.post('/:id/not-fit', { preHandler }, async (request, reply) => {
+    return prospectsController.markNotFit(request as any, reply);
+  });
+
+  // KYC: Mark as Not Eligible
+  fastify.post('/:id/not-eligible', { preHandler }, async (request, reply) => {
+    return prospectsController.markNotEligible(request as any, reply);
+  });
+
+  // Public endpoint: Ready to Invest (from nurture email)
+  // No auth required - redirects to account creation
+  fastify.get('/:id/ready-to-invest', async (request, reply) => {
+    return prospectsController.readyToInvest(request as any, reply);
+  });
 }
 

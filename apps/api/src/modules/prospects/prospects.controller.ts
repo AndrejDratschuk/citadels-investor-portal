@@ -24,6 +24,16 @@ import {
 } from '@altsui/shared';
 import type { ProspectStatus } from '@altsui/shared';
 
+// Input schema for marking prospect as Considering
+const MarkConsideringInputSchema = z.object({
+  meetingRecapBullets: z.string().optional(),
+});
+
+// Input schema for marking prospect as Not a Fit
+const MarkNotFitInputSchema = z.object({
+  reason: z.string().optional(),
+});
+
 export class ProspectsController {
   private repository: ProspectsRepository;
   private service: ProspectsService;
@@ -55,8 +65,15 @@ export class ProspectsController {
     fundId: string;
     fundName: string;
     managerName: string;
+    managerTitle?: string;
+    managerCredentials?: string;
     managerEmail: string;
     calendlyUrl?: string;
+    investmentBriefDescriptor?: string;
+    consideringSupportMessage?: string;
+    platformName?: string;
+    postMeetingRecapTemplate?: string;
+    accreditationEducationContent?: string;
   } | null> {
     if (!fundId) {
       return null;
@@ -65,7 +82,7 @@ export class ProspectsController {
     // Get manager info
     const { data: manager, error: managerError } = await supabaseAdmin
       .from('users')
-      .select('first_name, last_name, email')
+      .select('first_name, last_name, email, title, credentials')
       .eq('id', userId)
       .single();
 
@@ -76,7 +93,15 @@ export class ProspectsController {
     // Get fund info
     const { data: fund, error: fundError } = await supabaseAdmin
       .from('funds')
-      .select('name, calendly_url')
+      .select(`
+        name, 
+        calendly_url, 
+        investment_brief_descriptor,
+        considering_support_message,
+        platform_name,
+        post_meeting_recap_template,
+        accreditation_education_content
+      `)
       .eq('id', fundId)
       .single();
 
@@ -93,8 +118,15 @@ export class ProspectsController {
       fundId,
       fundName,
       managerName,
+      managerTitle: manager?.title || undefined,
+      managerCredentials: manager?.credentials || undefined,
       managerEmail: manager?.email || '',
-      calendlyUrl: fund?.calendly_url,
+      calendlyUrl: fund?.calendly_url || undefined,
+      investmentBriefDescriptor: fund?.investment_brief_descriptor || undefined,
+      consideringSupportMessage: fund?.considering_support_message || undefined,
+      platformName: fund?.platform_name || undefined,
+      postMeetingRecapTemplate: fund?.post_meeting_recap_template || undefined,
+      accreditationEducationContent: fund?.accreditation_education_content || undefined,
     };
   }
 
@@ -336,7 +368,7 @@ export class ProspectsController {
         managerInfo.fundName,
         managerInfo.calendlyUrl,
         managerInfo.managerName,
-        managerInfo.managerEmail
+        now
       );
 
       reply.send({ success: true, data: updated });
@@ -466,7 +498,7 @@ export class ProspectsController {
         managerInfo.fundName,
         undefined,
         managerInfo.managerName,
-        managerInfo.managerEmail
+        now
       );
 
       reply.send({ success: true, data: updated });
@@ -770,6 +802,324 @@ export class ProspectsController {
       reply.status(500).send({
         success: false,
         error: 'Failed to send DocuSign',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  }
+
+  /**
+   * Mark prospect as "Proceed" after meeting (sends account creation invite)
+   */
+  async markProceed(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
+    try {
+      if (!request.user) {
+        reply.status(401).send({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { id } = request.params as { id: string };
+      const { postMeetingRecap } = (request.body as { postMeetingRecap?: string }) || {};
+      const now = this.getCurrentTime();
+
+      const prospect = await this.repository.findById(id);
+      if (!prospect) {
+        reply.status(404).send({ success: false, error: 'Prospect not found' });
+        return;
+      }
+
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
+      if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
+        reply.status(403).send({ success: false, error: 'Access denied' });
+        return;
+      }
+
+      // Validate that prospect is in meeting_complete status
+      if (prospect.status !== 'meeting_complete') {
+        reply.status(400).send({
+          success: false,
+          error: 'Prospect must be in meeting_complete status to mark as proceed',
+        });
+        return;
+      }
+
+      // Update to account_invite_sent status
+      const updated = await this.repository.updateStatus(
+        id,
+        'account_invite_sent' as ProspectStatus,
+        now
+      );
+
+      // Trigger Post-Meeting: Proceed email
+      await this.emailTriggers.onMarkedProceed(
+        updated,
+        managerInfo.fundName,
+        managerInfo.managerName,
+        managerInfo.managerTitle,
+        managerInfo.platformName,
+        postMeetingRecap || managerInfo.postMeetingRecapTemplate
+      );
+
+      reply.send({ success: true, data: updated });
+    } catch (error) {
+      console.error('Error marking prospect as proceed:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to mark prospect as proceed',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  }
+
+  /**
+   * Mark prospect as "Considering" after meeting (starts nurture sequence)
+   */
+  async markConsidering(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
+    try {
+      if (!request.user) {
+        reply.status(401).send({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { id } = request.params as { id: string };
+      const input = MarkConsideringInputSchema.parse(request.body || {});
+      const now = this.getCurrentTime();
+
+      const prospect = await this.repository.findById(id);
+      if (!prospect) {
+        reply.status(404).send({ success: false, error: 'Prospect not found' });
+        return;
+      }
+
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
+      if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
+        reply.status(403).send({ success: false, error: 'Access denied' });
+        return;
+      }
+
+      // Validate that prospect is in meeting_complete status
+      if (prospect.status !== 'meeting_complete') {
+        reply.status(400).send({
+          success: false,
+          error: 'Prospect must be in meeting_complete status to mark as considering',
+        });
+        return;
+      }
+
+      // Update to considering status with timestamp
+      const updated = await this.repository.updateStatus(
+        id,
+        'considering' as ProspectStatus,
+        now,
+        {
+          consideringAt: now,
+          meetingRecapBullets: input.meetingRecapBullets || null,
+        }
+      );
+
+      // Trigger Post-Meeting: Considering email and schedule nurture sequence
+      await this.emailTriggers.onMarkedConsidering(
+        updated,
+        managerInfo.fundName,
+        managerInfo.managerName,
+        managerInfo.managerTitle,
+        input.meetingRecapBullets,
+        undefined, // deckLink - could be added to fund settings
+        undefined, // ppmPreviewLink - could be added to fund settings
+        managerInfo.consideringSupportMessage,
+        now
+      );
+
+      reply.send({ success: true, data: updated });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        reply.status(400).send({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      } else {
+        console.error('Error marking prospect as considering:', error);
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to mark prospect as considering',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+      }
+    }
+  }
+
+  /**
+   * Mark prospect as "Not a Fit" after meeting
+   */
+  async markNotFit(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
+    try {
+      if (!request.user) {
+        reply.status(401).send({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { id } = request.params as { id: string };
+      const input = MarkNotFitInputSchema.parse(request.body || {});
+      const now = this.getCurrentTime();
+
+      const prospect = await this.repository.findById(id);
+      if (!prospect) {
+        reply.status(404).send({ success: false, error: 'Prospect not found' });
+        return;
+      }
+
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
+      if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
+        reply.status(403).send({ success: false, error: 'Access denied' });
+        return;
+      }
+
+      // Validate that prospect is in meeting_complete status
+      if (prospect.status !== 'meeting_complete') {
+        reply.status(400).send({
+          success: false,
+          error: 'Prospect must be in meeting_complete status to mark as not a fit',
+        });
+        return;
+      }
+
+      // Update to not_a_fit status
+      const updated = await this.repository.updateStatus(
+        id,
+        'not_a_fit' as ProspectStatus,
+        now,
+        { notes: input.reason ? `Not a fit: ${input.reason}` : undefined }
+      );
+
+      // Trigger Post-Meeting: Not a Fit email and cancel all pending jobs
+      await this.emailTriggers.onMarkedNotFit(
+        updated,
+        managerInfo.fundName,
+        managerInfo.managerName,
+        managerInfo.investmentBriefDescriptor
+      );
+
+      reply.send({ success: true, data: updated });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        reply.status(400).send({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      } else {
+        console.error('Error marking prospect as not a fit:', error);
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to mark prospect as not a fit',
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+      }
+    }
+  }
+
+  /**
+   * Handle "Ready to Invest" click from nurture email
+   * Converts prospect from considering to account_invite_sent
+   */
+  async readyToInvest(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
+    try {
+      // This can be called without auth (from email link)
+      const { id } = request.params as { id: string };
+      const now = this.getCurrentTime();
+
+      const prospect = await this.repository.findById(id);
+      if (!prospect) {
+        reply.status(404).send({ success: false, error: 'Prospect not found' });
+        return;
+      }
+
+      // Validate that prospect is in considering status
+      if (prospect.status !== 'considering') {
+        reply.status(400).send({
+          success: false,
+          error: 'Prospect must be in considering status to proceed',
+        });
+        return;
+      }
+
+      // Cancel nurture sequence
+      await this.emailTriggers.onReadyToInvest(prospect);
+
+      // Update to account_invite_sent status
+      const updated = await this.repository.updateStatus(
+        id,
+        'account_invite_sent' as ProspectStatus,
+        now
+      );
+
+      // Redirect to account creation page
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      reply.redirect(`${baseUrl}/onboard/${prospect.id}`);
+    } catch (error) {
+      console.error('Error handling ready to invest:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to process request',
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  }
+
+  /**
+   * Mark KYC as not eligible (sends rejection email)
+   */
+  async markNotEligible(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
+    try {
+      if (!request.user) {
+        reply.status(401).send({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const { id } = request.params as { id: string };
+      const now = this.getCurrentTime();
+
+      const prospect = await this.repository.findById(id);
+      if (!prospect) {
+        reply.status(404).send({ success: false, error: 'Prospect not found' });
+        return;
+      }
+
+      const managerInfo = await this.getManagerFundInfo(request.user.fundId, request.user.id);
+      if (!managerInfo || managerInfo.fundId !== prospect.fundId) {
+        reply.status(403).send({ success: false, error: 'Access denied' });
+        return;
+      }
+
+      // Validate that prospect is in kyc_submitted status
+      if (prospect.status !== 'kyc_submitted' && prospect.status !== 'submitted') {
+        reply.status(400).send({
+          success: false,
+          error: 'Prospect must be in kyc_submitted status to mark as not eligible',
+        });
+        return;
+      }
+
+      // Update to not_eligible status
+      const updated = await this.repository.updateStatus(
+        id,
+        'not_eligible' as ProspectStatus,
+        now
+      );
+
+      // Trigger KYC Not Eligible email
+      await this.emailTriggers.onKYCNotEligible(
+        updated,
+        managerInfo.fundName,
+        managerInfo.accreditationEducationContent
+      );
+
+      reply.send({ success: true, data: updated });
+    } catch (error) {
+      console.error('Error marking prospect as not eligible:', error);
+      reply.status(500).send({
+        success: false,
+        error: 'Failed to mark prospect as not eligible',
         message: error instanceof Error ? error.message : 'Internal server error',
       });
     }

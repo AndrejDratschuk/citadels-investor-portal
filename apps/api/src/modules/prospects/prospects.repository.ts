@@ -228,11 +228,14 @@ export class ProspectsRepository {
     updatedAt: Date,
     additionalFields?: Partial<{
       meetingCompletedAt: Date;
+      consideringAt: Date;
+      meetingRecapBullets: string | null;
       onboardingStartedAt: Date;
       onboardingSubmittedAt: Date;
       documentsApprovedAt: Date;
       documentsRejectedAt: Date;
       documentRejectionReason: string;
+      notes: string;
       docusignEnvelopeId: string;
       docusignSentAt: Date;
       docusignSignedAt: Date;
@@ -250,6 +253,12 @@ export class ProspectsRepository {
     if (additionalFields?.meetingCompletedAt) {
       updateData.meeting_completed_at = additionalFields.meetingCompletedAt.toISOString();
     }
+    if (additionalFields?.consideringAt) {
+      updateData.considering_at = additionalFields.consideringAt.toISOString();
+    }
+    if (additionalFields?.meetingRecapBullets !== undefined) {
+      updateData.meeting_recap_bullets = additionalFields.meetingRecapBullets;
+    }
     if (additionalFields?.onboardingStartedAt) {
       updateData.onboarding_started_at = additionalFields.onboardingStartedAt.toISOString();
     }
@@ -264,6 +273,9 @@ export class ProspectsRepository {
     }
     if (additionalFields?.documentRejectionReason) {
       updateData.document_rejection_reason = additionalFields.documentRejectionReason;
+    }
+    if (additionalFields?.notes) {
+      updateData.notes = additionalFields.notes;
     }
     if (additionalFields?.docusignEnvelopeId) {
       updateData.docusign_envelope_id = additionalFields.docusignEnvelopeId;
@@ -345,6 +357,7 @@ export class ProspectsRepository {
       preQualified: data.pre_qualified || 0,
       meetingsScheduled: data.meetings_scheduled || 0,
       meetingsCompleted: data.meetings_completed || 0,
+      considering: data.considering || 0,
       onboardingInProgress: data.onboarding_in_progress || 0,
       documentsPending: data.documents_pending || 0,
       documentsApproved: data.documents_approved || 0,
@@ -372,6 +385,7 @@ export class ProspectsRepository {
       preQualified: prospects.filter(p => p.status === 'pre_qualified').length,
       meetingsScheduled: prospects.filter(p => p.status === 'meeting_scheduled').length,
       meetingsCompleted: prospects.filter(p => p.status === 'meeting_complete').length,
+      considering: prospects.filter(p => p.status === 'considering').length,
       onboardingInProgress: prospects.filter(p => 
         ['account_invite_sent', 'account_created', 'onboarding_submitted'].includes(p.status)
       ).length,
@@ -517,11 +531,13 @@ export class ProspectsRepository {
       updatedAt: row.updated_at,
       meetingScheduledAt: row.meeting_scheduled_at,
       meetingCompletedAt: row.meeting_completed_at,
+      consideringAt: (row as unknown as Record<string, unknown>).considering_at as string | null,
       onboardingStartedAt: row.onboarding_started_at,
       onboardingSubmittedAt: row.onboarding_submitted_at,
       documentsApprovedAt: row.documents_approved_at,
       documentsRejectedAt: row.documents_rejected_at,
       documentRejectionReason: row.document_rejection_reason,
+      meetingRecapBullets: (row as unknown as Record<string, unknown>).meeting_recap_bullets as string | null,
       docusignEnvelopeId: row.docusign_envelope_id,
       docusignSentAt: row.docusign_sent_at,
       docusignSignedAt: row.docusign_signed_at,

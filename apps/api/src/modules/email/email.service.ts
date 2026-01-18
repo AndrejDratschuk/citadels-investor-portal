@@ -6,17 +6,46 @@ import {
   AccountCreatedTemplateData,
   DocumentRejectionTemplateData,
   DocumentApprovedTemplateData,
-  KYCInviteTemplateData,
-  KYCAutoSendTemplateData,
-  MeetingInviteTemplateData,
-  PostMeetingOnboardingTemplateData,
   DocumentsApprovedDocuSignTemplateData,
   WelcomeInvestorTemplateData,
-  KYCReminderTemplateData,
   OnboardingReminderTemplateData,
   CapitalCallRequestTemplateData,
   WireConfirmationTemplateData,
   WireIssueTemplateData,
+  // Prospect templates (Stage 01)
+  KYCInviteTemplateData,
+  KYCAutoSendTemplateData,
+  KYCReminder1TemplateData,
+  KYCReminder2TemplateData,
+  KYCReminder3TemplateData,
+  MeetingInviteTemplateData,
+  KYCNotEligibleTemplateData,
+  MeetingReminder24hrTemplateData,
+  MeetingReminder15minTemplateData,
+  MeetingNoShowTemplateData,
+  PostMeetingProceedTemplateData,
+  PostMeetingConsideringTemplateData,
+  PostMeetingNotFitTemplateData,
+  NurtureDay15TemplateData,
+  NurtureDay23TemplateData,
+  NurtureDay30TemplateData,
+  DormantCloseoutTemplateData,
+  // Investor onboarding templates (Stage 02)
+  OnboardingReminder1TemplateData,
+  OnboardingReminder2TemplateData,
+  OnboardingReminder3TemplateData,
+  DocumentUploadedPendingTemplateData,
+  DocumentsReadySignatureTemplateData,
+  SignatureReminder1TemplateData,
+  SignatureReminder2TemplateData,
+  DocumentsFullyExecutedTemplateData,
+  FundingInstructionsTemplateData,
+  FundingDiscrepancyTemplateData,
+  WelcomeInvestorEnhancedTemplateData,
+  AccountInvitationEnhancedTemplateData,
+  // Legacy types
+  KYCReminderTemplateData,
+  PostMeetingOnboardingTemplateData,
 } from './templates';
 
 // Initialize Resend with API key from environment
@@ -89,6 +118,10 @@ export class EmailService {
     }
   }
 
+  // ============================================================
+  // Account & Onboarding Email Methods
+  // ============================================================
+
   /**
    * Send account creation invite email
    */
@@ -126,6 +159,34 @@ export class EmailService {
   }
 
   /**
+   * Send onboarding reminder email
+   */
+  async sendOnboardingReminder(to: string, data: OnboardingReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Complete Your Investor Profile - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, please complete your investor profile: ${data.onboardingUrl}`,
+      html: emailTemplates.onboardingReminder(data),
+    });
+  }
+
+  /**
+   * Send welcome investor email
+   */
+  async sendWelcomeInvestor(to: string, data: WelcomeInvestorTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Welcome to ${data.fundName}!`,
+      body: `Hi ${data.recipientName}, congratulations! Your investment of $${data.investmentAmount} in ${data.fundName} is confirmed. Access your portal: ${data.portalUrl}`,
+      html: emailTemplates.welcomeInvestor(data),
+    });
+  }
+
+  // ============================================================
+  // Document Email Methods
+  // ============================================================
+
+  /**
    * Send document rejection notification email
    */
   async sendDocumentRejection(to: string, data: DocumentRejectionTemplateData): Promise<SendEmailResult> {
@@ -149,58 +210,6 @@ export class EmailService {
     });
   }
 
-  // ============================================================
-  // Pipeline / Prospect Email Methods
-  // ============================================================
-
-  /**
-   * Send KYC invite email (manual send)
-   */
-  async sendKYCInvite(to: string, data: KYCInviteTemplateData): Promise<SendEmailResult> {
-    return this.sendEmail({
-      to,
-      subject: `Investment Opportunity - ${data.fundName}`,
-      body: `Hi ${data.recipientName}, you've been invited to complete a pre-qualification form for ${data.fundName}. Complete it here: ${data.kycUrl}`,
-      html: emailTemplates.kycInvite(data),
-    });
-  }
-
-  /**
-   * Send KYC auto-send email (from interest form)
-   */
-  async sendKYCAutoSend(to: string, data: KYCAutoSendTemplateData): Promise<SendEmailResult> {
-    return this.sendEmail({
-      to,
-      subject: `Thanks for Your Interest - ${data.fundName}`,
-      body: `Hi ${data.recipientName}, thank you for your interest in ${data.fundName}. Complete your pre-qualification here: ${data.kycUrl}`,
-      html: emailTemplates.kycAutoSend(data),
-    });
-  }
-
-  /**
-   * Send meeting invite email
-   */
-  async sendMeetingInvite(to: string, data: MeetingInviteTemplateData): Promise<SendEmailResult> {
-    return this.sendEmail({
-      to,
-      subject: `You're Pre-Qualified! Schedule Your Call - ${data.fundName}`,
-      body: `Hi ${data.recipientName}, you're pre-qualified for ${data.fundName}. Schedule your call here: ${data.calendlyUrl}`,
-      html: emailTemplates.meetingInvite(data),
-    });
-  }
-
-  /**
-   * Send post-meeting onboarding email
-   */
-  async sendPostMeetingOnboarding(to: string, data: PostMeetingOnboardingTemplateData): Promise<SendEmailResult> {
-    return this.sendEmail({
-      to,
-      subject: `Create Your Investor Account - ${data.fundName}`,
-      body: `Hi ${data.recipientName}, thank you for meeting with us! Create your account here: ${data.accountCreationUrl}`,
-      html: emailTemplates.postMeetingOnboarding(data),
-    });
-  }
-
   /**
    * Send documents approved + DocuSign email
    */
@@ -213,39 +222,242 @@ export class EmailService {
     });
   }
 
+  // ============================================================
+  // Prospect/KYC Email Methods (Stage 01 - 17 emails)
+  // ============================================================
+
+  // --- Primary Flow ---
+
   /**
-   * Send welcome investor email
+   * 01.01.A1 - KYC invite email (manual send)
    */
-  async sendWelcomeInvestor(to: string, data: WelcomeInvestorTemplateData): Promise<SendEmailResult> {
+  async sendKYCInvite(to: string, data: KYCInviteTemplateData): Promise<SendEmailResult> {
     return this.sendEmail({
       to,
-      subject: `Welcome to ${data.fundName}!`,
-      body: `Hi ${data.recipientName}, congratulations! Your investment of $${data.investmentAmount} in ${data.fundName} is confirmed. Access your portal: ${data.portalUrl}`,
-      html: emailTemplates.welcomeInvestor(data),
+      subject: `Investment Opportunity - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, ${data.managerName} from ${data.fundName} has invited you to complete a pre-qualification form. Complete it here: ${data.kycUrl}`,
+      html: emailTemplates.kycInvite(data),
     });
   }
 
   /**
-   * Send KYC reminder email
+   * 01.02.A1 - KYC auto-send email (from interest form)
+   */
+  async sendKYCAutoSend(to: string, data: KYCAutoSendTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Thanks for Your Interest - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, thank you for your interest in ${data.fundName}. Complete your pre-qualification here: ${data.kycUrl}`,
+      html: emailTemplates.kycAutoSend(data),
+    });
+  }
+
+  /**
+   * 01.03.A1 - Meeting invite email (KYC approved)
+   */
+  async sendMeetingInvite(to: string, data: MeetingInviteTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Pre-Qualified - Schedule Your Call - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, you're pre-qualified for ${data.fundName}. Schedule your call here: ${data.calendlyUrl}`,
+      html: emailTemplates.meetingInvite(data),
+    });
+  }
+
+  // --- KYC Reminders ---
+
+  /**
+   * 01.02.B1 - KYC reminder #1 (+48hr)
+   */
+  async sendKYCReminder1(to: string, data: KYCReminder1TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Complete Your Pre-Qualification - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, you started the pre-qualification process but haven't completed it yet. Continue here: ${data.kycUrl}`,
+      html: emailTemplates.kycReminder1(data),
+    });
+  }
+
+  /**
+   * 01.02.B2 - KYC reminder #2 (+5 days)
+   */
+  async sendKYCReminder2(to: string, data: KYCReminder2TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Still Interested? - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your pre-qualification form is still waiting for you: ${data.kycUrl}`,
+      html: emailTemplates.kycReminder2(data),
+    });
+  }
+
+  /**
+   * 01.02.B3 - KYC reminder #3 (Final, +10 days)
+   */
+  async sendKYCReminder3(to: string, data: KYCReminder3TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Last Reminder - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, this is a final reminder to complete your pre-qualification for ${data.fundName}: ${data.kycUrl}`,
+      html: emailTemplates.kycReminder3(data),
+    });
+  }
+
+  /**
+   * @deprecated Use sendKYCReminder1 instead
    */
   async sendKYCReminder(to: string, data: KYCReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendKYCReminder1(to, data);
+  }
+
+  // --- KYC Rejection ---
+
+  /**
+   * 01.03.C1 - KYC not eligible email
+   */
+  async sendKYCNotEligible(to: string, data: KYCNotEligibleTemplateData): Promise<SendEmailResult> {
     return this.sendEmail({
       to,
-      subject: `Reminder: Complete Your Pre-Qualification - ${data.fundName}`,
-      body: `Hi ${data.recipientName}, don't forget to complete your pre-qualification form: ${data.kycUrl}`,
-      html: emailTemplates.kycReminder(data),
+      subject: `Thank You for Your Interest - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, thank you for your interest in ${data.fundName}. Based on the information provided, this investment opportunity is limited to accredited investors under SEC regulations.`,
+      html: emailTemplates.kycNotEligible(data),
+    });
+  }
+
+  // --- Meeting Reminders ---
+
+  /**
+   * 01.04.A1 - Meeting reminder (24hr before)
+   */
+  async sendMeetingReminder24hr(to: string, data: MeetingReminder24hrTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Tomorrow: Your Call with ${data.managerName} - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, this is a reminder of your scheduled call on ${data.meetingDate} at ${data.meetingTime} ${data.timezone}. Join here: ${data.meetingLink}`,
+      html: emailTemplates.meetingReminder24hr(data),
     });
   }
 
   /**
-   * Send onboarding reminder email
+   * 01.04.A2 - Meeting reminder (15min before)
    */
-  async sendOnboardingReminder(to: string, data: OnboardingReminderTemplateData): Promise<SendEmailResult> {
+  async sendMeetingReminder15min(to: string, data: MeetingReminder15minTemplateData): Promise<SendEmailResult> {
     return this.sendEmail({
       to,
-      subject: `Complete Your Investor Profile - ${data.fundName}`,
-      body: `Hi ${data.recipientName}, please complete your investor profile: ${data.onboardingUrl}`,
-      html: emailTemplates.onboardingReminder(data),
+      subject: `Starting Soon: Your Call with ${data.managerName}`,
+      body: `Hi ${data.recipientName}, your call starts in 15 minutes. Join here: ${data.meetingLink}`,
+      html: emailTemplates.meetingReminder15min(data),
+    });
+  }
+
+  /**
+   * 01.05.B1 - Meeting no-show email
+   */
+  async sendMeetingNoShow(to: string, data: MeetingNoShowTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Let's Reschedule - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we missed you for our scheduled call. No problem—schedules change. Pick a new time: ${data.calendlyUrl}`,
+      html: emailTemplates.meetingNoShow(data),
+    });
+  }
+
+  // --- Post-Meeting ---
+
+  /**
+   * 01.06.A1 - Post-meeting proceed (create account)
+   */
+  async sendPostMeetingProceed(to: string, data: PostMeetingProceedTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Create Your Investor Account - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, thank you for our conversation. To move forward with your investment, please create your secure investor account: ${data.accountCreationUrl}`,
+      html: emailTemplates.postMeetingProceed(data),
+    });
+  }
+
+  /**
+   * 01.06.B1 - Post-meeting considering (nurture entry)
+   */
+  async sendPostMeetingConsidering(to: string, data: PostMeetingConsideringTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `${data.fundName} - Next Steps When You're Ready`,
+      body: `Hi ${data.recipientName}, thank you for taking the time to discuss ${data.fundName}. When you're ready to move forward, click here: ${data.readyToInvestUrl}`,
+      html: emailTemplates.postMeetingConsidering(data),
+    });
+  }
+
+  /**
+   * 01.06.C1 - Post-meeting not a fit
+   */
+  async sendPostMeetingNotFit(to: string, data: PostMeetingNotFitTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Thank You for Your Time - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, thank you for taking the time to speak with us about ${data.fundName}. After our conversation, we've determined that this particular opportunity may not be the best fit at this time.`,
+      html: emailTemplates.postMeetingNotFit(data),
+    });
+  }
+
+  /**
+   * @deprecated Use sendPostMeetingProceed instead
+   */
+  async sendPostMeetingOnboarding(to: string, data: PostMeetingOnboardingTemplateData): Promise<SendEmailResult> {
+    return this.sendPostMeetingProceed(to, {
+      recipientName: data.recipientName,
+      fundName: data.fundName,
+      managerName: data.managerName || data.fundName,
+      accountCreationUrl: data.accountCreationUrl,
+    });
+  }
+
+  // --- Nurture Sequence ---
+
+  /**
+   * 01.06.B2 - Nurture day 15
+   */
+  async sendNurtureDay15(to: string, data: NurtureDay15TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Checking In - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, I wanted to follow up on our conversation about ${data.fundName}. If you have any questions or would like to discuss further, I'm happy to connect.`,
+      html: emailTemplates.nurtureDay15(data),
+    });
+  }
+
+  /**
+   * 01.06.B3 - Nurture day 23
+   */
+  async sendNurtureDay23(to: string, data: NurtureDay23TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `${data.fundName} - Quick Update`,
+      body: `Hi ${data.recipientName}, I wanted to share a quick update on ${data.fundName} and see if you had any remaining questions.`,
+      html: emailTemplates.nurtureDay23(data),
+    });
+  }
+
+  /**
+   * 01.06.B4 - Nurture day 30 (final)
+   */
+  async sendNurtureDay30(to: string, data: NurtureDay30TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Final Follow-Up - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, I'm reaching out one more time regarding ${data.fundName}. If this isn't the right time, I completely understand.`,
+      html: emailTemplates.nurtureDay30(data),
+    });
+  }
+
+  /**
+   * 01.06.B5 - Dormant close-out
+   */
+  async sendDormantCloseout(to: string, data: DormantCloseoutTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Thank You - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, thank you for taking the time to learn about ${data.fundName}. I understand the timing isn't right at the moment.`,
+      html: emailTemplates.dormantCloseout(data),
     });
   }
 
@@ -288,6 +500,154 @@ export class EmailService {
       html: emailTemplates.wireIssue(data),
     });
   }
+
+  // ============================================================
+  // Investor Onboarding Email Methods (Stage 02)
+  // ============================================================
+
+  /**
+   * 02.01.A1 - Account Invitation (Enhanced)
+   */
+  async sendAccountInvitationEnhanced(to: string, data: AccountInvitationEnhancedTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Create Your Investor Account - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, please create your investor account at: ${data.accountCreationUrl}`,
+      html: emailTemplates.accountInvitationEnhanced(data),
+    });
+  }
+
+  /**
+   * 02.02.B1 - Onboarding Reminder #1 (+48hr)
+   */
+  async sendOnboardingReminder1(to: string, data: OnboardingReminder1TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Complete Your Investor Profile - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, please complete your investor profile: ${data.onboardingUrl}`,
+      html: emailTemplates.onboardingReminder1(data),
+    });
+  }
+
+  /**
+   * 02.02.B2 - Onboarding Reminder #2 (+96hr)
+   */
+  async sendOnboardingReminder2(to: string, data: OnboardingReminder2TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Your Investor Profile is Incomplete - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your investor profile is still incomplete. Please finish it: ${data.onboardingUrl}`,
+      html: emailTemplates.onboardingReminder2(data),
+    });
+  }
+
+  /**
+   * 02.02.B3 - Onboarding Reminder #3 (+144hr, Final)
+   */
+  async sendOnboardingReminder3(to: string, data: OnboardingReminder3TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Final Reminder - Complete Your Profile - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, this is a final reminder to complete your investor profile: ${data.onboardingUrl}`,
+      html: emailTemplates.onboardingReminder3(data),
+    });
+  }
+
+  /**
+   * 02.03.B1 - Document Uploaded Pending
+   */
+  async sendDocumentUploadedPending(to: string, data: DocumentUploadedPendingTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Document Received - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we've received your ${data.documentType} and it's under review. You'll hear from us within ${data.reviewTimeframe}.`,
+      html: emailTemplates.documentUploadedPending(data),
+    });
+  }
+
+  /**
+   * 02.04.A1 - Documents Ready for Signature
+   */
+  async sendDocumentsReadySignature(to: string, data: DocumentsReadySignatureTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Investment Documents Ready for Signature - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your documents are approved and ready for signature: ${data.docusignUrl}`,
+      html: emailTemplates.documentsReadySignature(data),
+    });
+  }
+
+  /**
+   * 02.04.B1 - Signature Reminder #1 (+48hr)
+   */
+  async sendSignatureReminder1(to: string, data: SignatureReminder1TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Documents Awaiting Your Signature - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your investment documents are waiting for your signature: ${data.docusignUrl}`,
+      html: emailTemplates.signatureReminder1(data),
+    });
+  }
+
+  /**
+   * 02.04.B2 - Signature Reminder #2 (+96hr, Final)
+   */
+  async sendSignatureReminder2(to: string, data: SignatureReminder2TemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Final Reminder - Documents Awaiting Signature - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, this is a reminder that your investment documents are still awaiting signature: ${data.docusignUrl}`,
+      html: emailTemplates.signatureReminder2(data),
+    });
+  }
+
+  /**
+   * 02.05.A1 - Documents Fully Executed
+   */
+  async sendDocumentsFullyExecuted(to: string, data: DocumentsFullyExecutedTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Investment Documents Executed - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your investment documents have been fully executed. View them at: ${data.portalUrl}`,
+      html: emailTemplates.documentsFullyExecuted(data),
+    });
+  }
+
+  /**
+   * 02.06.A1 - Funding Instructions
+   */
+  async sendFundingInstructions(to: string, data: FundingInstructionsTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Funding Instructions - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, your subscription has been accepted. Commitment: $${data.commitmentAmount}. Deadline: ${data.fundingDeadline}.`,
+      html: emailTemplates.fundingInstructions(data),
+    });
+  }
+
+  /**
+   * 02.06.B1 - Funding Discrepancy
+   */
+  async sendFundingDiscrepancy(to: string, data: FundingDiscrepancyTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Funding Discrepancy - ${data.fundName}`,
+      body: `Hi ${data.recipientName}, we received $${data.receivedAmount} but expected $${data.commitmentAmount}. Please contact us to resolve.`,
+      html: emailTemplates.fundingDiscrepancy(data),
+    });
+  }
+
+  /**
+   * 02.07.A1 - Welcome Investor (Enhanced)
+   */
+  async sendWelcomeInvestorEnhanced(to: string, data: WelcomeInvestorEnhancedTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Welcome to ${data.fundName}!`,
+      body: `Hi ${data.recipientName}, congratulations! Your investment of $${data.investmentAmount} is confirmed. Access your portal: ${data.portalUrl}`,
+      html: emailTemplates.welcomeInvestorEnhanced(data),
+    });
+  }
 }
 
 export const emailService = new EmailService();
@@ -299,15 +659,44 @@ export type {
   AccountCreatedTemplateData,
   DocumentRejectionTemplateData,
   DocumentApprovedTemplateData,
-  KYCInviteTemplateData,
-  KYCAutoSendTemplateData,
-  MeetingInviteTemplateData,
-  PostMeetingOnboardingTemplateData,
   DocumentsApprovedDocuSignTemplateData,
   WelcomeInvestorTemplateData,
-  KYCReminderTemplateData,
   OnboardingReminderTemplateData,
   CapitalCallRequestTemplateData,
   WireConfirmationTemplateData,
   WireIssueTemplateData,
+  // Prospect templates (Stage 01)
+  KYCInviteTemplateData,
+  KYCAutoSendTemplateData,
+  KYCReminder1TemplateData,
+  KYCReminder2TemplateData,
+  KYCReminder3TemplateData,
+  MeetingInviteTemplateData,
+  KYCNotEligibleTemplateData,
+  MeetingReminder24hrTemplateData,
+  MeetingReminder15minTemplateData,
+  MeetingNoShowTemplateData,
+  PostMeetingProceedTemplateData,
+  PostMeetingConsideringTemplateData,
+  PostMeetingNotFitTemplateData,
+  NurtureDay15TemplateData,
+  NurtureDay23TemplateData,
+  NurtureDay30TemplateData,
+  DormantCloseoutTemplateData,
+  // Investor onboarding templates (Stage 02)
+  OnboardingReminder1TemplateData,
+  OnboardingReminder2TemplateData,
+  OnboardingReminder3TemplateData,
+  DocumentUploadedPendingTemplateData,
+  DocumentsReadySignatureTemplateData,
+  SignatureReminder1TemplateData,
+  SignatureReminder2TemplateData,
+  DocumentsFullyExecutedTemplateData,
+  FundingInstructionsTemplateData,
+  FundingDiscrepancyTemplateData,
+  WelcomeInvestorEnhancedTemplateData,
+  AccountInvitationEnhancedTemplateData,
+  // Legacy types
+  KYCReminderTemplateData,
+  PostMeetingOnboardingTemplateData,
 };

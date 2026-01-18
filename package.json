@@ -10,10 +10,15 @@
     "build": "pnpm --filter './apps/*' build",
     "start": "cd apps/api && pnpm start",
     "lint": "pnpm --filter './apps/*' lint",
-    "type-check": "pnpm --filter './packages/shared' type-check && pnpm --filter './apps/*' type-check"
+    "type-check": "pnpm --filter './packages/shared' type-check && pnpm --filter './apps/*' type-check",
+    "test": "pnpm -r --filter @altsui/shared --filter @altsui/api test",
+    "test:api": "pnpm -r --filter @altsui/api test",
+    "test:shared": "pnpm -r --filter @altsui/shared test",
+    "test:watch": "pnpm --filter './apps/api' test:watch"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "adm-zip": "^0.5.16",
     "typescript": "^5.3.3"
   },
   "engines": {
@@ -21,4 +26,3 @@
     "pnpm": ">=8.0.0"
   }
 }
-

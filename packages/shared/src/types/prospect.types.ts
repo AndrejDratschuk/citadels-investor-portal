@@ -62,11 +62,15 @@ export interface Prospect {
   updatedAt: string;
   meetingScheduledAt: string | null;
   meetingCompletedAt: string | null;
+  consideringAt: string | null;
   onboardingStartedAt: string | null;
   onboardingSubmittedAt: string | null;
   documentsApprovedAt: string | null;
   documentsRejectedAt: string | null;
   documentRejectionReason: string | null;
+  
+  // Post-meeting notes
+  meetingRecapBullets: string | null;
   
   // DocuSign
   docusignEnvelopeId: string | null;
@@ -142,6 +146,7 @@ export interface PipelineMetrics {
   preQualified: number;
   meetingsScheduled: number;
   meetingsCompleted: number;
+  considering: number;
   onboardingInProgress: number;
   documentsPending: number;
   documentsApproved: number;

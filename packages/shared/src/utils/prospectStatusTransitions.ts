@@ -39,9 +39,16 @@ const ALLOWED_TRANSITIONS: Record<ProspectStatus, ProspectStatus[]> = {
     PROSPECT_STATUS.NOT_ELIGIBLE,
   ],
   [PROSPECT_STATUS.MEETING_COMPLETE]: [
-    PROSPECT_STATUS.ACCOUNT_INVITE_SENT,
+    PROSPECT_STATUS.ACCOUNT_INVITE_SENT, // Proceed - create account
+    PROSPECT_STATUS.CONSIDERING, // Considering - enter nurture
+    PROSPECT_STATUS.NOT_A_FIT, // Not a fit - polite close
     PROSPECT_STATUS.NOT_ELIGIBLE,
   ],
+  [PROSPECT_STATUS.CONSIDERING]: [
+    PROSPECT_STATUS.ACCOUNT_INVITE_SENT, // Ready to invest - exit nurture
+    PROSPECT_STATUS.NOT_A_FIT, // Manager decides not a fit
+  ],
+  [PROSPECT_STATUS.NOT_A_FIT]: [], // Terminal state
   [PROSPECT_STATUS.ACCOUNT_INVITE_SENT]: [
     PROSPECT_STATUS.ACCOUNT_CREATED,
   ],
@@ -82,6 +89,11 @@ const AUTO_TRANSITIONS: Record<ProspectEvent, ProspectStatus | null> = {
   [PROSPECT_EVENT.KYC_REJECTED]: PROSPECT_STATUS.NOT_ELIGIBLE,
   [PROSPECT_EVENT.MEETING_BOOKED]: PROSPECT_STATUS.MEETING_SCHEDULED,
   [PROSPECT_EVENT.MEETING_COMPLETED]: PROSPECT_STATUS.MEETING_COMPLETE,
+  [PROSPECT_EVENT.MEETING_NO_SHOW]: null, // Manager decides next step
+  [PROSPECT_EVENT.MARKED_PROCEED]: PROSPECT_STATUS.ACCOUNT_INVITE_SENT,
+  [PROSPECT_EVENT.MARKED_CONSIDERING]: PROSPECT_STATUS.CONSIDERING,
+  [PROSPECT_EVENT.MARKED_NOT_A_FIT]: PROSPECT_STATUS.NOT_A_FIT,
+  [PROSPECT_EVENT.READY_TO_INVEST]: PROSPECT_STATUS.ACCOUNT_INVITE_SENT,
   [PROSPECT_EVENT.ACCOUNT_INVITE_SENT]: PROSPECT_STATUS.ACCOUNT_INVITE_SENT,
   [PROSPECT_EVENT.ACCOUNT_CREATED]: PROSPECT_STATUS.ACCOUNT_CREATED,
   [PROSPECT_EVENT.ONBOARDING_SUBMITTED]: PROSPECT_STATUS.ONBOARDING_SUBMITTED,
@@ -182,6 +194,8 @@ export function getStatusLabel(status: ProspectStatus): string {
     [PROSPECT_STATUS.NOT_ELIGIBLE]: 'Not Eligible',
     [PROSPECT_STATUS.MEETING_SCHEDULED]: 'Meeting Scheduled',
     [PROSPECT_STATUS.MEETING_COMPLETE]: 'Meeting Complete',
+    [PROSPECT_STATUS.CONSIDERING]: 'Considering',
+    [PROSPECT_STATUS.NOT_A_FIT]: 'Not a Fit',
     [PROSPECT_STATUS.ACCOUNT_INVITE_SENT]: 'Account Invite Sent',
     [PROSPECT_STATUS.ACCOUNT_CREATED]: 'Account Created',
     [PROSPECT_STATUS.ONBOARDING_SUBMITTED]: 'Onboarding Submitted',
@@ -214,6 +228,7 @@ export function calculatePipelineMetrics(
     preQualified: 0,
     meetingsScheduled: 0,
     meetingsCompleted: 0,
+    considering: 0,
     onboardingInProgress: 0,
     documentsPending: 0,
     documentsApproved: 0,
@@ -243,6 +258,9 @@ export function calculatePipelineMetrics(
         break;
       case PROSPECT_STATUS.MEETING_COMPLETE:
         metrics.meetingsCompleted++;
+        break;
+      case PROSPECT_STATUS.CONSIDERING:
+        metrics.considering++;
         break;
       case PROSPECT_STATUS.ACCOUNT_INVITE_SENT:
       case PROSPECT_STATUS.ACCOUNT_CREATED:
@@ -283,6 +301,7 @@ export function requiresManagerAction(status: ProspectStatus): boolean {
   const actionRequiredStatuses: ProspectStatus[] = [
     PROSPECT_STATUS.KYC_SUBMITTED,
     PROSPECT_STATUS.MEETING_COMPLETE,
+    PROSPECT_STATUS.CONSIDERING, // May need follow-up
     PROSPECT_STATUS.DOCUMENTS_PENDING,
     PROSPECT_STATUS.DOCUSIGN_SIGNED,
   ];
@@ -309,6 +328,10 @@ export function getStageGroup(status: ProspectStatus): string {
   ];
   if (meetingStatuses.includes(status)) {
     return 'Meeting';
+  }
+
+  if (status === PROSPECT_STATUS.CONSIDERING) {
+    return 'Nurture';
   }
 
   const onboardingStatuses: ProspectStatus[] = [
@@ -341,8 +364,8 @@ export function getStageGroup(status: ProspectStatus): string {
     return 'Converted';
   }
 
-  if (status === PROSPECT_STATUS.NOT_ELIGIBLE) {
-    return 'Rejected';
+  if (status === PROSPECT_STATUS.NOT_ELIGIBLE || status === PROSPECT_STATUS.NOT_A_FIT) {
+    return 'Closed';
   }
 
   return 'Unknown';

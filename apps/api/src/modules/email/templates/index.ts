@@ -8,6 +8,8 @@ export {
   escapeHtml,
   baseTemplate,
   primaryButton,
+  secondaryButton,
+  buttonRow,
   header,
   content,
   infoBox,
@@ -44,21 +46,57 @@ export type {
   DocumentsApprovedDocuSignTemplateData,
 } from './documentTemplates';
 
-// Prospect/KYC templates
+// Prospect/KYC templates (Stage 01 - 17 emails)
 export {
+  // Primary flow
   kycInviteTemplate,
   kycAutoSendTemplate,
   meetingInviteTemplate,
-  postMeetingOnboardingTemplate,
+  // KYC reminders
+  kycReminder1Template,
+  kycReminder2Template,
+  kycReminder3Template,
+  // KYC rejection
+  kycNotEligibleTemplate,
+  // Meeting reminders
+  meetingReminder24hrTemplate,
+  meetingReminder15minTemplate,
+  meetingNoShowTemplate,
+  // Post-meeting
+  postMeetingProceedTemplate,
+  postMeetingConsideringTemplate,
+  postMeetingNotFitTemplate,
+  // Nurture sequence
+  nurtureDay15Template,
+  nurtureDay23Template,
+  nurtureDay30Template,
+  dormantCloseoutTemplate,
+  // Legacy aliases
   kycReminderTemplate,
+  postMeetingOnboardingTemplate,
 } from './prospectTemplates';
 
 export type {
   KYCInviteTemplateData,
   KYCAutoSendTemplateData,
   MeetingInviteTemplateData,
-  PostMeetingOnboardingTemplateData,
+  KYCReminder1TemplateData,
+  KYCReminder2TemplateData,
+  KYCReminder3TemplateData,
+  KYCNotEligibleTemplateData,
+  MeetingReminder24hrTemplateData,
+  MeetingReminder15minTemplateData,
+  MeetingNoShowTemplateData,
+  PostMeetingProceedTemplateData,
+  PostMeetingConsideringTemplateData,
+  PostMeetingNotFitTemplateData,
+  NurtureDay15TemplateData,
+  NurtureDay23TemplateData,
+  NurtureDay30TemplateData,
+  DormantCloseoutTemplateData,
+  // Legacy types
   KYCReminderTemplateData,
+  PostMeetingOnboardingTemplateData,
 } from './prospectTemplates';
 
 // Capital call templates
@@ -73,6 +111,37 @@ export type {
   WireConfirmationTemplateData,
   WireIssueTemplateData,
 } from './capitalCallTemplates';
+
+// Investor onboarding templates (Stage 02)
+export {
+  onboardingReminder1Template,
+  onboardingReminder2Template,
+  onboardingReminder3Template,
+  documentUploadedPendingTemplate,
+  documentsReadySignatureTemplate,
+  signatureReminder1Template,
+  signatureReminder2Template,
+  documentsFullyExecutedTemplate,
+  fundingInstructionsTemplate,
+  fundingDiscrepancyTemplate,
+  welcomeInvestorEnhancedTemplate,
+  accountInvitationEnhancedTemplate,
+} from './investorOnboardingTemplates';
+
+export type {
+  OnboardingReminder1TemplateData,
+  OnboardingReminder2TemplateData,
+  OnboardingReminder3TemplateData,
+  DocumentUploadedPendingTemplateData,
+  DocumentsReadySignatureTemplateData,
+  SignatureReminder1TemplateData,
+  SignatureReminder2TemplateData,
+  DocumentsFullyExecutedTemplateData,
+  FundingInstructionsTemplateData,
+  FundingDiscrepancyTemplateData,
+  WelcomeInvestorEnhancedTemplateData,
+  AccountInvitationEnhancedTemplateData,
+} from './investorOnboardingTemplates';
 
 // Team invite templates
 export {
@@ -104,8 +173,22 @@ import {
   kycInviteTemplate,
   kycAutoSendTemplate,
   meetingInviteTemplate,
-  postMeetingOnboardingTemplate,
+  kycReminder1Template,
+  kycReminder2Template,
+  kycReminder3Template,
+  kycNotEligibleTemplate,
+  meetingReminder24hrTemplate,
+  meetingReminder15minTemplate,
+  meetingNoShowTemplate,
+  postMeetingProceedTemplate,
+  postMeetingConsideringTemplate,
+  postMeetingNotFitTemplate,
+  nurtureDay15Template,
+  nurtureDay23Template,
+  nurtureDay30Template,
+  dormantCloseoutTemplate,
   kycReminderTemplate,
+  postMeetingOnboardingTemplate,
 } from './prospectTemplates';
 
 import {
@@ -118,6 +201,21 @@ import {
   teamInviteTemplate,
   teamInviteReminderTemplate,
 } from './teamInviteTemplate';
+
+import {
+  onboardingReminder1Template,
+  onboardingReminder2Template,
+  onboardingReminder3Template,
+  documentUploadedPendingTemplate,
+  documentsReadySignatureTemplate,
+  signatureReminder1Template,
+  signatureReminder2Template,
+  documentsFullyExecutedTemplate,
+  fundingInstructionsTemplate,
+  fundingDiscrepancyTemplate,
+  welcomeInvestorEnhancedTemplate,
+  accountInvitationEnhancedTemplate,
+} from './investorOnboardingTemplates';
 
 /**
  * Combined emailTemplates object for backwards compatibility
@@ -134,12 +232,31 @@ export const emailTemplates = {
   documentRejection: documentRejectionTemplate,
   documentApproved: documentApprovedTemplate,
   documentsApprovedDocuSign: documentsApprovedDocuSignTemplate,
-  // Prospects
+  // Prospects - Primary flow
   kycInvite: kycInviteTemplate,
   kycAutoSend: kycAutoSendTemplate,
   meetingInvite: meetingInviteTemplate,
-  postMeetingOnboarding: postMeetingOnboardingTemplate,
-  kycReminder: kycReminderTemplate,
+  // Prospects - KYC reminders
+  kycReminder: kycReminderTemplate, // Legacy alias
+  kycReminder1: kycReminder1Template,
+  kycReminder2: kycReminder2Template,
+  kycReminder3: kycReminder3Template,
+  // Prospects - KYC rejection
+  kycNotEligible: kycNotEligibleTemplate,
+  // Prospects - Meeting
+  meetingReminder24hr: meetingReminder24hrTemplate,
+  meetingReminder15min: meetingReminder15minTemplate,
+  meetingNoShow: meetingNoShowTemplate,
+  // Prospects - Post-meeting
+  postMeetingOnboarding: postMeetingOnboardingTemplate, // Legacy alias
+  postMeetingProceed: postMeetingProceedTemplate,
+  postMeetingConsidering: postMeetingConsideringTemplate,
+  postMeetingNotFit: postMeetingNotFitTemplate,
+  // Prospects - Nurture
+  nurtureDay15: nurtureDay15Template,
+  nurtureDay23: nurtureDay23Template,
+  nurtureDay30: nurtureDay30Template,
+  dormantCloseout: dormantCloseoutTemplate,
   // Capital Calls
   capitalCallRequest: capitalCallRequestTemplate,
   wireConfirmation: wireConfirmationTemplate,
@@ -147,4 +264,17 @@ export const emailTemplates = {
   // Team Invites
   teamInvite: teamInviteTemplate,
   teamInviteReminder: teamInviteReminderTemplate,
+  // Investor Onboarding (Stage 02)
+  onboardingReminder1: onboardingReminder1Template,
+  onboardingReminder2: onboardingReminder2Template,
+  onboardingReminder3: onboardingReminder3Template,
+  documentUploadedPending: documentUploadedPendingTemplate,
+  documentsReadySignature: documentsReadySignatureTemplate,
+  signatureReminder1: signatureReminder1Template,
+  signatureReminder2: signatureReminder2Template,
+  documentsFullyExecuted: documentsFullyExecutedTemplate,
+  fundingInstructions: fundingInstructionsTemplate,
+  fundingDiscrepancy: fundingDiscrepancyTemplate,
+  welcomeInvestorEnhanced: welcomeInvestorEnhancedTemplate,
+  accountInvitationEnhanced: accountInvitationEnhancedTemplate,
 };

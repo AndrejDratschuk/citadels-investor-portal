@@ -71,6 +71,39 @@ export const primaryButton = (text: string, url: string): string => `
 `;
 
 /**
+ * Secondary button component (outlined style)
+ */
+export const secondaryButton = (text: string, url: string): string => `
+<table role="presentation" cellspacing="0" cellpadding="0" style="margin: 16px 0;">
+  <tr>
+    <td align="center" style="border: 2px solid #1e40af; border-radius: 6px;">
+      <a href="${url}" target="_blank" style="display: inline-block; padding: 12px 28px; font-size: 14px; font-weight: 600; color: #1e40af; text-decoration: none; border-radius: 6px;">
+        ${text}
+      </a>
+    </td>
+  </tr>
+</table>
+`;
+
+/**
+ * Two buttons side by side
+ */
+export const buttonRow = (buttons: Array<{ text: string; url: string; primary?: boolean }>): string => `
+<table role="presentation" cellspacing="0" cellpadding="0" style="margin: 24px 0;">
+  <tr>
+    ${buttons.map((btn, i) => `
+    <td align="center" ${btn.primary ? 'bgcolor="#1e40af"' : 'style="border: 2px solid #1e40af;"'} style="border-radius: 6px;${i > 0 ? ' margin-left: 12px;' : ''}">
+      <a href="${btn.url}" target="_blank" style="display: inline-block; padding: ${btn.primary ? '14px 32px' : '12px 28px'}; font-size: ${btn.primary ? '16px' : '14px'}; font-weight: 600; color: ${btn.primary ? '#ffffff' : '#1e40af'}; text-decoration: none; border-radius: 6px;">
+        ${btn.text}
+      </a>
+    </td>
+    ${i < buttons.length - 1 ? '<td style="width: 12px;"></td>' : ''}
+    `).join('')}
+  </tr>
+</table>
+`;
+
+/**
  * Header component
  */
 export const header = (title: string, fundName?: string): string => `

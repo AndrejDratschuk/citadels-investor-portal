@@ -42,8 +42,13 @@ export type CapitalCallEmailJobType =
   | 'capital_call_past_due'
   | 'capital_call_past_due_7';
 
+// Team Invite email job types (Stage 07)
+export type TeamInviteEmailJobType =
+  | 'team_invite_reminder_3d'
+  | 'team_invite_reminder_5d';
+
 // Combined email job type
-export type EmailJobType = ProspectEmailJobType | InvestorEmailJobType | CapitalCallEmailJobType;
+export type EmailJobType = ProspectEmailJobType | InvestorEmailJobType | CapitalCallEmailJobType | TeamInviteEmailJobType;
 
 // Job data structure for prospects
 export interface ProspectEmailJobData {
@@ -73,8 +78,17 @@ export interface CapitalCallEmailJobData {
   metadata?: Record<string, unknown>;
 }
 
+// Job data structure for team invites (Stage 07)
+export interface TeamInviteEmailJobData {
+  type: TeamInviteEmailJobType;
+  inviteId: string;
+  fundId: string;
+  scheduledAt: string; // ISO timestamp when job was scheduled
+  metadata?: Record<string, unknown>;
+}
+
 // Union type for all email job data
-export type EmailJobData = ProspectEmailJobData | InvestorEmailJobData | CapitalCallEmailJobData;
+export type EmailJobData = ProspectEmailJobData | InvestorEmailJobData | CapitalCallEmailJobData | TeamInviteEmailJobData;
 
 // Singleton queue instance
 let emailQueue: Queue<ProspectEmailJobData, unknown, string> | null = null;
@@ -322,6 +336,76 @@ export async function cancelCapitalCallEmailsByPattern(
   let cancelled = 0;
   for (const type of types) {
     const success = await cancelCapitalCallEmail(type, capitalCallItemId);
+    if (success) cancelled++;
+  }
+  return cancelled;
+}
+
+// ============================================================
+// Team Invite Email Functions (Stage 07)
+// ============================================================
+
+/**
+ * Generate a unique job ID for team invite emails
+ * Format: {type}:team_invite:{inviteId}
+ */
+export function generateTeamInviteJobId(type: TeamInviteEmailJobType, inviteId: string): string {
+  return `${type}:team_invite:${inviteId}`;
+}
+
+/**
+ * Schedule a team invite email job with delay
+ */
+export async function scheduleTeamInviteEmail(
+  data: TeamInviteEmailJobData,
+  delayMs: number
+): Promise<string> {
+  const queue = getEmailQueue();
+  const jobId = generateTeamInviteJobId(data.type, data.inviteId);
+
+  const job = await queue.add(data.type, data as unknown as ProspectEmailJobData, {
+    jobId,
+    delay: delayMs,
+  });
+
+  console.log(
+    `[EmailQueue] Scheduled ${data.type} for team invite ${data.inviteId} ` +
+      `in ${Math.round(delayMs / 1000 / 60 / 60 / 24)} days, jobId: ${job.id}`
+  );
+
+  return job.id ?? jobId;
+}
+
+/**
+ * Cancel a scheduled team invite email job
+ */
+export async function cancelTeamInviteEmail(
+  type: TeamInviteEmailJobType,
+  inviteId: string
+): Promise<boolean> {
+  const queue = getEmailQueue();
+  const jobId = generateTeamInviteJobId(type, inviteId);
+
+  const job = await queue.getJob(jobId);
+  if (job) {
+    await job.remove();
+    console.log(`[EmailQueue] Cancelled ${type} for team invite ${inviteId}`);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Cancel all team invite email jobs for an invite
+ */
+export async function cancelTeamInviteEmailsByPattern(
+  types: TeamInviteEmailJobType[],
+  inviteId: string
+): Promise<number> {
+  let cancelled = 0;
+  for (const type of types) {
+    const success = await cancelTeamInviteEmail(type, inviteId);
     if (success) cancelled++;
   }
   return cancelled;

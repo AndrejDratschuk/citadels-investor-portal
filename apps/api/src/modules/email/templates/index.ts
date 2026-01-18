@@ -182,6 +182,19 @@ export type {
   TeamInviteReminderTemplateData,
 } from './teamInviteTemplate';
 
+// Internal notification templates (Stage 07)
+export {
+  internalNewInvestorTemplate,
+  internalDocumentReviewTemplate,
+  internalCapitalCallSummaryTemplate,
+} from './internalNotificationTemplates';
+
+export type {
+  InternalNewInvestorTemplateData,
+  InternalDocumentReviewTemplateData,
+  InternalCapitalCallSummaryTemplateData,
+} from './internalNotificationTemplates';
+
 // Reporting & Tax templates (Stage 04)
 export {
   // Periodic Reports
@@ -265,6 +278,12 @@ import {
   teamInviteTemplate,
   teamInviteReminderTemplate,
 } from './teamInviteTemplate';
+
+import {
+  internalNewInvestorTemplate,
+  internalDocumentReviewTemplate,
+  internalCapitalCallSummaryTemplate,
+} from './internalNotificationTemplates';
 
 import {
   onboardingReminder1Template,
@@ -373,4 +392,8 @@ export const emailTemplates = {
   k1Available: k1AvailableTemplate,
   k1Estimate: k1EstimateTemplate,
   k1Amended: k1AmendedTemplate,
+  // Internal Notifications (Stage 07)
+  internalNewInvestor: internalNewInvestorTemplate,
+  internalDocumentReview: internalDocumentReviewTemplate,
+  internalCapitalCallSummary: internalCapitalCallSummaryTemplate,
 };

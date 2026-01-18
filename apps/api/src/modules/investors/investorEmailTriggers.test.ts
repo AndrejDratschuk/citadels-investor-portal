@@ -39,7 +39,14 @@ vi.mock('../email/email.service', () => ({
     sendFundingInstructions: vi.fn().mockResolvedValue({ success: true }),
     sendFundingDiscrepancy: vi.fn().mockResolvedValue({ success: true }),
     sendWelcomeInvestorEnhanced: vi.fn().mockResolvedValue({ success: true }),
+    // Internal notifications (Stage 07)
+    sendInternalDocumentReview: vi.fn().mockResolvedValue({ success: true }),
+    sendInternalNewInvestor: vi.fn().mockResolvedValue({ success: true }),
   },
+}));
+
+vi.mock('../team-invites/getManagerEmailsForFund', () => ({
+  getManagerEmailsForFund: vi.fn().mockResolvedValue(['manager1@fund.com', 'manager2@fund.com']),
 }));
 
 vi.mock('./investorJobScheduler', () => ({
@@ -58,6 +65,7 @@ import { InvestorEmailTriggers, investorEmailTriggers } from './investorEmailTri
 import { emailService } from '../email/email.service';
 import { investorJobScheduler } from './investorJobScheduler';
 import { supabaseAdmin } from '../../common/database/supabase';
+import { getManagerEmailsForFund } from '../team-invites/getManagerEmailsForFund';
 
 // Helper to mock database responses
 function mockDatabaseResponses(
@@ -239,11 +247,13 @@ describe('InvestorEmailTriggers', () => {
   describe('onDocumentUploaded', () => {
     it('should send document pending confirmation', async () => {
       mockDatabaseResponses(mockInvestor, mockFund, mockManager);
+      const timestamp = new Date('2026-01-15T14:30:00Z');
 
       await investorEmailTriggers.onDocumentUploaded(
         'investor-123',
         'fund-456',
-        'Driver License'
+        'Driver License',
+        timestamp
       );
 
       expect(emailService.sendDocumentUploadedPending).toHaveBeenCalledWith(
@@ -254,6 +264,58 @@ describe('InvestorEmailTriggers', () => {
           documentType: 'Driver License',
           reviewTimeframe: '1-2 business days',
         })
+      );
+    });
+
+    it('should send internal doc review notification to managers (07.02.A2)', async () => {
+      mockDatabaseResponses(mockInvestor, mockFund, mockManager);
+      const timestamp = new Date('2026-01-15T14:30:00Z');
+
+      await investorEmailTriggers.onDocumentUploaded(
+        'investor-123',
+        'fund-456',
+        'Accreditation Letter',
+        timestamp
+      );
+
+      // Should call sendInternalDocumentReview for each manager
+      expect(getManagerEmailsForFund).toHaveBeenCalledWith('fund-456');
+      expect(emailService.sendInternalDocumentReview).toHaveBeenCalledWith(
+        'manager1@fund.com',
+        expect.objectContaining({
+          investorName: 'John Doe',
+          documentType: 'Accreditation Letter',
+          fundName: 'Acme Growth Fund',
+        })
+      );
+      expect(emailService.sendInternalDocumentReview).toHaveBeenCalledWith(
+        'manager2@fund.com',
+        expect.objectContaining({
+          investorName: 'John Doe',
+          documentType: 'Accreditation Letter',
+        })
+      );
+    });
+
+    it('should continue if internal notification fails', async () => {
+      mockDatabaseResponses(mockInvestor, mockFund, mockManager);
+      vi.mocked(getManagerEmailsForFund).mockRejectedValueOnce(new Error('DB error'));
+      const consoleSpy = vi.spyOn(console, 'error');
+      const timestamp = new Date();
+
+      // Should not throw
+      await investorEmailTriggers.onDocumentUploaded(
+        'investor-123',
+        'fund-456',
+        'Driver License',
+        timestamp
+      );
+
+      // Main email should still be sent
+      expect(emailService.sendDocumentUploadedPending).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to send internal doc review notification'),
+        expect.any(Error)
       );
     });
   });
@@ -441,6 +503,76 @@ describe('InvestorEmailTriggers', () => {
           welcomeMessage: 'Welcome to our fund family!',
           managerName: 'Sarah Manager',
           managerTitle: 'Managing Partner',
+        })
+      );
+    });
+
+    it('should send internal new investor notification to managers (07.02.A1)', async () => {
+      mockDatabaseResponses(mockInvestor, mockFund, mockManager);
+
+      await investorEmailTriggers.onFundingReceived(
+        'investor-123',
+        'fund-456',
+        250000,
+        'January 15, 2026'
+      );
+
+      // Should call sendInternalNewInvestor for each manager
+      expect(getManagerEmailsForFund).toHaveBeenCalledWith('fund-456');
+      expect(emailService.sendInternalNewInvestor).toHaveBeenCalledWith(
+        'manager1@fund.com',
+        expect.objectContaining({
+          investorName: 'John Doe',
+          investmentAmount: '250,000',
+          investmentDate: 'January 15, 2026',
+          fundName: 'Acme Growth Fund',
+        })
+      );
+      expect(emailService.sendInternalNewInvestor).toHaveBeenCalledWith(
+        'manager2@fund.com',
+        expect.objectContaining({
+          investorName: 'John Doe',
+        })
+      );
+    });
+
+    it('should continue if internal notification fails', async () => {
+      mockDatabaseResponses(mockInvestor, mockFund, mockManager);
+      vi.mocked(getManagerEmailsForFund).mockRejectedValueOnce(new Error('DB error'));
+      const consoleSpy = vi.spyOn(console, 'error');
+
+      // Should not throw
+      await investorEmailTriggers.onFundingReceived(
+        'investor-123',
+        'fund-456',
+        250000,
+        'January 15, 2026'
+      );
+
+      // Main email should still be sent
+      expect(emailService.sendWelcomeInvestorEnhanced).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to send internal new investor notification'),
+        expect.any(Error)
+      );
+    });
+
+    it('should include correct view investor URL in internal notification', async () => {
+      mockDatabaseResponses(mockInvestor, mockFund, mockManager);
+      vi.mocked(getManagerEmailsForFund).mockResolvedValueOnce(['manager@fund.com']);
+      process.env.FRONTEND_URL = 'https://app.example.com';
+
+      await investorEmailTriggers.onFundingReceived(
+        'investor-123',
+        'fund-456',
+        250000,
+        'January 15, 2026'
+      );
+
+      expect(emailService.sendInternalNewInvestor).toHaveBeenCalledWith(
+        'manager@fund.com',
+        expect.objectContaining({
+          viewInvestorUrl: 'https://app.example.com/manager/investors/investor-123',
         })
       );
     });

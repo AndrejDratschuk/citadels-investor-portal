@@ -61,6 +61,13 @@ import {
   K1AvailableTemplateData,
   K1EstimateTemplateData,
   K1AmendedTemplateData,
+  // Internal Notification templates (Stage 07)
+  InternalNewInvestorTemplateData,
+  InternalDocumentReviewTemplateData,
+  InternalCapitalCallSummaryTemplateData,
+  // Team Invite templates
+  TeamInviteTemplateData,
+  TeamInviteReminderTemplateData,
   // Legacy types
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,
@@ -894,6 +901,75 @@ export class EmailService {
       html: emailTemplates.k1Amended(data),
     });
   }
+
+  // ===========================================================================
+  // STAGE 07: TEAM MANAGEMENT & INTERNAL NOTIFICATIONS
+  // ===========================================================================
+
+  /**
+   * 07.01.A1 - Team Invitation
+   * Sent when a manager invites a team member
+   */
+  async sendTeamInvite(to: string, data: TeamInviteTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `You've been invited to join ${data.fundName} on ${data.platformName}`,
+      body: `${data.inviterName} has invited you to join ${data.fundName} on ${data.platformName} as a ${data.role}. Accept: ${data.acceptInviteUrl}`,
+      html: emailTemplates.teamInvite(data),
+    });
+  }
+
+  /**
+   * 07.01.A2 - Team Invite Reminder
+   * Sent automatically at Day 3 and Day 5, or when manager resends
+   */
+  async sendTeamInviteReminder(to: string, data: TeamInviteReminderTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `Reminder: Join ${data.fundName}`,
+      body: `This is a reminder that ${data.inviterName} has invited you to join ${data.fundName} on ${data.platformName} as a ${data.role}. Accept: ${data.acceptInviteUrl}`,
+      html: emailTemplates.teamInviteReminder(data),
+    });
+  }
+
+  /**
+   * 07.02.A1 - Internal: New Investor
+   * Sent to managers when funding is received
+   */
+  async sendInternalNewInvestor(to: string, data: InternalNewInvestorTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `[Internal] New Investor: ${data.investorName} - ${data.fundName}`,
+      body: `New investor funded: ${data.investorName}, Amount: $${data.investmentAmount}, Date: ${data.investmentDate}`,
+      html: emailTemplates.internalNewInvestor(data),
+    });
+  }
+
+  /**
+   * 07.02.A2 - Internal: Doc Review
+   * Sent to managers when a document is uploaded
+   */
+  async sendInternalDocumentReview(to: string, data: InternalDocumentReviewTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `[Internal] Document Review: ${data.investorName} - ${data.documentType}`,
+      body: `Document uploaded requiring review: Investor: ${data.investorName}, Document: ${data.documentType}, Uploaded: ${data.uploadTimestamp}`,
+      html: emailTemplates.internalDocumentReview(data),
+    });
+  }
+
+  /**
+   * 07.02.A3 - Internal: Cap Call Summary
+   * Sent daily/weekly to managers during active capital call
+   */
+  async sendInternalCapitalCallSummary(to: string, data: InternalCapitalCallSummaryTemplateData): Promise<SendEmailResult> {
+    return this.sendEmail({
+      to,
+      subject: `[Internal] Capital Call #${data.capitalCallNumber} Status Update`,
+      body: `Capital Call #${data.capitalCallNumber} - ${data.dealName}: Total Called: $${data.totalCalled}, Received: $${data.totalReceived} (${data.percentReceived}%), Outstanding: $${data.totalOutstanding}, Past Due: $${data.totalPastDue}`,
+      html: emailTemplates.internalCapitalCallSummary(data),
+    });
+  }
 }
 
 export const emailService = new EmailService();
@@ -951,6 +1027,12 @@ export type {
   K1AvailableTemplateData,
   K1EstimateTemplateData,
   K1AmendedTemplateData,
+  // Team Management & Internal Notifications (Stage 07)
+  TeamInviteTemplateData,
+  TeamInviteReminderTemplateData,
+  InternalNewInvestorTemplateData,
+  InternalDocumentReviewTemplateData,
+  InternalCapitalCallSummaryTemplateData,
   // Legacy types
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,

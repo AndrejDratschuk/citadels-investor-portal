@@ -12,6 +12,8 @@ import {
   InvestorEmailJobType, 
   CapitalCallEmailJobData,
   CapitalCallEmailJobType,
+  TeamInviteEmailJobData,
+  TeamInviteEmailJobType,
   EmailJobType,
   EmailJobData,
 } from './emailQueue';
@@ -21,6 +23,7 @@ import { getRedisConnectionOptions } from '../redis/connection';
 let prospectEmailTriggers: typeof import('../../modules/prospects/prospectEmailTriggers').prospectEmailTriggers | null = null;
 let investorEmailTriggers: typeof import('../../modules/investors/investorEmailTriggers').investorEmailTriggers | null = null;
 let capitalCallEmailTriggers: typeof import('../../modules/capital-calls/capitalCallEmailTriggers').capitalCallEmailTriggers | null = null;
+let teamInviteEmailTriggers: typeof import('../../modules/team-invites/teamInviteEmailTriggers').teamInviteEmailTriggers | null = null;
 
 async function getProspectEmailTriggers() {
   if (!prospectEmailTriggers) {
@@ -46,6 +49,14 @@ async function getCapitalCallEmailTriggers() {
   return capitalCallEmailTriggers;
 }
 
+async function getTeamInviteEmailTriggers() {
+  if (!teamInviteEmailTriggers) {
+    const module = await import('../../modules/team-invites/teamInviteEmailTriggers');
+    teamInviteEmailTriggers = module.teamInviteEmailTriggers;
+  }
+  return teamInviteEmailTriggers;
+}
+
 // Worker instance
 let emailWorker: Worker<EmailJobData> | null = null;
 
@@ -59,6 +70,7 @@ interface EmailJobLogEntry {
   prospectId?: string;
   investorId?: string;
   capitalCallItemId?: string;
+  inviteId?: string;
   fundId: string;
   status: 'started' | 'completed' | 'failed' | 'skipped';
   durationMs?: number;
@@ -78,6 +90,11 @@ function isInvestorJob(type: string): type is InvestorEmailJobType {
 // Helper to check if job is a capital call job
 function isCapitalCallJob(type: string): type is CapitalCallEmailJobType {
   return type.startsWith('capital_call_');
+}
+
+// Helper to check if job is a team invite job
+function isTeamInviteJob(type: string): type is TeamInviteEmailJobType {
+  return type.startsWith('team_invite_');
 }
 
 /**
@@ -251,17 +268,54 @@ async function processCapitalCallEmailJob(
 }
 
 /**
- * Process an email job (prospect, investor, or capital call)
+ * Process a team invite email job
+ */
+async function processTeamInviteEmailJob(
+  job: Job<TeamInviteEmailJobData>,
+  startTime: number
+): Promise<void> {
+  const { type, inviteId, fundId } = job.data;
+  const triggers = await getTeamInviteEmailTriggers();
+  const timestamp = new Date();
+
+  // Dispatch to the appropriate handler
+  switch (type) {
+    case 'team_invite_reminder_3d':
+      await triggers.sendScheduledReminder(inviteId, fundId, 4, timestamp); // 4 days remaining
+      break;
+    case 'team_invite_reminder_5d':
+      await triggers.sendScheduledReminder(inviteId, fundId, 2, timestamp); // 2 days remaining
+      break;
+    default:
+      logJobEvent({
+        timestamp: new Date().toISOString(),
+        jobId: job.id,
+        jobType: type,
+        inviteId,
+        fundId,
+        status: 'skipped',
+        durationMs: Date.now() - startTime,
+        metadata: { reason: 'Unknown team invite job type' },
+      });
+      return;
+  }
+}
+
+/**
+ * Process an email job (prospect, investor, capital call, or team invite)
  */
 async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   const { type, fundId } = job.data;
   const startTime = Date.now();
   const isInvestor = isInvestorJob(type);
   const isCapitalCall = isCapitalCallJob(type);
+  const isTeamInvite = isTeamInviteJob(type);
 
   // Get the entity ID based on job type
   let entityLogProps: Partial<EmailJobLogEntry> = {};
-  if (isCapitalCall) {
+  if (isTeamInvite) {
+    entityLogProps = { inviteId: (job.data as TeamInviteEmailJobData).inviteId };
+  } else if (isCapitalCall) {
     const data = job.data as CapitalCallEmailJobData;
     entityLogProps = { capitalCallItemId: data.capitalCallItemId, investorId: data.investorId };
   } else if (isInvestor) {
@@ -280,7 +334,9 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   });
 
   try {
-    if (isCapitalCall) {
+    if (isTeamInvite) {
+      await processTeamInviteEmailJob(job as Job<TeamInviteEmailJobData>, startTime);
+    } else if (isCapitalCall) {
       await processCapitalCallEmailJob(job as Job<CapitalCallEmailJobData>, startTime);
     } else if (isInvestor) {
       await processInvestorEmailJob(job as Job<InvestorEmailJobData>, startTime);
@@ -353,11 +409,14 @@ export function startEmailWorker(): Worker<EmailJobData> {
     // Only log if this is a final failure (after all retries)
     // The actual error is already logged in processEmailJob
     if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
+      const isTeamInvite = isTeamInviteJob(job.data.type);
       const isCapitalCall = isCapitalCallJob(job.data.type);
       const isInvestor = isInvestorJob(job.data.type);
 
       let entityProps: Record<string, string> = {};
-      if (isCapitalCall) {
+      if (isTeamInvite) {
+        entityProps = { inviteId: (job.data as TeamInviteEmailJobData).inviteId };
+      } else if (isCapitalCall) {
         const data = job.data as CapitalCallEmailJobData;
         entityProps = { capitalCallItemId: data.capitalCallItemId, investorId: data.investorId };
       } else if (isInvestor) {

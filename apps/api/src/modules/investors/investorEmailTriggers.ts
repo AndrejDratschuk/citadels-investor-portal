@@ -6,6 +6,7 @@
 import { supabaseAdmin } from '../../common/database/supabase';
 import { emailService } from '../email/email.service';
 import { investorJobScheduler } from './investorJobScheduler';
+import { getManagerEmailsForFund } from '../team-invites/getManagerEmailsForFund';
 
 // ============================================================
 // Data Fetching Helpers
@@ -269,11 +270,13 @@ export class InvestorEmailTriggers {
   /**
    * Called when a document is uploaded (02.03.B1)
    * Triggers: Doc uploaded by investor
+   * Also sends internal notification to managers (07.02.A2)
    */
   async onDocumentUploaded(
     investorId: string,
     fundId: string,
-    documentType: string
+    documentType: string,
+    timestamp: Date
   ): Promise<void> {
     const investor = await getInvestor(investorId);
     const fund = await getFundSettings(fundId);
@@ -283,6 +286,7 @@ export class InvestorEmailTriggers {
       return;
     }
 
+    // Send confirmation to investor
     await emailService.sendDocumentUploadedPending(investor.email, {
       recipientName: getDisplayName(investor),
       fundName: fund.name,
@@ -290,6 +294,32 @@ export class InvestorEmailTriggers {
       reviewTimeframe: fund.documentReviewTimeframe || '1-2 business days',
       portalUrl: getDocumentsUrl(),
     });
+
+    // Send internal notification to all managers (07.02.A2)
+    try {
+      const managerEmails = await getManagerEmailsForFund(fundId);
+      const reviewDocumentUrl = `${getPortalUrl()}/manager/documents?investorId=${investorId}`;
+      
+      for (const managerEmail of managerEmails) {
+        await emailService.sendInternalDocumentReview(managerEmail, {
+          investorName: getDisplayName(investor),
+          documentType,
+          uploadTimestamp: timestamp.toLocaleString('en-US', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }),
+          fundName: fund.name,
+          reviewDocumentUrl,
+        });
+      }
+      
+      if (managerEmails.length > 0) {
+        console.log(`[InvestorEmailTriggers] Sent internal doc review notification to ${managerEmails.length} manager(s)`);
+      }
+    } catch (err) {
+      // Don't fail the main flow if internal notification fails
+      console.error('[InvestorEmailTriggers] Failed to send internal doc review notification:', err);
+    }
   }
 
   /**
@@ -482,6 +512,7 @@ export class InvestorEmailTriggers {
   /**
    * Called when funding is received and investment confirmed (02.07.A1)
    * Triggers: Funding received
+   * Also sends internal notification to managers (07.02.A1)
    */
   async onFundingReceived(
     investorId: string,
@@ -501,6 +532,7 @@ export class InvestorEmailTriggers {
     // Cancel all pending emails
     await investorJobScheduler.cancelAllInvestorEmails(investorId);
 
+    // Send welcome email to investor
     await emailService.sendWelcomeInvestorEnhanced(investor.email, {
       recipientName: getDisplayName(investor),
       fundName: fund.name,
@@ -512,6 +544,29 @@ export class InvestorEmailTriggers {
       managerName: getManagerName(manager),
       managerTitle: manager.title || 'Fund Manager',
     });
+
+    // Send internal notification to all managers (07.02.A1)
+    try {
+      const managerEmails = await getManagerEmailsForFund(fundId);
+      const viewInvestorUrl = `${getPortalUrl()}/manager/investors/${investorId}`;
+      
+      for (const managerEmail of managerEmails) {
+        await emailService.sendInternalNewInvestor(managerEmail, {
+          investorName: getDisplayName(investor),
+          investmentAmount: formatAmount(investmentAmount),
+          investmentDate,
+          fundName: fund.name,
+          viewInvestorUrl,
+        });
+      }
+      
+      if (managerEmails.length > 0) {
+        console.log(`[InvestorEmailTriggers] Sent internal new investor notification to ${managerEmails.length} manager(s)`);
+      }
+    } catch (err) {
+      // Don't fail the main flow if internal notification fails
+      console.error('[InvestorEmailTriggers] Failed to send internal new investor notification:', err);
+    }
   }
 
   /**

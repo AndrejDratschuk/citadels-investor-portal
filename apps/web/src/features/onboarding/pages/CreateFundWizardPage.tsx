@@ -510,8 +510,9 @@ export function CreateFundWizardPage(): JSX.Element {
           {/* Content steps - only when not loading */}
           {!dataImport.state.isLoading && (
             <>
-              {/* Source Selection Step */}
-              {dataImport.state.currentStep === 'source-selection' && (
+              {/* Source Selection Step (also shown for 'welcome' when modal is closed) */}
+              {(dataImport.state.currentStep === 'source-selection' || 
+                (dataImport.state.currentStep === 'welcome' && !showWelcomeModal)) && (
                 <DataSourceSelector
                   selectedSource={dataImport.state.selectedSource}
                   onSelectSource={dataImport.selectSource}

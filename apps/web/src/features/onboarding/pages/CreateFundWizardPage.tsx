@@ -499,43 +499,72 @@ export function CreateFundWizardPage(): JSX.Element {
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Source Selection Step */}
-          {dataImport.state.currentStep === 'source-selection' && (
-            <DataSourceSelector
-              selectedSource={dataImport.state.selectedSource}
-              onSelectSource={dataImport.selectSource}
-              onContinue={handleSourceContinue}
-            />
+          {/* Loading State */}
+          {dataImport.state.isLoading && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <p className="text-slate-600">Loading data...</p>
+            </div>
           )}
 
-          {/* File Upload Step */}
-          {dataImport.state.currentStep === 'file-upload' && (
-            <FileUploadStep
-              connectionName={dataImport.state.connectionName}
-              onConnectionNameChange={dataImport.setConnectionName}
-              onFileSelect={dataImport.handleFileSelect}
-              onUseSampleData={dataImport.handleUseSampleData}
-              onBack={dataImport.goBack}
-              isLoading={dataImport.state.isLoading}
-              error={dataImport.state.error}
-              selectedFile={dataImport.state.selectedFile}
-              showDealSelector={false}
-            />
-          )}
+          {/* Content steps - only when not loading */}
+          {!dataImport.state.isLoading && (
+            <>
+              {/* Source Selection Step */}
+              {dataImport.state.currentStep === 'source-selection' && (
+                <DataSourceSelector
+                  selectedSource={dataImport.state.selectedSource}
+                  onSelectSource={dataImport.selectSource}
+                  onContinue={handleSourceContinue}
+                />
+              )}
 
-          {/* Column Mapping Step */}
-          {dataImport.state.currentStep === 'column-mapping' && dataImport.state.parsedFile && (
-            <ColumnMappingStep
-              parsedData={dataImport.state.parsedFile}
-              suggestions={dataImport.state.suggestedMappings}
-              kpiDefinitions={dataImport.state.kpiDefinitions}
-              onMappingsChange={dataImport.updateMappings}
-              onContinue={handleImport}
-              onBack={dataImport.goBack}
-              isLoading={dataImport.state.isLoading}
-              error={dataImport.state.error}
-              isSampleData={dataImport.state.useSampleData}
-            />
+              {/* File Upload Step */}
+              {dataImport.state.currentStep === 'file-upload' && (
+                <FileUploadStep
+                  connectionName={dataImport.state.connectionName}
+                  onConnectionNameChange={dataImport.setConnectionName}
+                  onFileSelect={dataImport.handleFileSelect}
+                  onUseSampleData={dataImport.handleUseSampleData}
+                  onBack={dataImport.goBack}
+                  isLoading={dataImport.state.isLoading}
+                  error={dataImport.state.error}
+                  selectedFile={dataImport.state.selectedFile}
+                  showDealSelector={false}
+                />
+              )}
+
+              {/* Column Mapping Step */}
+              {dataImport.state.currentStep === 'column-mapping' && dataImport.state.parsedFile && (
+                <ColumnMappingStep
+                  parsedData={dataImport.state.parsedFile}
+                  suggestions={dataImport.state.suggestedMappings}
+                  kpiDefinitions={dataImport.state.kpiDefinitions}
+                  onMappingsChange={dataImport.updateMappings}
+                  onContinue={handleImport}
+                  onBack={dataImport.goBack}
+                  isLoading={dataImport.state.isLoading}
+                  error={dataImport.state.error}
+                  isSampleData={dataImport.state.useSampleData}
+                />
+              )}
+
+              {/* Error Fallback for column-mapping without parsedFile */}
+              {dataImport.state.currentStep === 'column-mapping' && !dataImport.state.parsedFile && (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                    <Upload className="h-6 w-6 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Failed to Load Data</h3>
+                  <p className="text-slate-600 mb-6">
+                    There was a problem loading your data. Please try again.
+                  </p>
+                  <Button variant="outline" onClick={() => dataImport.goToStep('source-selection')}>
+                    Go Back
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

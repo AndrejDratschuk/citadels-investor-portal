@@ -17,17 +17,79 @@ export interface ApiResponse<T = unknown> {
   message?: string;
 }
 
-async function getAuthToken(): Promise<string | null> {
-  // Get token from auth store or localStorage
-  const token = localStorage.getItem('accessToken');
-  return token;
+// Track if a token refresh is in progress to prevent multiple simultaneous refreshes
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+function getAuthToken(): string | null {
+  return localStorage.getItem('accessToken');
+}
+
+function getRefreshToken(): string | null {
+  return localStorage.getItem('refreshToken');
+}
+
+function setTokens(accessToken: string, refreshToken: string): void {
+  localStorage.setItem('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
+}
+
+function clearTokens(): void {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const data = (await response.json()) as ApiResponse<{ accessToken: string; refreshToken: string }>;
+    
+    if (data.success && data.data) {
+      setTokens(data.data.accessToken, data.data.refreshToken);
+      return true;
+    }
+    
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+async function handleTokenRefresh(): Promise<boolean> {
+  // If already refreshing, wait for that to complete
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = refreshAccessToken().finally(() => {
+    isRefreshing = false;
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
 }
 
 export async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry = false
 ): Promise<T> {
-  const token = await getAuthToken();
+  const token = getAuthToken();
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -42,6 +104,23 @@ export async function apiRequest<T>(
     ...options,
     headers,
   });
+
+  // Handle 401 Unauthorized - attempt token refresh and retry
+  if (response.status === 401 && !isRetry && !endpoint.includes('/auth/refresh')) {
+    const refreshed = await handleTokenRefresh();
+    
+    if (refreshed) {
+      // Retry the original request with the new token
+      return apiRequest<T>(endpoint, options, true);
+    }
+    
+    // Refresh failed - clear tokens and let the error propagate
+    clearTokens();
+    // Update auth store state
+    const { useAuthStore } = await import('@/stores/authStore');
+    useAuthStore.getState().logout();
+    throw new Error('Unauthorized');
+  }
 
   const data = (await response.json()) as ApiResponse<T> | ApiError;
 

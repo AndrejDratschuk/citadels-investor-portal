@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 
 export function useAuth() {
@@ -12,11 +12,17 @@ export function useAuth() {
     checkAuth,
   } = useAuthStore();
 
+  const hasCheckedAuth = useRef(false);
+
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
+    // Always validate token on initial mount to handle expired tokens
+    // This ensures tokens are refreshed even when localStorage has stored credentials
+    // Don't check isLoading - we want to run checkAuth even while loading (after rehydration)
+    if (!hasCheckedAuth.current && accessToken) {
+      hasCheckedAuth.current = true;
       checkAuth();
     }
-  }, [isAuthenticated, isLoading, checkAuth]);
+  }, [accessToken, checkAuth]);
 
   return {
     user,

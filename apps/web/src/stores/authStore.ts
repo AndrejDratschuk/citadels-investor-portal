@@ -104,15 +104,24 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
-        isAuthenticated: state.isAuthenticated,
+        // Don't persist isAuthenticated - let checkAuth validate on each app load
       }),
       onRehydrateStorage: () => (state) => {
-        // After hydration, set isLoading to false
+        // After hydration, keep isLoading true and isAuthenticated false
+        // This ensures checkAuth() runs to validate/refresh the token
+        // before the app considers the user authenticated
         if (state) {
-          // Derive isAuthenticated from stored data if not set
-          const hasAuth = !!(state.accessToken && state.user);
-          state.isAuthenticated = hasAuth;
-          state.isLoading = false;
+          const hasStoredCredentials = !!(state.accessToken && state.user);
+          if (hasStoredCredentials) {
+            // Keep isLoading = true so ProtectedRoute shows loading state
+            // checkAuth() will validate the token and set isAuthenticated + isLoading
+            state.isLoading = true;
+            state.isAuthenticated = false;
+          } else {
+            // No stored credentials - not authenticated, not loading
+            state.isLoading = false;
+            state.isAuthenticated = false;
+          }
         }
       },
     }

@@ -59,7 +59,11 @@ async function refreshAccessToken(): Promise<boolean> {
     const data = (await response.json()) as ApiResponse<{ accessToken: string; refreshToken: string }>;
     
     if (data.success && data.data) {
+      // Update localStorage
       setTokens(data.data.accessToken, data.data.refreshToken);
+      // Also sync with zustand store so state stays consistent
+      const { useAuthStore } = await import('@/stores/authStore');
+      useAuthStore.getState().setTokens(data.data.accessToken, data.data.refreshToken);
       return true;
     }
     

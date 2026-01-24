@@ -104,24 +104,15 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
-        // Don't persist isAuthenticated - let checkAuth validate on each app load
+        isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        // After hydration, keep isLoading true and isAuthenticated false
-        // This ensures checkAuth() runs to validate/refresh the token
-        // before the app considers the user authenticated
+        // After hydration, set isLoading to false
+        // The 401 interceptor in client.ts handles expired token refresh automatically
         if (state) {
-          const hasStoredCredentials = !!(state.accessToken && state.user);
-          if (hasStoredCredentials) {
-            // Keep isLoading = true so ProtectedRoute shows loading state
-            // checkAuth() will validate the token and set isAuthenticated + isLoading
-            state.isLoading = true;
-            state.isAuthenticated = false;
-          } else {
-            // No stored credentials - not authenticated, not loading
-            state.isLoading = false;
-            state.isAuthenticated = false;
-          }
+          const hasAuth = !!(state.accessToken && state.user);
+          state.isAuthenticated = hasAuth;
+          state.isLoading = false;
         }
       },
     }

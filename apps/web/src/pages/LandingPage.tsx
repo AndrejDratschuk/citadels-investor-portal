@@ -30,7 +30,7 @@ export function LandingPage() {
     <div className="flex min-h-screen flex-col">
       <header className="border-b">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <h1 className="text-xl font-bold">Altsui</h1>
+          <h1 className="text-xl font-bold">Citadel</h1>
           <nav className="flex items-center gap-4">
             <Link to="/login">
               <Button variant="ghost">Log in</Button>
@@ -43,7 +43,7 @@ export function LandingPage() {
       </header>
       <main className="flex flex-1 items-center justify-center">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="mb-4 text-4xl font-bold">Altsui Investor Portal</h2>
+          <h2 className="mb-4 text-4xl font-bold">Citadel Investor Portal</h2>
           <p className="mb-8 text-xl text-muted-foreground">
             Comprehensive investor portal for fund management
           </p>

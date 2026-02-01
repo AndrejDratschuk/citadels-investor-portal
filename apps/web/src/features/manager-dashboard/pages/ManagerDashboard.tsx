@@ -146,7 +146,7 @@ export function ManagerDashboard(): JSX.Element {
       <div>
         <h1 className="text-3xl font-bold">Fund Dashboard</h1>
         <p className="mt-1 text-muted-foreground">
-          Altsui Growth Fund I Overview
+          Citadel Growth Fund I Overview
         </p>
       </div>
 

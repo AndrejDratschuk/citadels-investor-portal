@@ -8,7 +8,7 @@ export function OnboardingPending() {
       {/* Header */}
       <header className="border-b bg-white">
         <div className="mx-auto max-w-3xl px-4 py-4">
-          <h1 className="text-xl font-bold">Altsui</h1>
+          <h1 className="text-xl font-bold">Citadel</h1>
         </div>
       </header>
 
@@ -67,11 +67,11 @@ export function OnboardingPending() {
           <h3 className="font-medium mb-4">Need to update your application?</h3>
           <div className="space-y-3">
             <a
-              href="mailto:support@altsui.com"
+              href="mailto:support@citadel.com"
               className="flex items-center gap-3 text-sm hover:text-primary"
             >
               <Mail className="h-4 w-4 text-muted-foreground" />
-              support@altsui.com
+              support@citadel.com
             </a>
             <a
               href="tel:+15551234567"

@@ -3,7 +3,6 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { BaseLayout } from './components/layout/BaseLayout';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './features/auth/pages/LoginPage';
-import { SignupPage } from './features/auth/pages/SignupPage';
 import { CreateAccountPage } from './features/auth/pages/CreateAccountPage';
 import {
   InvestorDashboard,
@@ -50,7 +49,6 @@ import {
   OnboardingSuccess,
   OnboardingPending,
 } from './features/onboarding/pages';
-import { CreateFundWizardPage } from './features/onboarding/pages/CreateFundWizardPage';
 import { AcceptTeamInvitePage } from './features/auth/pages/AcceptTeamInvitePage';
 import { KYCPage, KYCTypeSelectorPage, KYCTokenPage } from './features/kyc/pages';
 import { PipelinePage } from './features/manager-dashboard/pages/PipelinePage';
@@ -68,7 +66,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/signup',
-    element: <SignupPage />,
+    element: <Navigate to="/login" replace />,
   },
   // Account creation route (for investors with token)
   {
@@ -87,15 +85,6 @@ export const router = createBrowserRouter([
   {
     path: '/onboard/pending',
     element: <OnboardingPending />,
-  },
-  // Fund creation wizard (for new signups)
-  {
-    path: '/onboarding/create-fund',
-    element: (
-      <ProtectedRoute requireOnboardingIncomplete>
-        <CreateFundWizardPage />
-      </ProtectedRoute>
-    ),
   },
   // Team invite acceptance
   {

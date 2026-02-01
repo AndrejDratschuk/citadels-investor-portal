@@ -27,6 +27,19 @@ export function CreateDeal() {
 
       const newDeal = await dealsApi.create(dealInput);
       console.log('Deal created:', newDeal);
+
+      // If an image was selected, upload it after deal creation
+      if (formData.imageFile) {
+        try {
+          await dealsApi.uploadImage(newDeal.id, formData.imageFile);
+          console.log('Deal image uploaded');
+        } catch (imgErr: any) {
+          // Don't fail the whole operation if image upload fails
+          console.error('Failed to upload deal image:', imgErr);
+          // Could show a toast notification here
+        }
+      }
+
       navigate('/manager/deals');
     } catch (err: any) {
       console.error('Failed to create deal:', err);

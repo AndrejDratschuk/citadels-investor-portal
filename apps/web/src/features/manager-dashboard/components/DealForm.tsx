@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HelpCircle, Loader2 } from 'lucide-react';
+import { HelpCircle, Loader2, Upload, Trash2, Building2, Factory, Store, Landmark, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 interface DealFormData {
   name: string;
@@ -15,6 +16,7 @@ interface DealFormData {
   owningEntityName: string;
   requireFundsBeforeCountersign: boolean;
   autoSendFundingInstructions: boolean;
+  imageFile?: File | null;
 }
 
 interface DealFormProps {
@@ -23,6 +25,30 @@ interface DealFormProps {
   isEdit?: boolean;
   isSubmitting?: boolean;
 }
+
+// Property type gradients and icons for image placeholder
+const propertyTypeConfig: Record<string, { gradient: string; icon: React.ReactNode }> = {
+  multifamily: {
+    gradient: 'from-blue-600 to-indigo-700',
+    icon: <Building2 className="h-12 w-12 text-white/80" />,
+  },
+  office: {
+    gradient: 'from-slate-600 to-slate-800',
+    icon: <Landmark className="h-12 w-12 text-white/80" />,
+  },
+  retail: {
+    gradient: 'from-amber-500 to-orange-600',
+    icon: <Store className="h-12 w-12 text-white/80" />,
+  },
+  industrial: {
+    gradient: 'from-zinc-600 to-zinc-800',
+    icon: <Factory className="h-12 w-12 text-white/80" />,
+  },
+  other: {
+    gradient: 'from-purple-600 to-violet-700',
+    icon: <Home className="h-12 w-12 text-white/80" />,
+  },
+};
 
 const dealTypes = [
   { value: 'direct_syndication', label: 'Direct Syndication' },
@@ -95,6 +121,7 @@ function Tooltip({ content }: { content: string }) {
 
 export function DealForm({ initialData, onSubmit, isEdit = false, isSubmitting = false }: DealFormProps) {
   const navigate = useNavigate();
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<DealFormData>({
     name: initialData?.name || '',
     dealType: initialData?.dealType || '',
@@ -105,7 +132,10 @@ export function DealForm({ initialData, onSubmit, isEdit = false, isSubmitting =
     owningEntityName: initialData?.owningEntityName || '',
     requireFundsBeforeCountersign: initialData?.requireFundsBeforeCountersign ?? false,
     autoSendFundingInstructions: initialData?.autoSendFundingInstructions ?? false,
+    imageFile: null,
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const [errors, setErrors] = useState<Partial<Record<keyof DealFormData, string>>>({});
 
@@ -154,6 +184,44 @@ export function DealForm({ initialData, onSubmit, isEdit = false, isSubmitting =
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
+
+  const handleImageSelect = (file: File | null) => {
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError('Invalid file type. Please use PNG, JPEG, or WebP.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setImageError(null);
+    setFormData((prev) => ({ ...prev, imageFile: file }));
+    
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageRemove = () => {
+    setFormData((prev) => ({ ...prev, imageFile: null }));
+    setImagePreview(null);
+    setImageError(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  const config = propertyTypeConfig[formData.propertyType || 'other'] || propertyTypeConfig.other;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -321,14 +389,83 @@ export function DealForm({ initialData, onSubmit, isEdit = false, isSubmitting =
         </div>
       </div>
 
-      {/* Deal Image Note */}
+      {/* Deal Image */}
       {!isEdit && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
-          <h4 className="font-medium text-blue-800 dark:text-blue-200">Deal Image</h4>
-          <p className="mt-1 text-sm text-blue-600 dark:text-blue-300">
-            After creating this deal, you can upload a primary image from the deal detail page. 
-            The image will be displayed in the deals list and represent this investment opportunity.
+        <div className="rounded-xl border bg-card p-6">
+          <h3 className="text-lg font-semibold">Deal Image</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Upload an image to represent this investment opportunity (optional)
           </p>
+          
+          <div className="mt-4 space-y-3">
+            <div
+              className={cn(
+                'relative aspect-video w-full max-w-md overflow-hidden rounded-lg border-2 border-dashed transition-colors',
+                'border-muted-foreground/25 hover:border-muted-foreground/50'
+              )}
+            >
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Deal preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div
+                  className={cn(
+                    'flex h-full w-full flex-col items-center justify-center bg-gradient-to-br',
+                    config.gradient
+                  )}
+                >
+                  {config.icon}
+                  <p className="mt-3 text-sm font-medium text-white/70">
+                    {formData.propertyType
+                      ? formData.propertyType.charAt(0).toUpperCase() + formData.propertyType.slice(1)
+                      : 'No image selected'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {imageError && (
+              <p className="text-sm text-destructive">{imageError}</p>
+            )}
+
+            <div className="flex items-center gap-2">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                className="hidden"
+                onChange={(e) => handleImageSelect(e.target.files?.[0] || null)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {imagePreview ? 'Change Image' : 'Upload Image'}
+              </Button>
+              {imagePreview && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImageRemove}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remove
+                </Button>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              PNG, JPEG, or WebP. Max 5MB. You can also add or change the image later.
+            </p>
+          </div>
         </div>
       )}
 

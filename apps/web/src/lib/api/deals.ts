@@ -110,11 +110,9 @@ export const dealsApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Use fetch directly for multipart
+    // Use fetch directly for multipart - import API_URL from client
     const token = localStorage.getItem('accessToken');
-    const API_URL = import.meta.env.PROD
-      ? 'https://citadel-investor-portal-production.up.railway.app/api'
-      : (import.meta.env.VITE_API_URL || '/api');
+    const { API_URL } = await import('./client');
 
     const response = await fetch(`${API_URL}/deals/${dealId}/image`, {
       method: 'POST',

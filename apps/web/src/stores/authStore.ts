@@ -106,16 +106,9 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state, error) => {
-        // After hydration completes (success or failure), set isLoading to false
+      onRehydrateStorage: () => (state) => {
+        // After hydration completes, set isLoading to false
         // The 401 interceptor in client.ts handles expired token refresh automatically
-        if (error) {
-          console.error('Auth hydration error:', error);
-          // On error, ensure we're not stuck in loading state
-          useAuthStore.setState({ isLoading: false, isAuthenticated: false });
-          return;
-        }
-        
         if (state) {
           const hasAuth = !!(state.accessToken && state.user);
           state.isAuthenticated = hasAuth;

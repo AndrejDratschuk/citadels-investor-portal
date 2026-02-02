@@ -22,15 +22,22 @@ async function syncConnection(connectionId: string, now: Date): Promise<{
   error?: string;
 }> {
   try {
-    // Get full connection details
+    // Get connection with decrypted credentials using the service method
+    const connectionWithCreds = await googleSheetsService.getConnectionWithCredentials(connectionId);
+    
+    if (!connectionWithCreds) {
+      return { success: false, error: 'Connection not found or credentials missing' };
+    }
+
+    // Get full connection details for column_mapping and sync_frequency
     const { data: connection, error: fetchError } = await supabaseAdmin
       .from('data_connections')
-      .select('*')
+      .select('fund_id, deal_id, column_mapping, sync_frequency, sheet_name')
       .eq('id', connectionId)
       .single();
 
     if (fetchError || !connection) {
-      return { success: false, error: 'Connection not found' };
+      return { success: false, error: 'Connection data not found' };
     }
 
     // Update status to syncing
@@ -39,12 +46,15 @@ async function syncConnection(connectionId: string, now: Date): Promise<{
       .update({ sync_status: 'syncing' })
       .eq('id', connectionId);
 
-    // Use the service's syncDataToKpi method
+    // Use the service's syncDataToKpi method with all required parameters
     const result = await googleSheetsService.syncDataToKpi(
       connectionId,
-      connection.fund_id,
       connection.deal_id,
       connection.column_mapping || [],
+      connectionWithCreds.accessToken,
+      connectionWithCreds.refreshToken,
+      connectionWithCreds.spreadsheetId,
+      connection.sheet_name || connectionWithCreds.sheetName,
       now
     );
 
@@ -58,12 +68,12 @@ async function syncConnection(connectionId: string, now: Date): Promise<{
         sync_status: 'success',
         sync_error: null,
         last_synced_at: now.toISOString(),
-        last_sync_row_count: result.syncedCount,
+        last_sync_row_count: result.rowCount,
         next_sync_at: nextSyncAt?.toISOString() || null,
       })
       .eq('id', connectionId);
 
-    return { success: true, rowCount: result.syncedCount };
+    return { success: true, rowCount: result.rowCount };
   } catch (err) {
     console.error(`[Scheduler] Sync error for connection ${connectionId}:`, err);
     const errorMessage = err instanceof Error ? err.message : 'Unknown sync error';

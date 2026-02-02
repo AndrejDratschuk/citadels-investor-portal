@@ -89,6 +89,7 @@ export function ProspectActions({
         input: { status: 'pre_qualified' as ProspectStatus },
       });
       onRefresh();
+      onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to approve KYC: ${message}`);
@@ -102,6 +103,7 @@ export function ProspectActions({
         input: { status: 'not_eligible' as ProspectStatus },
       });
       onRefresh();
+      onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to reject KYC: ${message}`);
@@ -115,6 +117,7 @@ export function ProspectActions({
         input: { status: 'account_invite_sent' as ProspectStatus },
       });
       onRefresh();
+      onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to send account invite: ${message}`);
@@ -128,6 +131,7 @@ export function ProspectActions({
         input: { documentIds: [] },
       });
       onRefresh();
+      onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to approve documents: ${message}`);
@@ -147,6 +151,7 @@ export function ProspectActions({
       setShowRejectForm(false);
       setRejectReason('');
       onRefresh();
+      onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to reject documents: ${message}`);
@@ -202,6 +207,7 @@ export function ProspectActions({
         input: { status: 'not_eligible' as ProspectStatus },
       });
       onRefresh();
+      onClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to update status: ${message}`);

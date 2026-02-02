@@ -75,8 +75,9 @@ function WireConfirmModal({ item, onConfirm, onClose }: WireConfirmModalProps) {
   const [reference, setReference] = useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Confirm Wire Transfer</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">

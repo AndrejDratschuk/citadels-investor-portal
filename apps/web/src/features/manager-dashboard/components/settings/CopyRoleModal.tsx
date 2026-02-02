@@ -55,16 +55,16 @@ export function CopyRoleModal({
   const selectedSourceRole = sourceRoles.find((r) => r.id === sourceRoleId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="fixed inset-0 bg-black/50"
         onClick={handleClose}
         aria-hidden="true"
       />
 
       {/* Modal */}
-      <div className="relative bg-card border rounded-lg shadow-lg w-full max-w-md mx-4">
+      <div className="relative z-10 bg-card border rounded-lg shadow-lg w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">Copy Permissions</h2>

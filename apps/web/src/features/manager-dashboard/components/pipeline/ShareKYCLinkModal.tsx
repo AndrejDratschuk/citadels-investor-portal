@@ -29,9 +29,9 @@ export function ShareKYCLinkModal({ open, onClose }: ShareKYCLinkModalProps): JS
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-lg rounded-lg bg-background p-6 shadow-xl">

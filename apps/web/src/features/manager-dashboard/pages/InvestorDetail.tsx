@@ -738,12 +738,12 @@ export function InvestorDetail() {
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => !isDeleting && setShowDeleteConfirm(false)}
           />
-          <div className="relative z-10 w-full max-w-md mx-4 bg-white rounded-xl shadow-2xl p-6">
+          <div className="relative z-10 w-full max-w-md bg-white rounded-xl shadow-2xl p-6">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
                 <AlertCircle className="h-6 w-6 text-destructive" />

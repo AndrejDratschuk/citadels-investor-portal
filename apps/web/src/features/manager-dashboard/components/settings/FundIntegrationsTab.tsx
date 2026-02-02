@@ -386,8 +386,9 @@ export function FundIntegrationsTab({ emailMessage: initialEmailMessage }: FundI
 
       {/* SMTP Modal */}
       {showSmtpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-xl shadow-xl w-full max-w-md p-6 m-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowSmtpModal(false)} />
+          <div className="relative z-10 bg-background rounded-xl shadow-xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Connect SMTP Email</h2>
               <button onClick={() => setShowSmtpModal(false)} className="text-muted-foreground hover:text-foreground">

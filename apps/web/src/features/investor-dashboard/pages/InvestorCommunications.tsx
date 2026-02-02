@@ -133,12 +133,12 @@ function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+      <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl mx-4 bg-card rounded-xl shadow-xl border overflow-hidden">
+      <div className="relative z-10 w-full max-w-2xl bg-card rounded-xl shadow-xl border overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold flex items-center gap-2">

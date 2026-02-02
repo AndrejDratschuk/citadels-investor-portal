@@ -33,8 +33,9 @@ function RejectModal({ document, onClose, onReject, isLoading }: RejectModalProp
   const [reason, setReason] = useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <h3 className="text-lg font-semibold">Reject Document</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           You are rejecting <span className="font-medium">{document.name}</span>. The investor will

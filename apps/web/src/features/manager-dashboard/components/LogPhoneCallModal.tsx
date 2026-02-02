@@ -116,8 +116,10 @@ export function LogCommunicationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
+      <div className="relative z-10 w-full max-w-md rounded-xl bg-background p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', selectedType.color)}>

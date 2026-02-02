@@ -10,8 +10,8 @@ import type { DataConnection, ColumnMapping, SyncFrequency } from '@altsui/share
 // ============================================
 // Configuration
 // ============================================
-const GOOGLE_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_SHEETS_REDIRECT_URI =
   process.env.GOOGLE_SHEETS_REDIRECT_URI || 'http://localhost:3001/api/googlesheets/callback';
 

@@ -5,6 +5,7 @@
 
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { googleSheetsService } from './googlesheets.service';
+import { supabaseAdmin } from '../../common/database/supabase';
 import type { ColumnMapping, SyncFrequency } from '@altsui/shared';
 
 // ============================================
@@ -369,6 +370,7 @@ export class GoogleSheetsController {
     reply: FastifyReply
   ): Promise<void> {
     const { connectionId } = request.params;
+    const now = new Date();
 
     try {
       // Get connection with credentials
@@ -377,31 +379,68 @@ export class GoogleSheetsController {
         return reply.status(404).send({ success: false, error: 'Connection not found' });
       }
 
-      // Update status to syncing
-      await googleSheetsService.updateSyncStatus(connectionId, 'syncing', new Date());
+      // Get full connection details including column_mapping and deal_id
+      const { data: connectionData, error: connError } = await supabaseAdmin
+        .from('data_connections')
+        .select('*')
+        .eq('id', connectionId)
+        .single();
 
-      // Fetch and process data (this would be extracted to a sync service)
-      const { rows } = await googleSheetsService.fetchSheetData(
+      if (connError || !connectionData) {
+        return reply.status(404).send({ success: false, error: 'Connection details not found' });
+      }
+
+      const dealId = connectionData.deal_id;
+      const columnMapping = connectionData.column_mapping || [];
+
+      if (!dealId) {
+        return reply.status(400).send({ 
+          success: false, 
+          error: 'No deal linked to this connection. Please link a deal first.' 
+        });
+      }
+
+      if (columnMapping.length === 0) {
+        return reply.status(400).send({ 
+          success: false, 
+          error: 'No column mappings configured for this connection.' 
+        });
+      }
+
+      // Update status to syncing
+      await googleSheetsService.updateSyncStatus(connectionId, 'syncing', now);
+
+      // Perform the actual sync - fetch data and save to KPI tables
+      const { rowCount, kpiCount } = await googleSheetsService.syncDataToKpi(
+        connectionId,
+        dealId,
+        columnMapping,
         connection.accessToken,
         connection.refreshToken,
         connection.spreadsheetId,
-        connection.sheetName
+        connection.sheetName,
+        now
       );
 
-      // TODO: Process rows with column mapping and update KPI data
-      // This will be implemented in the sync cron service
-
       // Update status to success
-      await googleSheetsService.updateSyncStatus(connectionId, 'success', new Date(), {
-        rowCount: rows.length,
+      await googleSheetsService.updateSyncStatus(connectionId, 'success', now, {
+        rowCount,
       });
 
-      return reply.send({ success: true, data: { success: true, rowCount: rows.length } });
+      return reply.send({ 
+        success: true, 
+        data: { 
+          success: true, 
+          rowCount, 
+          kpiCount,
+          message: `Synced ${kpiCount} KPIs from ${rowCount} rows` 
+        } 
+      });
     } catch (err) {
       console.error('Sync error:', err);
       const message = err instanceof Error ? err.message : 'Sync failed';
 
-      await googleSheetsService.updateSyncStatus(connectionId, 'error', new Date(), {
+      await googleSheetsService.updateSyncStatus(connectionId, 'error', now, {
         syncError: message,
       });
 

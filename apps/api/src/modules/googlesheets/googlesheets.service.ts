@@ -636,6 +636,175 @@ export class GoogleSheetsService {
   }
 
   /**
+   * Sync data from Google Sheets to KPI tables
+   * This is the core sync logic that processes sheet data and saves to kpi_data
+   */
+  async syncDataToKpi(
+    connectionId: string,
+    dealId: string,
+    columnMapping: ColumnMapping[],
+    accessToken: string,
+    refreshToken: string,
+    spreadsheetId: string,
+    sheetName: string,
+    now: Date
+  ): Promise<{ rowCount: number; kpiCount: number }> {
+    // Fetch the latest data from Google Sheets
+    const { headers, rows } = await this.fetchSheetData(
+      accessToken,
+      refreshToken,
+      spreadsheetId,
+      sheetName
+    );
+
+    // Get all KPI definitions to map codes to IDs
+    const { data: kpiDefs, error: kpiError } = await supabaseAdmin
+      .from('kpi_definitions')
+      .select('id, code');
+
+    if (kpiError || !kpiDefs) {
+      throw new Error('Failed to fetch KPI definitions');
+    }
+
+    const kpiCodeToId = new Map(kpiDefs.map((kpi) => [kpi.code, kpi.id]));
+
+    // Create a map of column names to their indices
+    const headerIndex = new Map(headers.map((h, i) => [h, i]));
+
+    // Process each mapping and collect KPI values
+    const kpiValues: {
+      kpi_id: string;
+      value: number;
+      columnName: string;
+    }[] = [];
+
+    for (const mapping of columnMapping) {
+      const kpiId = kpiCodeToId.get(mapping.kpiCode);
+      if (!kpiId) {
+        console.warn(`KPI code not found: ${mapping.kpiCode}`);
+        continue;
+      }
+
+      // Find the column index for this mapping
+      const colIndex = headerIndex.get(mapping.columnName);
+      
+      // For key-value format, use rowIndex if provided
+      if ((mapping as any).rowIndex !== undefined) {
+        const rowIdx = (mapping as any).rowIndex;
+        // In key-value format, the row index in mapping is relative to data
+        // We need to find the value from the raw rows
+        // The value might be in the rows array or we need to re-fetch with section data
+        // For now, get from the first column of data (column B/C in the sheet)
+        const row = rows[rowIdx - 1]; // Adjust for 0-based index
+        if (row) {
+          // Try to find a numeric value in the row
+          for (const cell of row) {
+            const numValue = this.parseNumericValue(cell);
+            if (numValue !== null) {
+              kpiValues.push({
+                kpi_id: kpiId,
+                value: numValue,
+                columnName: mapping.columnName,
+              });
+              break;
+            }
+          }
+        }
+      } else if (colIndex !== undefined) {
+        // For tabular format, aggregate values from the column
+        // For single-deal mapping, we might want the first row or sum
+        // For now, take the first non-empty numeric value
+        for (const row of rows) {
+          const cellValue = row[colIndex];
+          if (cellValue) {
+            const numValue = this.parseNumericValue(cellValue);
+            if (numValue !== null) {
+              kpiValues.push({
+                kpi_id: kpiId,
+                value: numValue,
+                columnName: mapping.columnName,
+              });
+              break; // Take first value for now
+            }
+          }
+        }
+      }
+    }
+
+    // Determine period date (use current month start for now)
+    const periodDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Upsert KPI values to the database
+    let insertedCount = 0;
+    for (const kpiValue of kpiValues) {
+      const { error } = await supabaseAdmin
+        .from('kpi_data')
+        .upsert(
+          {
+            deal_id: dealId,
+            kpi_id: kpiValue.kpi_id,
+            period_type: 'monthly',
+            period_date: periodDate.toISOString().split('T')[0],
+            data_type: 'actual',
+            value: kpiValue.value,
+            source: 'google_sheets',
+            source_ref: connectionId,
+            imported_at: now.toISOString(),
+            updated_at: now.toISOString(),
+          },
+          {
+            onConflict: 'deal_id,kpi_id,period_type,period_date,data_type',
+          }
+        );
+
+      if (error) {
+        console.error(`Failed to upsert KPI ${kpiValue.columnName}:`, error);
+      } else {
+        insertedCount++;
+      }
+    }
+
+    return { rowCount: rows.length, kpiCount: insertedCount };
+  }
+
+  /**
+   * Parse a string value to a number, handling currency, percentages, etc.
+   */
+  private parseNumericValue(value: string): number | null {
+    if (!value || typeof value !== 'string') return null;
+    
+    // Remove common formatting
+    let cleaned = value.trim();
+    
+    // Handle percentages
+    const isPercentage = cleaned.endsWith('%');
+    if (isPercentage) {
+      cleaned = cleaned.slice(0, -1);
+    }
+    
+    // Handle multipliers (e.g., "1.52x")
+    const isMultiplier = cleaned.toLowerCase().endsWith('x');
+    if (isMultiplier) {
+      cleaned = cleaned.slice(0, -1);
+    }
+    
+    // Remove currency symbols and thousands separators
+    cleaned = cleaned.replace(/[$€£¥,]/g, '');
+    
+    // Handle parentheses for negative numbers
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      cleaned = '-' + cleaned.slice(1, -1);
+    }
+    
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return null;
+    
+    // Convert percentage to decimal if needed (store as decimal)
+    // Actually, keep as-is since KPI format handles display
+    return num;
+  }
+
+  /**
    * Save Google Sheets connection to database
    */
   async saveConnection(input: {

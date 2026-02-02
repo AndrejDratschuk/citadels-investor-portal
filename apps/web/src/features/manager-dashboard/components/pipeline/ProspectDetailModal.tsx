@@ -73,12 +73,12 @@ export function ProspectDetailModal({
   ].filter(Boolean) as Array<{ label: string; date: string; icon: typeof Clock }>;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative z-10 m-4 w-full max-w-2xl rounded-lg bg-background shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-2xl rounded-lg bg-background shadow-xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background p-4">
           <div>

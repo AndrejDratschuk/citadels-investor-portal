@@ -4,6 +4,20 @@
 -- ============================================
 
 -- ============================================
+-- 0. Update constraints to allow new categories and formats
+-- ============================================
+
+-- Update category constraint to allow fund_overview
+ALTER TABLE kpi_definitions DROP CONSTRAINT IF EXISTS kpi_definitions_category_check;
+ALTER TABLE kpi_definitions ADD CONSTRAINT kpi_definitions_category_check 
+  CHECK (category IN ('rent_revenue', 'occupancy', 'property_performance', 'financial', 'debt_service', 'fund_overview'));
+
+-- Update format constraint to allow date and text
+ALTER TABLE kpi_definitions DROP CONSTRAINT IF EXISTS kpi_definitions_format_check;
+ALTER TABLE kpi_definitions ADD CONSTRAINT kpi_definitions_format_check 
+  CHECK (format IN ('currency', 'percentage', 'number', 'ratio', 'date', 'text'));
+
+-- ============================================
 -- 1. Fund Overview KPIs (New Category)
 -- ============================================
 INSERT INTO kpi_definitions (code, name, category, description, format, sort_order) VALUES
@@ -56,17 +70,7 @@ INSERT INTO kpi_definitions (code, name, category, description, format, sort_ord
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================
--- 3. Add text format type if not exists
--- ============================================
--- Note: The format column should already support 'text' but this ensures it
-ALTER TABLE kpi_definitions 
-  DROP CONSTRAINT IF EXISTS kpi_definitions_format_check;
-
-ALTER TABLE kpi_definitions 
-  ADD CONSTRAINT kpi_definitions_format_check 
-  CHECK (format IN ('currency', 'percentage', 'number', 'ratio', 'date', 'text'));
-
--- ============================================
--- 4. Comments for documentation
+-- 3. Comments for documentation
 -- ============================================
 COMMENT ON COLUMN kpi_definitions.format IS 'Display format: currency, percentage, number, ratio, date, or text';
+COMMENT ON COLUMN kpi_definitions.category IS 'KPI category: rent_revenue, occupancy, property_performance, financial, debt_service, or fund_overview';

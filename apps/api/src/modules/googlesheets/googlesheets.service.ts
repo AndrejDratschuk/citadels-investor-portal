@@ -654,8 +654,23 @@ export class GoogleSheetsService {
       .single();
 
     if (error) {
-      console.error('Error saving connection:', error);
-      throw new Error('Failed to save Google Sheets connection');
+      console.error('Error saving connection to database:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        input: {
+          fundId: input.fundId,
+          dealId: input.dealId,
+          name: input.name,
+          spreadsheetId: input.spreadsheetId,
+          sheetName: input.sheetName,
+          syncFrequency: input.syncFrequency,
+          syncEnabled: input.syncEnabled,
+          columnMappingCount: input.columnMapping?.length,
+        },
+      });
+      throw new Error(`Failed to save connection: ${error.message || error.code || 'Database error'}`);
     }
 
     return this.formatConnection(data);

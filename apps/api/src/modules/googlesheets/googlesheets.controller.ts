@@ -275,9 +275,39 @@ export class GoogleSheetsController {
     }
 
     try {
-      const { accessToken, refreshToken, email, fundId } = JSON.parse(
-        Buffer.from(connection_data, 'base64').toString()
-      );
+      console.log('Saving connection - parsing connection_data...');
+      
+      let parsedData;
+      try {
+        parsedData = JSON.parse(Buffer.from(connection_data, 'base64').toString());
+      } catch (parseErr) {
+        console.error('Failed to parse connection_data:', parseErr);
+        return reply.status(400).send({ success: false, error: 'Invalid connection data format' });
+      }
+      
+      const { accessToken, refreshToken, email, fundId } = parsedData;
+      
+      console.log('Saving connection - input:', {
+        fundId,
+        dealId,
+        name,
+        spreadsheetId,
+        sheetName,
+        email,
+        syncFrequency,
+        syncEnabled,
+        columnMappingCount: columnMapping?.length,
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+      });
+
+      if (!fundId) {
+        return reply.status(400).send({ success: false, error: 'Missing fundId in connection data' });
+      }
+
+      if (!accessToken || !refreshToken) {
+        return reply.status(400).send({ success: false, error: 'Missing OAuth tokens in connection data' });
+      }
 
       const connection = await googleSheetsService.saveConnection({
         fundId,
@@ -294,10 +324,13 @@ export class GoogleSheetsController {
         now: new Date(),
       });
 
+      console.log('Connection saved successfully:', connection.id);
       return reply.send({ success: true, data: { connection } });
     } catch (err) {
       console.error('Error saving connection:', err);
       const message = err instanceof Error ? err.message : 'Failed to save connection';
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error('Stack trace:', stack);
       return reply.status(500).send({ success: false, error: message });
     }
   }

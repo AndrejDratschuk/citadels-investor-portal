@@ -4,18 +4,256 @@ import { onboardingService } from '../onboarding/onboarding.service';
 import { prospectsRepository } from '../prospects/prospects.repository';
 import type {
   DocuSignConfig,
+  DocuSignJwtConfig,
+  DocuSignOAuthConfig,
   DocuSignTemplate,
   SendEnvelopeInput,
   EnvelopeResult,
+  DocuSignOAuthTokens,
+  DocuSignUserInfo,
 } from './docusign.types';
 
-// Default to DocuSign demo environment
+// DocuSign OAuth configuration from environment
+const DOCUSIGN_CLIENT_ID = process.env.DOCUSIGN_CLIENT_ID;
+const DOCUSIGN_CLIENT_SECRET = process.env.DOCUSIGN_CLIENT_SECRET;
+const DOCUSIGN_REDIRECT_URI = process.env.DOCUSIGN_REDIRECT_URI || 'http://localhost:3001/api/docusign/callback';
+const DOCUSIGN_OAUTH_BASE_URL = process.env.DOCUSIGN_OAUTH_BASE_URL || 'https://account-d.docusign.com';
+const DOCUSIGN_API_BASE_URL = process.env.DOCUSIGN_API_BASE_URL || 'https://demo.docusign.net';
+
+// Default to DocuSign demo environment (legacy)
 const DOCUSIGN_BASE_URL = 'https://demo.docusign.net';
 
 export class DocuSignService {
   // Cache credentials per fund to avoid repeated DB lookups
   private credentialsCache: Map<string, { config: DocuSignConfig; expiry: number }> = new Map();
   private accessTokens: Map<string, { token: string; expiry: number }> = new Map();
+
+  // ==================== OAuth Methods ====================
+
+  /**
+   * Check if DocuSign OAuth is configured (client credentials in environment)
+   */
+  isOAuthConfigured(): boolean {
+    return !!(DOCUSIGN_CLIENT_ID && DOCUSIGN_CLIENT_SECRET);
+  }
+
+  /**
+   * Generate OAuth authorization URL for DocuSign
+   * User will be redirected to this URL to authorize the connection
+   */
+  getOAuthUrl(state: string): string {
+    if (!this.isOAuthConfigured()) {
+      throw new Error('DocuSign OAuth is not configured. Set DOCUSIGN_CLIENT_ID and DOCUSIGN_CLIENT_SECRET environment variables.');
+    }
+
+    const scopes = ['signature', 'impersonation'].join(' ');
+    
+    const params = new URLSearchParams({
+      response_type: 'code',
+      scope: scopes,
+      client_id: DOCUSIGN_CLIENT_ID!,
+      redirect_uri: DOCUSIGN_REDIRECT_URI,
+      state: state,
+    });
+
+    return `${DOCUSIGN_OAUTH_BASE_URL}/oauth/auth?${params.toString()}`;
+  }
+
+  /**
+   * Exchange authorization code for access and refresh tokens
+   */
+  async exchangeCodeForTokens(code: string): Promise<DocuSignOAuthTokens> {
+    if (!this.isOAuthConfigured()) {
+      throw new Error('DocuSign OAuth is not configured');
+    }
+
+    const tokenUrl = `${DOCUSIGN_OAUTH_BASE_URL}/oauth/token`;
+    
+    // Create Basic auth header
+    const credentials = Buffer.from(`${DOCUSIGN_CLIENT_ID}:${DOCUSIGN_CLIENT_SECRET}`).toString('base64');
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: DOCUSIGN_REDIRECT_URI,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[DocuSign OAuth] Token exchange failed:', response.status, errorText);
+      throw new Error(`Failed to exchange code for tokens: ${errorText}`);
+    }
+
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token: string;
+      expires_in: number;
+      token_type: string;
+    };
+
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type,
+    };
+  }
+
+  /**
+   * Get user info from DocuSign using access token
+   */
+  async getUserInfo(accessToken: string): Promise<DocuSignUserInfo> {
+    const userInfoUrl = `${DOCUSIGN_OAUTH_BASE_URL}/oauth/userinfo`;
+
+    const response = await fetch(userInfoUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[DocuSign OAuth] Failed to get user info:', response.status, errorText);
+      throw new Error('Failed to get DocuSign user info');
+    }
+
+    return response.json() as Promise<DocuSignUserInfo>;
+  }
+
+  /**
+   * Connect DocuSign for a fund using OAuth (save OAuth credentials)
+   */
+  async connectOAuth(
+    fundId: string,
+    tokens: DocuSignOAuthTokens,
+    userInfo: DocuSignUserInfo
+  ): Promise<{ email: string; accountId: string }> {
+    // Get the default account (or first account)
+    const account = userInfo.accounts.find(a => a.is_default) || userInfo.accounts[0];
+    
+    if (!account) {
+      throw new Error('No DocuSign account found for this user');
+    }
+
+    const tokenExpiresAt = new Date(Date.now() + tokens.expiresIn * 1000);
+
+    // Upsert OAuth credentials
+    const { error } = await supabaseAdmin
+      .from('fund_docusign_credentials')
+      .upsert({
+        fund_id: fundId,
+        auth_type: 'oauth',
+        integration_key: DOCUSIGN_CLIENT_ID,
+        account_id: account.account_id,
+        user_id: userInfo.sub, // DocuSign user ID from userinfo
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+        token_expires_at: tokenExpiresAt.toISOString(),
+        docusign_user_email: userInfo.email,
+        base_url: account.base_uri || DOCUSIGN_API_BASE_URL,
+        // Leave rsa_private_key null for OAuth
+        rsa_private_key: null,
+      }, {
+        onConflict: 'fund_id',
+      });
+
+    if (error) {
+      console.error('[DocuSign OAuth] Error saving credentials:', error);
+      throw new Error('Failed to save DocuSign OAuth credentials');
+    }
+
+    // Clear cache
+    this.credentialsCache.delete(fundId);
+    this.accessTokens.delete(fundId);
+
+    return {
+      email: userInfo.email,
+      accountId: account.account_id,
+    };
+  }
+
+  /**
+   * Refresh OAuth access token using refresh token
+   */
+  async refreshOAuthToken(fundId: string): Promise<string> {
+    const config = await this.getConfigForFund(fundId);
+    
+    if (!config || config.authType !== 'oauth') {
+      throw new Error('No OAuth credentials found for this fund');
+    }
+
+    const oauthConfig = config as DocuSignOAuthConfig;
+    
+    const tokenUrl = `${DOCUSIGN_OAUTH_BASE_URL}/oauth/token`;
+    const credentials = Buffer.from(`${DOCUSIGN_CLIENT_ID}:${DOCUSIGN_CLIENT_SECRET}`).toString('base64');
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: oauthConfig.refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[DocuSign OAuth] Token refresh failed:', response.status, errorText);
+      
+      // If refresh fails, connection needs to be re-established
+      if (response.status === 400 || response.status === 401) {
+        throw new Error('DocuSign session expired. Please reconnect your DocuSign account.');
+      }
+      throw new Error(`Failed to refresh DocuSign token: ${errorText}`);
+    }
+
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in: number;
+    };
+
+    const tokenExpiresAt = new Date(Date.now() + data.expires_in * 1000);
+
+    // Update tokens in database
+    const updateData: Record<string, unknown> = {
+      access_token: data.access_token,
+      token_expires_at: tokenExpiresAt.toISOString(),
+    };
+
+    // DocuSign may return a new refresh token
+    if (data.refresh_token) {
+      updateData.refresh_token = data.refresh_token;
+    }
+
+    await supabaseAdmin
+      .from('fund_docusign_credentials')
+      .update(updateData)
+      .eq('fund_id', fundId);
+
+    // Update cache
+    this.accessTokens.set(fundId, {
+      token: data.access_token,
+      expiry: tokenExpiresAt.getTime() - 300000, // 5 min buffer
+    });
+
+    // Clear credentials cache to pick up new tokens
+    this.credentialsCache.delete(fundId);
+
+    return data.access_token;
+  }
+
+  // ==================== End OAuth Methods ====================
 
   /**
    * Check if a fund has DocuSign configured
@@ -35,6 +273,7 @@ export class DocuSignService {
 
   /**
    * Get DocuSign config for a specific fund from database
+   * Supports both JWT and OAuth auth types
    */
   async getConfigForFund(fundId: string): Promise<DocuSignConfig | null> {
     // Check cache first (5 minute TTL)
@@ -45,7 +284,7 @@ export class DocuSignService {
 
     const { data, error } = await supabaseAdmin
       .from('fund_docusign_credentials')
-      .select('integration_key, account_id, user_id, rsa_private_key')
+      .select('integration_key, account_id, user_id, rsa_private_key, auth_type, access_token, refresh_token, token_expires_at, docusign_user_email, base_url')
       .eq('fund_id', fundId)
       .single();
 
@@ -53,13 +292,32 @@ export class DocuSignService {
       return null;
     }
 
-    const config: DocuSignConfig = {
-      integrationKey: data.integration_key,
-      accountId: data.account_id,
-      userId: data.user_id,
-      rsaPrivateKey: data.rsa_private_key,
-      baseUrl: DOCUSIGN_BASE_URL,
-    };
+    let config: DocuSignConfig;
+
+    // Determine auth type (default to 'jwt' for backward compatibility)
+    const authType = data.auth_type || 'jwt';
+
+    if (authType === 'oauth') {
+      config = {
+        authType: 'oauth',
+        integrationKey: data.integration_key,
+        accountId: data.account_id,
+        baseUrl: data.base_url || DOCUSIGN_API_BASE_URL,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        tokenExpiresAt: new Date(data.token_expires_at),
+        userEmail: data.docusign_user_email,
+      } as DocuSignOAuthConfig;
+    } else {
+      config = {
+        authType: 'jwt',
+        integrationKey: data.integration_key,
+        accountId: data.account_id,
+        userId: data.user_id,
+        rsaPrivateKey: data.rsa_private_key,
+        baseUrl: data.base_url || DOCUSIGN_BASE_URL,
+      } as DocuSignJwtConfig;
+    }
 
     // Cache for 5 minutes
     this.credentialsCache.set(fundId, {
@@ -151,9 +409,43 @@ export class DocuSignService {
   }
 
   /**
+   * Get DocuSign status for a fund (with auth type info)
+   */
+  async getStatusForFund(fundId: string): Promise<{
+    configured: boolean;
+    authType: 'jwt' | 'oauth' | null;
+    email?: string;
+    accountId?: string;
+  }> {
+    const config = await this.getConfigForFund(fundId);
+    
+    if (!config) {
+      return { configured: false, authType: null };
+    }
+
+    const result: {
+      configured: boolean;
+      authType: 'jwt' | 'oauth';
+      email?: string;
+      accountId?: string;
+    } = {
+      configured: true,
+      authType: config.authType,
+      accountId: config.accountId,
+    };
+
+    if (config.authType === 'oauth') {
+      const oauthConfig = config as DocuSignOAuthConfig;
+      result.email = oauthConfig.userEmail;
+    }
+
+    return result;
+  }
+
+  /**
    * Get OAuth access token using JWT Grant flow with specific config
    */
-  private async getAccessTokenWithConfig(config: DocuSignConfig): Promise<string> {
+  private async getAccessTokenWithConfig(config: DocuSignJwtConfig): Promise<string> {
     // For JWT Grant flow, we create a JWT assertion
     // DocuSign demo account uses account-d.docusign.com for auth
     const tokenUrl = config.baseUrl.includes('demo')
@@ -195,7 +487,7 @@ export class DocuSignService {
    * Create JWT assertion for DocuSign authentication
    * Signs the JWT with the RSA private key using RS256 algorithm
    */
-  private createJwtAssertion(config: DocuSignConfig): string {
+  private createJwtAssertion(config: DocuSignJwtConfig): string {
     const now = Math.floor(Date.now() / 1000);
     const header = { alg: 'RS256', typ: 'JWT' };
     const payload = {
@@ -224,6 +516,7 @@ export class DocuSignService {
 
   /**
    * Get access token for a specific fund
+   * Handles both JWT and OAuth auth types
    */
   private async getAccessTokenForFund(fundId: string): Promise<string> {
     // Check cache
@@ -237,13 +530,35 @@ export class DocuSignService {
       throw new Error('DocuSign is not configured for this fund');
     }
 
-    const token = await this.getAccessTokenWithConfig(config);
-    
-    // Cache for 55 minutes (tokens last 1 hour)
-    this.accessTokens.set(fundId, {
-      token,
-      expiry: Date.now() + 55 * 60 * 1000,
-    });
+    let token: string;
+
+    if (config.authType === 'oauth') {
+      const oauthConfig = config as DocuSignOAuthConfig;
+      
+      // Check if OAuth token is expired
+      if (oauthConfig.tokenExpiresAt <= new Date()) {
+        // Refresh the token
+        token = await this.refreshOAuthToken(fundId);
+      } else {
+        token = oauthConfig.accessToken;
+        
+        // Cache the token
+        this.accessTokens.set(fundId, {
+          token,
+          expiry: oauthConfig.tokenExpiresAt.getTime() - 300000, // 5 min buffer
+        });
+      }
+    } else {
+      // JWT auth type
+      const jwtConfig = config as DocuSignJwtConfig;
+      token = await this.getAccessTokenWithConfig(jwtConfig);
+      
+      // Cache for 55 minutes (tokens last 1 hour)
+      this.accessTokens.set(fundId, {
+        token,
+        expiry: Date.now() + 55 * 60 * 1000,
+      });
+    }
 
     return token;
   }

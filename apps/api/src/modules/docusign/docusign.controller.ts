@@ -1,11 +1,15 @@
-import { FastifyReply } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { supabaseAdmin } from '../../common/database/supabase';
 import { docuSignService } from './docusign.service';
 
+// Frontend URL for redirects
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
 export class DocuSignController {
   /**
    * Check if DocuSign is configured for the manager's fund
+   * Returns auth type and connection details
    */
   async getStatus(request: AuthenticatedRequest, reply: FastifyReply) {
     if (!request.user) {
@@ -23,15 +27,114 @@ export class DocuSignController {
       return reply.status(404).send({ success: false, error: 'Fund not found' });
     }
 
-    const configured = await docuSignService.isConfiguredForFund(manager.fund_id);
+    const status = await docuSignService.getStatusForFund(manager.fund_id);
 
     return reply.send({
       success: true,
       data: {
-        configured,
+        configured: status.configured,
+        authType: status.authType,
+        email: status.email,
+        oauthSupported: docuSignService.isOAuthConfigured(),
       },
     });
   }
+
+  // ==================== OAuth Flow ====================
+
+  /**
+   * Start DocuSign OAuth flow
+   * Returns the authorization URL to redirect the user to
+   */
+  async oauthConnect(request: AuthenticatedRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ success: false, error: 'Unauthorized' });
+    }
+
+    // Check if OAuth is configured
+    if (!docuSignService.isOAuthConfigured()) {
+      return reply.status(400).send({
+        success: false,
+        error: 'DocuSign OAuth is not configured. Please contact support.',
+      });
+    }
+
+    // Get manager's fund
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('users')
+      .select('fund_id')
+      .eq('id', request.user.id)
+      .single();
+
+    if (managerError || !manager?.fund_id) {
+      return reply.status(404).send({ success: false, error: 'Fund not found' });
+    }
+
+    // Create state with user and fund info (will be passed back in callback)
+    const state = Buffer.from(JSON.stringify({
+      userId: request.user.id,
+      fundId: manager.fund_id,
+    })).toString('base64');
+
+    const authUrl = docuSignService.getOAuthUrl(state);
+
+    return reply.send({
+      success: true,
+      data: { authUrl },
+    });
+  }
+
+  /**
+   * DocuSign OAuth callback
+   * Handles the redirect from DocuSign after user authorization
+   */
+  async oauthCallback(request: FastifyRequest, reply: FastifyReply) {
+    const { code, state, error, error_description } = request.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+      error_description?: string;
+    };
+
+    // Handle OAuth error
+    if (error) {
+      const errorMsg = error_description || error;
+      console.error('[DocuSign OAuth] Error from DocuSign:', errorMsg);
+      return reply.redirect(`${FRONTEND_URL}/manager/settings?docusign_error=${encodeURIComponent(errorMsg)}`);
+    }
+
+    if (!code || !state) {
+      return reply.redirect(`${FRONTEND_URL}/manager/settings?docusign_error=missing_params`);
+    }
+
+    try {
+      // Decode state to get user and fund info
+      const { userId, fundId } = JSON.parse(Buffer.from(state, 'base64').toString());
+
+      if (!userId || !fundId) {
+        throw new Error('Invalid state parameter');
+      }
+
+      // Exchange code for tokens
+      const tokens = await docuSignService.exchangeCodeForTokens(code);
+
+      // Get user info from DocuSign
+      const userInfo = await docuSignService.getUserInfo(tokens.accessToken);
+
+      // Save OAuth credentials for the fund
+      const { email, accountId } = await docuSignService.connectOAuth(fundId, tokens, userInfo);
+
+      console.log(`[DocuSign OAuth] Successfully connected for fund ${fundId}, email: ${email}`);
+
+      // Redirect back to settings with success
+      return reply.redirect(`${FRONTEND_URL}/manager/settings?docusign_connected=true&docusign_email=${encodeURIComponent(email)}`);
+    } catch (err: any) {
+      console.error('[DocuSign OAuth] Callback error:', err);
+      return reply.redirect(`${FRONTEND_URL}/manager/settings?docusign_error=${encodeURIComponent(err.message || 'connection_failed')}`);
+    }
+  }
+
+  // ==================== Legacy JWT Flow ====================
 
   /**
    * Connect DocuSign for the manager's fund

@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Mail,
   CheckCircle2,
   XCircle,
   Loader2,
   FileSignature,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,14 +20,17 @@ import { docuSignApi, DocuSignStatus } from '@/lib/api/docusign';
 interface FundIntegrationsTabProps {
   onEmailConnected?: () => void;
   emailMessage?: { type: 'success' | 'error'; text: string } | null;
+  docuSignMessage?: { type: 'success' | 'error'; text: string } | null;
 }
 
-function DocuSignCard(): JSX.Element {
+function DocuSignCard({ initialMessage }: { initialMessage?: { type: 'success' | 'error'; text: string } | null }): JSX.Element {
   const [status, setStatus] = useState<DocuSignStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(initialMessage || null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
+  // Legacy JWT Grant form fields
   const [integrationKey, setIntegrationKey] = useState('');
   const [accountId, setAccountId] = useState('');
   const [userId, setUserId] = useState('');
@@ -33,6 +40,12 @@ function DocuSignCard(): JSX.Element {
     fetchStatus();
   }, []);
 
+  useEffect(() => {
+    if (initialMessage) {
+      setMessage(initialMessage);
+    }
+  }, [initialMessage]);
+
   const fetchStatus = async (): Promise<void> => {
     setLoading(true);
     try {
@@ -40,13 +53,30 @@ function DocuSignCard(): JSX.Element {
       setStatus(result);
     } catch (err) {
       console.error('Failed to fetch DocuSign status:', err);
-      setStatus({ configured: false });
+      setStatus({ configured: false, authType: null, oauthSupported: false });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConnect = async (): Promise<void> => {
+  // OAuth connection (click-to-connect)
+  const handleConnectOAuth = async (): Promise<void> => {
+    setConnecting(true);
+    setMessage(null);
+
+    try {
+      const { authUrl } = await docuSignApi.connectOAuth();
+      // Redirect to DocuSign authorization page
+      window.location.href = authUrl;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start DocuSign connection';
+      setMessage({ type: 'error', text: errorMessage });
+      setConnecting(false);
+    }
+  };
+
+  // Legacy JWT Grant connection
+  const handleConnectJwt = async (): Promise<void> => {
     if (!integrationKey.trim() || !accountId.trim() || !userId.trim() || !rsaPrivateKey.trim()) {
       setMessage({ type: 'error', text: 'Please fill in all fields' });
       return;
@@ -67,6 +97,7 @@ function DocuSignCard(): JSX.Element {
       setAccountId('');
       setUserId('');
       setRsaPrivateKey('');
+      setShowAdvanced(false);
       await fetchStatus();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect DocuSign';
@@ -142,8 +173,16 @@ function DocuSignCard(): JSX.Element {
           <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Credentials Saved</span>
+              <div>
+                <span className="text-sm font-medium text-green-900">Connected</span>
+                {status.email && (
+                  <p className="text-xs text-green-700">{status.email}</p>
+                )}
+              </div>
             </div>
+            <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+              {status.authType === 'oauth' ? 'OAuth' : 'API Key'}
+            </span>
           </div>
           <Button
             variant="outline"
@@ -158,67 +197,110 @@ function DocuSignCard(): JSX.Element {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="ds-integration-key" className="text-sm">Integration Key</Label>
-              <Input
-                id="ds-integration-key"
-                value={integrationKey}
-                onChange={(e) => setIntegrationKey(e.target.value)}
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                className="mt-1"
-              />
+          {/* OAuth Connect Button (Primary) */}
+          {status?.oauthSupported ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Connect your DocuSign account to send documents for e-signature.
+              </p>
+              <Button
+                onClick={handleConnectOAuth}
+                disabled={connecting}
+                className="w-full"
+              >
+                {connecting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                )}
+                Connect with DocuSign
+              </Button>
+
+              {/* Advanced: Manual JWT Setup */}
+              <div className="pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  Advanced: Connect with API Keys
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Enter your DocuSign API credentials to enable e-signature functionality.
+            </p>
+          )}
+
+          {/* Manual JWT Form (shown when OAuth not available or advanced clicked) */}
+          {(!status?.oauthSupported || showAdvanced) && (
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="ds-integration-key" className="text-sm">Integration Key</Label>
+                <Input
+                  id="ds-integration-key"
+                  value={integrationKey}
+                  onChange={(e) => setIntegrationKey(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ds-account-id" className="text-sm">Account ID</Label>
+                <Input
+                  id="ds-account-id"
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ds-user-id" className="text-sm">User ID</Label>
+                <Input
+                  id="ds-user-id"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ds-private-key" className="text-sm">RSA Private Key</Label>
+                <textarea
+                  id="ds-private-key"
+                  value={rsaPrivateKey}
+                  onChange={(e) => setRsaPrivateKey(e.target.value)}
+                  placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
+                />
+              </div>
+              <Button
+                onClick={handleConnectJwt}
+                disabled={connecting || !integrationKey.trim() || !accountId.trim()}
+                size="sm"
+                variant="outline"
+              >
+                {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Connect with API Keys
+              </Button>
             </div>
-            <div>
-              <Label htmlFor="ds-account-id" className="text-sm">Account ID</Label>
-              <Input
-                id="ds-account-id"
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="ds-user-id" className="text-sm">User ID</Label>
-              <Input
-                id="ds-user-id"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="ds-private-key" className="text-sm">RSA Private Key</Label>
-              <textarea
-                id="ds-private-key"
-                value={rsaPrivateKey}
-                onChange={(e) => setRsaPrivateKey(e.target.value)}
-                placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                rows={4}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
-              />
-            </div>
-          </div>
-          <Button
-            onClick={handleConnect}
-            disabled={connecting || !integrationKey.trim() || !accountId.trim()}
-            size="sm"
-          >
-            {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Connect DocuSign
-          </Button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export function FundIntegrationsTab({ emailMessage: initialEmailMessage }: FundIntegrationsTabProps): JSX.Element {
+export function FundIntegrationsTab({ emailMessage: initialEmailMessage, docuSignMessage: initialDocuSignMessage }: FundIntegrationsTabProps): JSX.Element {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [emailStatus, setEmailStatus] = useState<EmailConnectionStatus | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(initialEmailMessage || null);
+  const [docuSignMessage, setDocuSignMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(initialDocuSignMessage || null);
   const [showSmtpModal, setShowSmtpModal] = useState(false);
   const [smtpForm, setSmtpForm] = useState({
     email: '',
@@ -229,6 +311,31 @@ export function FundIntegrationsTab({ emailMessage: initialEmailMessage }: FundI
     password: '',
   });
   const [smtpLoading, setSmtpLoading] = useState(false);
+
+  // Handle DocuSign OAuth callback params
+  useEffect(() => {
+    const docusignConnected = searchParams.get('docusign_connected');
+    const docusignError = searchParams.get('docusign_error');
+    const docusignEmail = searchParams.get('docusign_email');
+
+    if (docusignConnected === 'true') {
+      const msg = docusignEmail 
+        ? `DocuSign connected successfully! (${docusignEmail})`
+        : 'DocuSign connected successfully!';
+      setDocuSignMessage({ type: 'success', text: msg });
+      
+      // Clean up URL params
+      searchParams.delete('docusign_connected');
+      searchParams.delete('docusign_email');
+      setSearchParams(searchParams, { replace: true });
+    } else if (docusignError) {
+      setDocuSignMessage({ type: 'error', text: `DocuSign connection failed: ${docusignError}` });
+      
+      // Clean up URL params
+      searchParams.delete('docusign_error');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     fetchEmailStatus();
@@ -381,7 +488,7 @@ export function FundIntegrationsTab({ emailMessage: initialEmailMessage }: FundI
           )}
         </div>
 
-        <DocuSignCard />
+        <DocuSignCard initialMessage={docuSignMessage} />
       </div>
 
       {/* SMTP Modal */}

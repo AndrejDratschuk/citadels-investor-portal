@@ -609,7 +609,7 @@ export class GoogleSheetsService {
   }
 
   /**
-   * Fetch all sheet data for sync
+   * Fetch all sheet data for sync (legacy format with headers)
    */
   async fetchSheetData(
     accessToken: string,
@@ -636,8 +636,30 @@ export class GoogleSheetsService {
   }
 
   /**
+   * Fetch raw sheet data without header assumption (for mixed-format sheets)
+   */
+  async fetchRawSheetData(
+    accessToken: string,
+    refreshToken: string,
+    spreadsheetId: string,
+    sheetName: string
+  ): Promise<string[][]> {
+    const auth = await this.getAuthenticatedClient(accessToken, refreshToken);
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'`,
+    });
+
+    const values = response.data.values || [];
+    return values.map((row) => (row || []).map(String));
+  }
+
+  /**
    * Sync data from Google Sheets to KPI tables
    * This is the core sync logic that processes sheet data and saves to kpi_data
+   * Handles mixed-format sheets with both key-value and tabular sections
    */
   async syncDataToKpi(
     connectionId: string,
@@ -649,13 +671,15 @@ export class GoogleSheetsService {
     sheetName: string,
     now: Date
   ): Promise<{ rowCount: number; kpiCount: number }> {
-    // Fetch the latest data from Google Sheets
-    const { headers, rows } = await this.fetchSheetData(
+    // Fetch ALL raw data from Google Sheets (no header assumption)
+    const allRows = await this.fetchRawSheetData(
       accessToken,
       refreshToken,
       spreadsheetId,
       sheetName
     );
+
+    console.log(`[Sync] Fetched ${allRows.length} rows from sheet "${sheetName}"`);
 
     // Get all KPI definitions to map codes to IDs
     const { data: kpiDefs, error: kpiError } = await supabaseAdmin
@@ -668,8 +692,10 @@ export class GoogleSheetsService {
 
     const kpiCodeToId = new Map(kpiDefs.map((kpi) => [kpi.code, kpi.id]));
 
-    // Create a map of column names to their indices
-    const headerIndex = new Map(headers.map((h, i) => [h, i]));
+    // Find header rows in the data (rows that look like column headers)
+    // A header row typically has multiple text values and appears before data rows
+    const headerRowIndices = this.findHeaderRows(allRows);
+    console.log(`[Sync] Found ${headerRowIndices.length} potential header rows at indices:`, headerRowIndices);
 
     // Process each mapping and collect KPI values
     const kpiValues: {
@@ -681,55 +707,74 @@ export class GoogleSheetsService {
     for (const mapping of columnMapping) {
       const kpiId = kpiCodeToId.get(mapping.kpiCode);
       if (!kpiId) {
-        console.warn(`KPI code not found: ${mapping.kpiCode}`);
+        console.warn(`[Sync] KPI code not found: ${mapping.kpiCode}`);
         continue;
       }
 
-      // Find the column index for this mapping
-      const colIndex = headerIndex.get(mapping.columnName);
-      
-      // For key-value format, use rowIndex if provided
-      if ((mapping as any).rowIndex !== undefined) {
-        const rowIdx = (mapping as any).rowIndex;
-        // In key-value format, the row index in mapping is relative to data
-        // We need to find the value from the raw rows
-        // The value might be in the rows array or we need to re-fetch with section data
-        // For now, get from the first column of data (column B/C in the sheet)
-        const row = rows[rowIdx - 1]; // Adjust for 0-based index
-        if (row) {
-          // Try to find a numeric value in the row
-          for (const cell of row) {
-            const numValue = this.parseNumericValue(cell);
-            if (numValue !== null) {
-              kpiValues.push({
-                kpi_id: kpiId,
-                value: numValue,
-                columnName: mapping.columnName,
-              });
-              break;
-            }
-          }
-        }
-      } else if (colIndex !== undefined) {
-        // For tabular format, aggregate values from the column
-        // For single-deal mapping, we might want the first row or sum
-        // For now, take the first non-empty numeric value
-        for (const row of rows) {
-          const cellValue = row[colIndex];
-          if (cellValue) {
-            const numValue = this.parseNumericValue(cellValue);
-            if (numValue !== null) {
-              kpiValues.push({
-                kpi_id: kpiId,
-                value: numValue,
-                columnName: mapping.columnName,
-              });
-              break; // Take first value for now
-            }
+      const columnName = mapping.columnName;
+      let foundValue: number | null = null;
+
+      // Strategy 1: Key-value lookup - find row where column A matches the columnName
+      const kvRow = allRows.find((row) => {
+        const cellA = (row[0] || '').trim().toLowerCase();
+        return cellA === columnName.toLowerCase();
+      });
+
+      if (kvRow) {
+        // Found in key-value format - get value from column B, C, or first non-empty numeric
+        for (let i = 1; i < kvRow.length; i++) {
+          const numValue = this.parseNumericValue(kvRow[i]);
+          if (numValue !== null) {
+            foundValue = numValue;
+            console.log(`[Sync] Key-value match: "${columnName}" = ${foundValue}`);
+            break;
           }
         }
       }
+
+      // Strategy 2: Tabular lookup - find a header row containing this column name
+      if (foundValue === null) {
+        for (const headerIdx of headerRowIndices) {
+          const headerRow = allRows[headerIdx];
+          const colIndex = headerRow.findIndex(
+            (h) => (h || '').trim().toLowerCase() === columnName.toLowerCase()
+          );
+
+          if (colIndex !== -1) {
+            // Found column in this header row - get value from first data row after header
+            for (let dataIdx = headerIdx + 1; dataIdx < allRows.length; dataIdx++) {
+              const dataRow = allRows[dataIdx];
+              // Skip if this row is another header or empty
+              if (headerRowIndices.includes(dataIdx) || !dataRow || dataRow.every((c) => !c?.trim())) {
+                continue;
+              }
+              const cellValue = dataRow[colIndex];
+              if (cellValue) {
+                const numValue = this.parseNumericValue(cellValue);
+                if (numValue !== null) {
+                  foundValue = numValue;
+                  console.log(`[Sync] Tabular match: "${columnName}" (col ${colIndex}) = ${foundValue}`);
+                  break;
+                }
+              }
+            }
+            if (foundValue !== null) break;
+          }
+        }
+      }
+
+      if (foundValue !== null) {
+        kpiValues.push({
+          kpi_id: kpiId,
+          value: foundValue,
+          columnName,
+        });
+      } else {
+        console.warn(`[Sync] Could not find value for "${columnName}" (KPI: ${mapping.kpiCode})`);
+      }
     }
+
+    console.log(`[Sync] Extracted ${kpiValues.length} KPI values from ${columnMapping.length} mappings`);
 
     // Determine period date (use current month start for now)
     const periodDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -894,6 +939,46 @@ export class GoogleSheetsService {
     // Convert percentage to decimal if needed (store as decimal)
     // Actually, keep as-is since KPI format handles display
     return num;
+  }
+
+  /**
+   * Find rows that look like header rows (contain multiple text column names)
+   * Used for identifying tabular sections in mixed-format sheets
+   */
+  private findHeaderRows(allRows: string[][]): number[] {
+    const headerIndices: number[] = [];
+    
+    for (let i = 0; i < allRows.length; i++) {
+      const row = allRows[i];
+      if (!row || row.length < 3) continue;
+      
+      // Count non-empty text cells that look like column headers
+      let headerLikeCells = 0;
+      let numericCells = 0;
+      
+      for (const cell of row) {
+        if (!cell || !cell.trim()) continue;
+        
+        // Check if this cell looks like a header (text, not purely numeric)
+        const trimmed = cell.trim();
+        const isNumeric = this.parseNumericValue(trimmed) !== null;
+        
+        if (isNumeric) {
+          numericCells++;
+        } else if (trimmed.length > 1 && trimmed.length < 50) {
+          // Text cell that's not too long - likely a header
+          headerLikeCells++;
+        }
+      }
+      
+      // A header row should have multiple text headers and few/no numeric values
+      // Typical patterns: "Property Name", "Property Type", "Market / MSA", etc.
+      if (headerLikeCells >= 3 && numericCells <= 2) {
+        headerIndices.push(i);
+      }
+    }
+    
+    return headerIndices;
   }
 
   /**

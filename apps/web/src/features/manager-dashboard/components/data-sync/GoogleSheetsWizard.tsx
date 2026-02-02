@@ -22,9 +22,10 @@ import {
   RefreshCw,
   X,
 } from 'lucide-react';
-import { googlesheetsApi, type SpreadsheetInfo, type SheetInfo } from '@/lib/api/googlesheets';
+import { googlesheetsApi, type SpreadsheetInfo, type SheetInfo, type SheetSection } from '@/lib/api/googlesheets';
 import type { ColumnMapping, SyncFrequency } from '@altsui/shared';
 import { useKpiDefinitions } from '@/features/manager-dashboard/hooks/useKpiDefinitions';
+import { api } from '@/lib/api/client';
 
 // ============================================
 // Types
@@ -37,7 +38,20 @@ interface GoogleSheetsWizardProps {
   googleEmail: string | null;
 }
 
-type WizardStep = 'spreadsheet' | 'sheet' | 'mapping' | 'sync';
+type WizardStep = 'spreadsheet' | 'sheet' | 'dealMapping' | 'mapping' | 'sync';
+
+type DealMappingMode = 'fund' | 'single-deal' | 'multi-deal';
+
+interface DealOption {
+  id: string;
+  name: string;
+}
+
+interface RowToDealMapping {
+  rowIdentifier: string; // Value from the identifier column
+  dealId: string | null; // Matched deal ID
+  dealName?: string; // For display
+}
 
 interface MappingRow {
   columnName: string;
@@ -98,8 +112,22 @@ export function GoogleSheetsWizard({
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [frequencyDropdownOpen, setFrequencyDropdownOpen] = useState(false);
 
+  // Deal mapping state
+  const [dealMappingMode, setDealMappingMode] = useState<DealMappingMode>('fund');
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [dealIdentifierColumn, setDealIdentifierColumn] = useState<string>('');
+  const [rowToDealMappings, setRowToDealMappings] = useState<RowToDealMapping[]>([]);
+
   // Fetch KPI definitions
   const { data: kpiDefinitions = [] } = useKpiDefinitions();
+
+  // Fetch deals for mapping
+  const { data: dealsData } = useQuery({
+    queryKey: ['deals'],
+    queryFn: () => api.get<{ id: string; name: string }[]>('/deals'),
+    enabled: open,
+  });
+  const deals: DealOption[] = dealsData || [];
 
   // Fetch spreadsheets
   const {
@@ -213,9 +241,20 @@ export function GoogleSheetsWizard({
           dataType: 'actual' as const,
           // Pass row index for key-value format
           ...(m.rowIndex !== undefined && { rowIndex: m.rowIndex }),
+          // Pass column index for tabular format
+          ...(m.columnIndex !== undefined && { columnIndex: m.columnIndex }),
           // Pass custom name if using custom metric
           ...(m.customKpiName && { customKpiName: m.customKpiName }),
+          // Pass section info
+          ...(m.sectionName && { sectionName: m.sectionName }),
+          ...(m.metricType && { metricType: m.metricType }),
         }));
+
+      // Determine deal ID based on mapping mode
+      let dealId: string | null = null;
+      if (dealMappingMode === 'single-deal') {
+        dealId = selectedDealId;
+      }
 
       return googlesheetsApi.saveConnection(
         {
@@ -225,6 +264,13 @@ export function GoogleSheetsWizard({
           columnMapping,
           syncFrequency,
           syncEnabled,
+          dealId,
+          // Pass multi-deal mapping info
+          ...(dealMappingMode === 'multi-deal' && {
+            dealMappingMode: 'multi-deal',
+            dealIdentifierColumn,
+            rowToDealMappings: rowToDealMappings.filter((m) => m.dealId),
+          }),
         },
         connectionData
       );
@@ -251,8 +297,11 @@ export function GoogleSheetsWizard({
         setStep('spreadsheet');
         setSelectedSheet(null);
         break;
-      case 'mapping':
+      case 'dealMapping':
         setStep('sheet');
+        break;
+      case 'mapping':
+        setStep('dealMapping');
         break;
       case 'sync':
         setStep('mapping');
@@ -269,8 +318,11 @@ export function GoogleSheetsWizard({
         break;
       case 'sheet':
         if (selectedSheet) {
-          setStep('mapping');
+          setStep('dealMapping');
         }
+        break;
+      case 'dealMapping':
+        setStep('mapping');
         break;
       case 'mapping':
         setStep('sync');
@@ -318,9 +370,14 @@ export function GoogleSheetsWizard({
           title: 'Select Sheet',
           description: 'Choose which sheet within the spreadsheet to sync',
         };
+      case 'dealMapping':
+        return {
+          title: 'Deal Assignment',
+          description: 'Choose how to assign data to deals',
+        };
       case 'mapping':
         return {
-          title: 'Map Columns',
+          title: 'Map Metrics',
           description: 'Map spreadsheet columns to your KPIs',
         };
       case 'sync':
@@ -334,13 +391,20 @@ export function GoogleSheetsWizard({
   if (!open) return null;
 
   const { title, description } = getStepInfo();
+  const canProceedDealMapping = 
+    dealMappingMode === 'fund' ||
+    (dealMappingMode === 'single-deal' && selectedDealId) ||
+    (dealMappingMode === 'multi-deal' && dealIdentifierColumn && rowToDealMappings.some((m) => m.dealId));
+
   const canProceed =
     (step === 'spreadsheet' && selectedSpreadsheet) ||
     (step === 'sheet' && selectedSheet) ||
+    (step === 'dealMapping' && canProceedDealMapping) ||
     (step === 'mapping' && mappings.some((m) => m.include && (m.kpiCode || m.customKpiName))) ||
     step === 'sync';
 
-  const stepIndex = ['spreadsheet', 'sheet', 'mapping', 'sync'].indexOf(step);
+  const allSteps: WizardStep[] = ['spreadsheet', 'sheet', 'dealMapping', 'mapping', 'sync'];
+  const stepIndex = allSteps.indexOf(step);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -365,12 +429,12 @@ export function GoogleSheetsWizard({
           )}
 
           {/* Step Progress */}
-          <div className="flex items-center gap-2 mt-4">
-            {(['spreadsheet', 'sheet', 'mapping', 'sync'] as WizardStep[]).map((s, i) => (
+          <div className="flex items-center gap-1 mt-4">
+            {allSteps.map((s, i) => (
               <div key={s} className="flex items-center">
-                {i > 0 && <ChevronRight className="h-4 w-4 text-slate-300 mx-1" />}
+                {i > 0 && <ChevronRight className="h-3 w-3 text-slate-300 mx-0.5" />}
                 <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
                     step === s
                       ? 'bg-primary text-white'
                       : stepIndex > i
@@ -378,7 +442,7 @@ export function GoogleSheetsWizard({
                         : 'bg-slate-100 text-slate-400'
                   }`}
                 >
-                  {stepIndex > i ? <Check className="h-4 w-4" /> : i + 1}
+                  {stepIndex > i ? <Check className="h-3 w-3" /> : i + 1}
                 </div>
               </div>
             ))}
@@ -495,7 +559,238 @@ export function GoogleSheetsWizard({
             </div>
           )}
 
-          {/* Step 3: Map Columns */}
+          {/* Step 3: Deal Assignment */}
+          {step === 'dealMapping' && (
+            <div className="space-y-6">
+              <div className="text-sm text-slate-600">
+                Choose how you want to assign data from this sheet. This determines whether metrics go to the fund level, a single deal, or multiple deals.
+              </div>
+
+              {/* Option 1: Fund Level */}
+              <button
+                onClick={() => {
+                  setDealMappingMode('fund');
+                  setSelectedDealId(null);
+                  setDealIdentifierColumn('');
+                }}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  dealMappingMode === 'fund'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      dealMappingMode === 'fund' ? 'border-primary bg-primary' : 'border-slate-300'
+                    }`}
+                  >
+                    {dealMappingMode === 'fund' && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <div>
+                    <div className="font-medium text-slate-900">Fund-Level Data</div>
+                    <div className="text-sm text-slate-500 mt-1">
+                      Import fund overview metrics (IRR, NAV, Total Properties, etc.) that apply to the entire fund.
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2: Single Deal */}
+              <button
+                onClick={() => {
+                  setDealMappingMode('single-deal');
+                  setDealIdentifierColumn('');
+                }}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  dealMappingMode === 'single-deal'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      dealMappingMode === 'single-deal' ? 'border-primary bg-primary' : 'border-slate-300'
+                    }`}
+                  >
+                    {dealMappingMode === 'single-deal' && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900">Single Deal/Property</div>
+                    <div className="text-sm text-slate-500 mt-1">
+                      All metrics in this sheet belong to one specific deal or property.
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Single Deal Selector */}
+              {dealMappingMode === 'single-deal' && (
+                <div className="ml-8 p-4 bg-slate-50 rounded-lg space-y-3">
+                  <Label>Select Deal</Label>
+                  <select
+                    value={selectedDealId || ''}
+                    onChange={(e) => setSelectedDealId(e.target.value || null)}
+                    className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">Choose a deal...</option>
+                    {deals.map((deal) => (
+                      <option key={deal.id} value={deal.id}>
+                        {deal.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Option 3: Multiple Deals */}
+              <button
+                onClick={() => {
+                  setDealMappingMode('multi-deal');
+                  setSelectedDealId(null);
+                }}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  dealMappingMode === 'multi-deal'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      dealMappingMode === 'multi-deal' ? 'border-primary bg-primary' : 'border-slate-300'
+                    }`}
+                  >
+                    {dealMappingMode === 'multi-deal' && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <div>
+                    <div className="font-medium text-slate-900">Multiple Deals (Portfolio Table)</div>
+                    <div className="text-sm text-slate-500 mt-1">
+                      Each row represents a different deal/property. You'll map rows to deals.
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Multi-Deal Configuration */}
+              {dealMappingMode === 'multi-deal' && previewData?.preview.sections && (
+                <div className="ml-8 p-4 bg-slate-50 rounded-lg space-y-4">
+                  {/* Select identifier column */}
+                  <div className="space-y-2">
+                    <Label>Which column identifies the deal/property?</Label>
+                    <select
+                      value={dealIdentifierColumn}
+                      onChange={(e) => {
+                        setDealIdentifierColumn(e.target.value);
+                        // Auto-populate row mappings based on selected column
+                        if (e.target.value && previewData?.preview.sections) {
+                          const tabularSection = previewData.preview.sections.find((s) => s.type === 'tabular');
+                          if (tabularSection) {
+                            // Get unique values from that column
+                            // For now, we'll use the metric names from the tabular section as identifiers
+                            const uniqueIdentifiers = new Set<string>();
+                            for (const metric of tabularSection.metrics) {
+                              if (metric.value && !metric.value.startsWith('Sample:')) {
+                                uniqueIdentifiers.add(metric.value);
+                              }
+                            }
+                            
+                            // Try to auto-match to existing deals
+                            const newMappings: RowToDealMapping[] = [];
+                            // If we have preview rows, use those
+                            if (previewData.preview.rows.length > 0) {
+                              const colIndex = previewData.preview.headers.indexOf(e.target.value);
+                              if (colIndex >= 0) {
+                                for (const row of previewData.preview.rows) {
+                                  const identifier = row[colIndex];
+                                  if (identifier) {
+                                    const matchedDeal = deals.find(
+                                      (d) => d.name.toLowerCase().includes(identifier.toLowerCase()) ||
+                                             identifier.toLowerCase().includes(d.name.toLowerCase())
+                                    );
+                                    newMappings.push({
+                                      rowIdentifier: identifier,
+                                      dealId: matchedDeal?.id || null,
+                                      dealName: matchedDeal?.name,
+                                    });
+                                  }
+                                }
+                              }
+                            }
+                            setRowToDealMappings(newMappings);
+                          }
+                        }
+                      }}
+                      className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm bg-white"
+                    >
+                      <option value="">Select column...</option>
+                      {/* Show columns from tabular sections */}
+                      {previewData.preview.sections
+                        .filter((s) => s.type === 'tabular')
+                        .flatMap((s) => s.metrics)
+                        .map((m) => m.key)
+                        .filter((key, i, arr) => arr.indexOf(key) === i) // unique
+                        .map((columnName) => (
+                          <option key={columnName} value={columnName}>
+                            {columnName}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-slate-500">
+                      Usually "Property Name", "Asset Name", or "Deal Name"
+                    </p>
+                  </div>
+
+                  {/* Row to Deal mappings */}
+                  {dealIdentifierColumn && rowToDealMappings.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Map rows to deals</Label>
+                      <div className="max-h-[200px] overflow-y-auto space-y-2">
+                        {rowToDealMappings.map((mapping, idx) => (
+                          <div key={mapping.rowIdentifier} className="flex items-center gap-2 text-sm">
+                            <span className="flex-1 truncate font-medium">{mapping.rowIdentifier}</span>
+                            <ChevronRight className="h-4 w-4 text-slate-300 flex-shrink-0" />
+                            <select
+                              value={mapping.dealId || ''}
+                              onChange={(e) => {
+                                setRowToDealMappings((prev) =>
+                                  prev.map((m, i) =>
+                                    i === idx
+                                      ? {
+                                          ...m,
+                                          dealId: e.target.value || null,
+                                          dealName: deals.find((d) => d.id === e.target.value)?.name,
+                                        }
+                                      : m
+                                  )
+                                );
+                              }}
+                              className={`w-[180px] rounded-md border px-2 py-1 text-sm ${
+                                mapping.dealId ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'
+                              }`}
+                            >
+                              <option value="">Skip / No match</option>
+                              {deals.map((deal) => (
+                                <option key={deal.id} value={deal.id}>
+                                  {deal.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        {rowToDealMappings.filter((m) => m.dealId).length} of {rowToDealMappings.length} rows matched
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Map Metrics */}
           {step === 'mapping' && (
             <div className="space-y-4">
               {previewLoading ? (
@@ -762,6 +1057,16 @@ export function GoogleSheetsWizard({
                     <li>
                       <span className="font-medium text-slate-900">Sheet:</span>{' '}
                       {selectedSheet?.title}
+                    </li>
+                    <li>
+                      <span className="font-medium text-slate-900">Data Assignment:</span>{' '}
+                      {dealMappingMode === 'fund' && 'Fund-level data'}
+                      {dealMappingMode === 'single-deal' && (
+                        <>Single deal: {deals.find((d) => d.id === selectedDealId)?.name || 'Not selected'}</>
+                      )}
+                      {dealMappingMode === 'multi-deal' && (
+                        <>{rowToDealMappings.filter((m) => m.dealId).length} deals mapped</>
+                      )}
                     </li>
                     <li>
                       <span className="font-medium text-slate-900">Mapped Metrics:</span>{' '}

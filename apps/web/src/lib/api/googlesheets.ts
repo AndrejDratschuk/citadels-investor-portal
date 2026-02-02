@@ -61,6 +61,10 @@ export interface SaveConnectionInput {
   columnMapping: ColumnMapping[];
   syncFrequency: SyncFrequency;
   syncEnabled: boolean;
+  // Multi-deal mapping support
+  dealMappingMode?: 'fund' | 'single-deal' | 'multi-deal';
+  dealIdentifierColumn?: string;
+  rowToDealMappings?: { rowIdentifier: string; dealId: string | null }[];
 }
 
 // ============================================

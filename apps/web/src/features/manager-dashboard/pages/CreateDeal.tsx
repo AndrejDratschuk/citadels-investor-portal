@@ -8,10 +8,12 @@ import { dealsApi, CreateDealInput } from '@/lib/api/deals';
 export function CreateDeal() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (formData: any) => {
     setError(null);
+    setWarning(null);
     setIsSubmitting(true);
 
     try {
@@ -30,13 +32,16 @@ export function CreateDeal() {
 
       // If an image was selected, upload it after deal creation
       if (formData.imageFile) {
+        console.log('Uploading image for deal:', newDeal.id, 'File:', formData.imageFile.name);
         try {
-          await dealsApi.uploadImage(newDeal.id, formData.imageFile);
-          console.log('Deal image uploaded');
+          const result = await dealsApi.uploadImage(newDeal.id, formData.imageFile);
+          console.log('Deal image uploaded successfully:', result);
         } catch (imgErr: any) {
-          // Don't fail the whole operation if image upload fails
+          // Show warning but still navigate - deal was created successfully
           console.error('Failed to upload deal image:', imgErr);
-          // Could show a toast notification here
+          setWarning(`Deal created, but image upload failed: ${imgErr.message}. You can add the image later from the deal detail page.`);
+          // Wait a moment to show the warning before navigating
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 

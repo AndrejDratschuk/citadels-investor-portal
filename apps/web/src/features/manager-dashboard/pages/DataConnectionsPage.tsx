@@ -618,7 +618,7 @@ export function DataConnectionsPage(): JSX.Element {
       </div>
 
       {/* Add Connection Modal - rendered via portal to escape stacking context */}
-      {addState.step !== 'closed' && createPortal(renderAddModal(), document.body)}
+      {addState.step !== 'closed' && addState.step !== 'success' && createPortal(renderAddModal(), document.body)}
 
       {/* Success Modal */}
       {addState.importResult && createPortal(

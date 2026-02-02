@@ -240,6 +240,7 @@ export class KpisService {
       property_performance: [],
       financial: [],
       debt_service: [],
+      fund_overview: [],
     };
 
     for (const def of definitions) {
@@ -384,6 +385,7 @@ export class KpisService {
       property_performance: [],
       financial: [],
       debt_service: [],
+      fund_overview: [],
     };
 
     for (const def of definitions) {

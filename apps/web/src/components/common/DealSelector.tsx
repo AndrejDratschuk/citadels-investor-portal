@@ -171,7 +171,7 @@ export function DealSelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-[100000] mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg">
           {/* Search Input */}
           <div className="border-b border-slate-100 p-2">
             <div className="relative">

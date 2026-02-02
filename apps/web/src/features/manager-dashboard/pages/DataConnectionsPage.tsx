@@ -696,14 +696,14 @@ export function DataConnectionsPage(): JSX.Element {
 
       {/* Change Deal Modal */}
       {changingDealConnection && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center">
           <div 
             className="fixed inset-0 bg-slate-900/60" 
             onClick={closeChangeDealModal} 
             aria-hidden="true"
           />
           <div className="relative w-full max-w-md mx-4">
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl">
               <div className="flex items-center justify-between px-6 py-4 border-b">
                 <h2 className="text-lg font-semibold text-slate-900">Change Deal</h2>
                 <button
@@ -714,7 +714,7 @@ export function DataConnectionsPage(): JSX.Element {
                 </button>
               </div>
               <div className="p-6 space-y-4">
-                <div>
+                <div className="min-h-[200px]">
                   <p className="text-sm text-slate-600 mb-3">
                     Select which deal the data connection "<span className="font-medium">{changingDealConnection.name}</span>" should be linked to:
                   </p>

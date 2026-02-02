@@ -7,6 +7,7 @@ import { errorHandler } from './common/middleware/error-handler';
 import { env } from './config/env';
 import { startEmailWorker, stopEmailWorker } from './common/queue/emailWorker';
 import { closeEmailQueue } from './common/queue/emailQueue';
+import { startGoogleSheetsSyncScheduler, stopGoogleSheetsSyncScheduler } from './modules/googlesheets/googlesheetsSyncScheduler';
 
 const fastify = Fastify({
   logger: {
@@ -93,6 +94,14 @@ async function start() {
     } else {
       console.log('📧 Email worker skipped - REDIS_URL not configured');
     }
+
+    // Start Google Sheets sync scheduler
+    try {
+      startGoogleSheetsSyncScheduler();
+      console.log('📊 Google Sheets sync scheduler started');
+    } catch (schedulerErr) {
+      console.warn('⚠️ Failed to start sync scheduler:', schedulerErr);
+    }
   } catch (err) {
     console.error('Failed to start server:', err);
     fastify.log.error(err);
@@ -108,6 +117,10 @@ async function shutdown(signal: string): Promise<void> {
     // Stop accepting new requests
     await fastify.close();
     console.log('✅ HTTP server closed');
+
+    // Stop Google Sheets sync scheduler
+    stopGoogleSheetsSyncScheduler();
+    console.log('✅ Sync scheduler stopped');
 
     // Stop email worker
     await stopEmailWorker();

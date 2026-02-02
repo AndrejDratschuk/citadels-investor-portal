@@ -6,6 +6,7 @@ import { communicationsRoutes } from './modules/communications/communications.ro
 import { kycRoutes } from './modules/kyc/kyc.routes';
 import { onboardingRoutes } from './modules/onboarding/onboarding.routes';
 import { emailRoutes } from './modules/email/email.routes';
+import { templateRoutes } from './modules/email/template.routes';
 import { fundsRoutes } from './modules/funds/funds.routes';
 import { documentsRoutes } from './modules/documents/documents.routes';
 import { dealsRoutes } from './modules/deals/deals.routes';
@@ -31,6 +32,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(kycRoutes, { prefix: '/kyc' });
   await fastify.register(onboardingRoutes, { prefix: '/onboarding' });
   await fastify.register(emailRoutes, { prefix: '/email' });
+  await fastify.register(templateRoutes, { prefix: '/email/templates' });
   await fastify.register(fundsRoutes, { prefix: '/funds' });
   await fastify.register(documentsRoutes, { prefix: '/documents' });
   await fastify.register(dealsRoutes, { prefix: '/deals' });

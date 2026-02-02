@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Save, Loader2, Plus, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Loader2, Plus, X, ChevronDown, ChevronRight, Mail, Pencil, Check, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { fundsApi, EmailCustomizationSettings, UpdateEmailCustomizationInput } from '@/lib/api/funds';
+import {
+  emailTemplatesApi,
+  TemplateListResponse,
+} from '@/lib/api/emailTemplates';
+import { EmailTemplateEditor } from './EmailTemplateEditor';
 
 const DEFAULTS = {
   postMeetingRecapTemplate: 'It was great learning about your investment objectives.',
@@ -46,12 +51,46 @@ export function FundEmailCustomizationTab(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Email Templates state
+  const [templates, setTemplates] = useState<TemplateListResponse | null>(null);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['prospect']));
+
   useEffect(() => {
+    // Load email customization settings
     fundsApi.getEmailCustomization()
       .then(setForm)
       .catch(() => setMessage({ type: 'error', text: 'Failed to load settings' }))
       .finally(() => setLoading(false));
+
+    // Load email templates
+    loadTemplates();
   }, []);
+
+  const loadTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const result = await emailTemplatesApi.listTemplates();
+      setTemplates(result);
+    } catch {
+      console.error('Failed to load templates');
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
 
   const handleSave = async (): Promise<void> => {
     if (!form) return;
@@ -103,6 +142,122 @@ export function FundEmailCustomizationTab(): JSX.Element {
           ? 'bg-green-50 text-green-700 border border-green-200' 
           : 'bg-red-50 text-red-700 border border-red-200')}>{message.text}</div>
       )}
+
+      {/* Email Templates Section */}
+      <div className="rounded-xl border bg-card">
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Email Templates</h3>
+              <p className="text-sm text-muted-foreground">Customize the content of automated emails</p>
+            </div>
+          </div>
+        </div>
+
+        {templatesLoading ? (
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : templates ? (
+          <div className="divide-y">
+            {templates.categories.map(category => {
+              const categoryTemplates = templates.templates.filter(t => t.category === category.key);
+              const customizedCount = categoryTemplates.filter(t => t.isCustomized).length;
+              const isExpanded = expandedCategories.has(category.key);
+
+              return (
+                <div key={category.key}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(category.key)}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{category.label}</span>
+                      <span className="text-sm text-muted-foreground">({category.count})</span>
+                      {customizedCount > 0 && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          {customizedCount} customized
+                        </span>
+                      )}
+                    </div>
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+
+                  {isExpanded && (
+                    <div className="bg-muted/30 divide-y divide-border/50">
+                      {categoryTemplates.map(template => (
+                        <div
+                          key={template.key}
+                          className="flex items-center justify-between px-4 py-3 pl-12"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{template.name}</span>
+                              {template.isCustomized && (
+                                <Check className="h-3.5 w-3.5 text-green-600" />
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {template.description}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingTemplate(template.key)}
+                            className="ml-4"
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-1" />
+                            Edit
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-4 text-center text-muted-foreground">
+            Failed to load email templates
+          </div>
+        )}
+      </div>
+
+      {/* Template Editor Modal */}
+      {editingTemplate && (
+        <div className="fixed inset-0 z-50 flex items-stretch">
+          <div 
+            className="fixed inset-0 bg-black/50" 
+            onClick={() => setEditingTemplate(null)} 
+          />
+          <div className="relative z-10 ml-auto w-full max-w-3xl bg-background shadow-xl flex flex-col">
+            <EmailTemplateEditor
+              templateKey={editingTemplate}
+              onClose={() => setEditingTemplate(null)}
+              onSave={() => loadTemplates()}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Email Snippets Settings */}
+      <div className="pt-4">
+        <h3 className="text-lg font-semibold mb-4">Email Snippets & Settings</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          These snippets are used to customize specific parts of email templates.
+        </p>
+      </div>
 
       <Section title="Pre-Meeting Materials" defaultOpen>
         <div className="space-y-3">

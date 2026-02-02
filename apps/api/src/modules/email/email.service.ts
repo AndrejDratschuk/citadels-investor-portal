@@ -83,6 +83,8 @@ import {
   KYCReminderTemplateData,
   PostMeetingOnboardingTemplateData,
 } from './templates';
+import { templateService } from './templateService';
+import { baseTemplate, header, content } from './templates/baseTemplate';
 
 // Initialize Resend with API key from environment
 const resendApiKey = process.env.RESEND_API_KEY;
@@ -151,6 +153,60 @@ export class EmailService {
         success: false,
         error: error.message || 'Failed to send email',
       };
+    }
+  }
+
+  // ============================================================
+  // Template-based Email Sending (supports customization)
+  // ============================================================
+
+  /**
+   * Send an email using a customizable template
+   * This method checks for custom templates and falls back to defaults
+   * 
+   * @param fundId - The fund ID for template lookup
+   * @param templateKey - The template key (e.g., 'kycInvite', 'capitalCallRequest')
+   * @param to - Recipient email address
+   * @param variables - Variables to replace in the template
+   * @param from - Optional from address
+   */
+  async sendTemplateEmail(
+    fundId: string,
+    templateKey: string,
+    to: string,
+    variables: Record<string, string | undefined>,
+    from?: string
+  ): Promise<SendEmailResult> {
+    try {
+      // Get template (custom or default)
+      const template = await templateService.getTemplate(fundId, templateKey);
+      
+      // Check if template is active
+      if (!template.isActive) {
+        console.log(`[Email] Template ${templateKey} is inactive for fund ${fundId}, skipping`);
+        return { success: true, messageId: 'skipped-inactive' };
+      }
+      
+      // Render template with variables
+      const rendered = templateService.renderTemplate(template.subject, template.body, variables);
+      
+      // Wrap in base template for full HTML email
+      const html = baseTemplate(
+        `${header('', variables.fundName || '')}${content(rendered.body)}`,
+        rendered.subject
+      );
+      
+      return this.sendEmail({
+        to,
+        subject: rendered.subject,
+        body: rendered.body,
+        html,
+        from,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to send template email';
+      console.error(`[Email] sendTemplateEmail error for ${templateKey}:`, error);
+      return { success: false, error: message };
     }
   }
 

@@ -157,7 +157,7 @@ export function GoogleSheetsWizard({
     enabled: !!selectedSpreadsheet && step === 'sheet',
   });
 
-  // Fetch preview for selected sheet
+  // Fetch preview for selected sheet (needed for both dealMapping and mapping steps)
   const { data: previewData, isLoading: previewLoading } = useQuery({
     queryKey: [
       'googlesheets',
@@ -172,7 +172,7 @@ export function GoogleSheetsWizard({
           ? googlesheetsApi.previewDataWithCredentials(selectedSpreadsheet.id, selectedSheet.title)
           : googlesheetsApi.previewData(selectedSpreadsheet.id, selectedSheet.title, connectionData)
         : Promise.resolve({ preview: { headers: [], rows: [], totalRows: 0 } }),
-    enabled: !!selectedSpreadsheet && !!selectedSheet && step === 'mapping',
+    enabled: !!selectedSpreadsheet && !!selectedSheet && (step === 'dealMapping' || step === 'mapping'),
   });
 
   // Initialize mappings when preview loads
@@ -686,73 +686,93 @@ export function GoogleSheetsWizard({
               </button>
 
               {/* Multi-Deal Configuration */}
-              {dealMappingMode === 'multi-deal' && previewData?.preview.sections && (
+              {dealMappingMode === 'multi-deal' && (
                 <div className="ml-8 p-4 bg-slate-50 rounded-lg space-y-4">
-                  {/* Select identifier column */}
-                  <div className="space-y-2">
-                    <Label>Which column identifies the deal/property?</Label>
-                    <select
-                      value={dealIdentifierColumn}
-                      onChange={(e) => {
-                        setDealIdentifierColumn(e.target.value);
-                        // Auto-populate row mappings based on selected column
-                        if (e.target.value && previewData?.preview.sections) {
-                          const tabularSection = previewData.preview.sections.find((s) => s.type === 'tabular');
-                          if (tabularSection) {
-                            // Get unique values from that column
-                            // For now, we'll use the metric names from the tabular section as identifiers
-                            const uniqueIdentifiers = new Set<string>();
-                            for (const metric of tabularSection.metrics) {
-                              if (metric.value && !metric.value.startsWith('Sample:')) {
-                                uniqueIdentifiers.add(metric.value);
-                              }
-                            }
-                            
-                            // Try to auto-match to existing deals
-                            const newMappings: RowToDealMapping[] = [];
-                            // If we have preview rows, use those
-                            if (previewData.preview.rows.length > 0) {
-                              const colIndex = previewData.preview.headers.indexOf(e.target.value);
-                              if (colIndex >= 0) {
-                                for (const row of previewData.preview.rows) {
-                                  const identifier = row[colIndex];
-                                  if (identifier) {
-                                    const matchedDeal = deals.find(
-                                      (d) => d.name.toLowerCase().includes(identifier.toLowerCase()) ||
-                                             identifier.toLowerCase().includes(d.name.toLowerCase())
-                                    );
-                                    newMappings.push({
-                                      rowIdentifier: identifier,
-                                      dealId: matchedDeal?.id || null,
-                                      dealName: matchedDeal?.name,
-                                    });
+                  {previewLoading ? (
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Loading sheet data...</span>
+                    </div>
+                  ) : !previewData?.preview ? (
+                    <div className="text-sm text-slate-500">
+                      Unable to load sheet preview. Please go back and try again.
+                    </div>
+                  ) : (
+                    <>
+                      {/* Select identifier column */}
+                      <div className="space-y-2">
+                        <Label>Which column identifies the deal/property?</Label>
+                        <select
+                          value={dealIdentifierColumn}
+                          onChange={(e) => {
+                            setDealIdentifierColumn(e.target.value);
+                            // Auto-populate row mappings based on selected column
+                            if (e.target.value && previewData?.preview) {
+                              const newMappings: RowToDealMapping[] = [];
+                              
+                              // Check if we have sections (mixed format)
+                              if (previewData.preview.sections?.length) {
+                                const tabularSection = previewData.preview.sections.find((s) => s.type === 'tabular');
+                                if (tabularSection) {
+                                  // Get unique values from that column
+                                  const uniqueIdentifiers = new Set<string>();
+                                  for (const metric of tabularSection.metrics) {
+                                    if (metric.value && !metric.value.startsWith('Sample:')) {
+                                      uniqueIdentifiers.add(metric.value);
+                                    }
                                   }
                                 }
                               }
+                              
+                              // If we have preview rows (standard tabular format), use those
+                              if (previewData.preview.rows.length > 0 && previewData.preview.headers.length > 0) {
+                                const colIndex = previewData.preview.headers.indexOf(e.target.value);
+                                if (colIndex >= 0) {
+                                  for (const row of previewData.preview.rows) {
+                                    const identifier = row[colIndex];
+                                    if (identifier) {
+                                      const matchedDeal = deals.find(
+                                        (d) => d.name.toLowerCase().includes(identifier.toLowerCase()) ||
+                                               identifier.toLowerCase().includes(d.name.toLowerCase())
+                                      );
+                                      newMappings.push({
+                                        rowIdentifier: identifier,
+                                        dealId: matchedDeal?.id || null,
+                                        dealName: matchedDeal?.name,
+                                      });
+                                    }
+                                  }
+                                }
+                              }
+                              setRowToDealMappings(newMappings);
                             }
-                            setRowToDealMappings(newMappings);
-                          }
-                        }
-                      }}
-                      className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm bg-white"
-                    >
-                      <option value="">Select column...</option>
-                      {/* Show columns from tabular sections */}
-                      {previewData.preview.sections
-                        .filter((s) => s.type === 'tabular')
-                        .flatMap((s) => s.metrics)
-                        .map((m) => m.key)
-                        .filter((key, i, arr) => arr.indexOf(key) === i) // unique
-                        .map((columnName) => (
-                          <option key={columnName} value={columnName}>
-                            {columnName}
-                          </option>
-                        ))}
-                    </select>
-                    <p className="text-xs text-slate-500">
-                      Usually "Property Name", "Asset Name", or "Deal Name"
-                    </p>
-                  </div>
+                          }}
+                          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm bg-white"
+                        >
+                          <option value="">Select column...</option>
+                          {/* Show columns from headers (standard tabular) */}
+                          {previewData.preview.headers.map((columnName) => (
+                            <option key={columnName} value={columnName}>
+                              {columnName}
+                            </option>
+                          ))}
+                          {/* Also show columns from tabular sections if different */}
+                          {previewData.preview.sections
+                            ?.filter((s) => s.type === 'tabular')
+                            .flatMap((s) => s.metrics)
+                            .map((m) => m.key)
+                            .filter((key, i, arr) => arr.indexOf(key) === i)
+                            .filter((key) => !previewData.preview.headers.includes(key))
+                            .map((columnName) => (
+                              <option key={columnName} value={columnName}>
+                                {columnName}
+                              </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-slate-500">
+                          Usually "Property Name", "Asset Name", or "Deal Name"
+                        </p>
+                      </div>
 
                   {/* Row to Deal mappings */}
                   {dealIdentifierColumn && rowToDealMappings.length > 0 && (
@@ -796,6 +816,8 @@ export function GoogleSheetsWizard({
                         {rowToDealMappings.filter((m) => m.dealId).length} of {rowToDealMappings.length} rows matched
                       </p>
                     </div>
+                  )}
+                    </>
                   )}
                 </div>
               )}

@@ -85,10 +85,17 @@ function getDisplayValue(kpi: KpiCardDataWithDimensions, dataType: KpiDataType):
   switch (kpi.format) {
     case 'currency':
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(rawValue);
-    case 'percentage':
-      return `${(rawValue * 100).toFixed(1)}%`;
-    case 'ratio':
-      return `${rawValue.toFixed(2)}x`;
+    case 'percentage': {
+      const pctValue = rawValue * 100;
+      // Show 1 decimal only if needed, otherwise show whole number
+      const formatted = pctValue % 1 === 0 ? pctValue.toFixed(0) : pctValue.toFixed(1);
+      return `${formatted}%`;
+    }
+    case 'ratio': {
+      // Show 2 decimals only if needed
+      const formatted = rawValue % 1 === 0 ? rawValue.toFixed(0) : rawValue.toFixed(2);
+      return `${formatted}x`;
+    }
     default:
       return rawValue.toLocaleString();
   }

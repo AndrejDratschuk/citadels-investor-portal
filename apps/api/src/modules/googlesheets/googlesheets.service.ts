@@ -906,6 +906,7 @@ export class GoogleSheetsService {
 
   /**
    * Parse a string value to a number, handling currency, percentages, etc.
+   * Percentages are converted to decimals (19.2% → 0.192)
    */
   private parseNumericValue(value: string): number | null {
     if (!value || typeof value !== 'string') return null;
@@ -913,13 +914,13 @@ export class GoogleSheetsService {
     // Remove common formatting
     let cleaned = value.trim();
     
-    // Handle percentages
+    // Handle percentages - convert to decimal (19.2% → 0.192)
     const isPercentage = cleaned.endsWith('%');
     if (isPercentage) {
       cleaned = cleaned.slice(0, -1);
     }
     
-    // Handle multipliers (e.g., "1.52x")
+    // Handle multipliers (e.g., "1.52x") - keep as-is
     const isMultiplier = cleaned.toLowerCase().endsWith('x');
     if (isMultiplier) {
       cleaned = cleaned.slice(0, -1);
@@ -936,8 +937,12 @@ export class GoogleSheetsService {
     const num = parseFloat(cleaned);
     if (isNaN(num)) return null;
     
-    // Convert percentage to decimal if needed (store as decimal)
-    // Actually, keep as-is since KPI format handles display
+    // Convert percentage to decimal for proper storage
+    // Display code will multiply by 100 when showing
+    if (isPercentage) {
+      return num / 100;
+    }
+    
     return num;
   }
 

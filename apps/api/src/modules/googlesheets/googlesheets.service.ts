@@ -812,7 +812,7 @@ export class GoogleSheetsService {
     // Also update the deal's kpis JSONB field and direct fields for header cards
     await this.updateDealFromSync(dealId, columnMapping, kpiValues, now);
 
-    return { rowCount: rows.length, kpiCount: insertedCount };
+    return { rowCount: allRows.length, kpiCount: insertedCount };
   }
 
   /**

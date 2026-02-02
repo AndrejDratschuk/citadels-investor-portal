@@ -33,7 +33,10 @@ export function LandingPage() {
           <h1 className="text-xl font-bold">Citadel</h1>
           <nav className="flex items-center gap-4">
             <Link to="/login">
-              <Button>Log in</Button>
+              <Button variant="ghost">Log in</Button>
+            </Link>
+            <Link to="/signup">
+              <Button>Sign up</Button>
             </Link>
           </nav>
         </div>
@@ -45,8 +48,11 @@ export function LandingPage() {
             Comprehensive investor portal for fund management
           </p>
           <div className="flex justify-center gap-4">
+            <Link to="/signup">
+              <Button size="lg">Get Started</Button>
+            </Link>
             <Link to="/login">
-              <Button size="lg">Log in</Button>
+              <Button size="lg" variant="outline">Log in</Button>
             </Link>
           </div>
         </div>

@@ -43,9 +43,26 @@ export interface SheetPreview {
   headers: string[];
   rows: string[][];
   totalRows: number;
-  // For key-value structured sheets
-  format: 'tabular' | 'key-value';
-  keyValuePairs?: { key: string; value: string; rowIndex: number }[];
+  // For mixed/complex sheets
+  format: 'tabular' | 'key-value' | 'mixed';
+  sections?: SheetSection[];
+}
+
+export interface SheetSection {
+  name: string;
+  type: 'key-value' | 'tabular';
+  startRow: number;
+  endRow: number;
+  metrics: SheetMetric[];
+}
+
+export interface SheetMetric {
+  key: string;
+  value: string;
+  rowIndex: number;
+  columnIndex?: number; // For tabular sections, which column this is
+  sectionName: string;
+  metricType: 'summary' | 'detail'; // summary = fund-level, detail = property/asset level
 }
 
 export interface GoogleSheetsConnection {
@@ -259,15 +276,15 @@ export class GoogleSheetsService {
   }
 
   /**
-   * Preview sheet data (first N rows)
-   * Detects if the sheet is in tabular or key-value format
+   * Preview sheet data - detects sections and handles mixed formats
+   * Supports: key-value sections, tabular sections, and mixed sheets
    */
   async previewSheetData(
     accessToken: string,
     refreshToken: string,
     spreadsheetId: string,
     sheetName: string,
-    maxRows: number = 100
+    maxRows: number = 200
   ): Promise<SheetPreview> {
     const auth = await this.getAuthenticatedClient(accessToken, refreshToken);
     const sheets = google.sheets({ version: 'v4', auth });
@@ -280,23 +297,41 @@ export class GoogleSheetsService {
 
     const values = response.data.values || [];
     
-    // Detect format: key-value if most rows have 2 columns with text labels in column A
-    const format = this.detectSheetFormat(values);
+    // Detect and parse sections in the sheet
+    const sections = this.detectSections(values);
     
-    if (format === 'key-value') {
-      // Extract key-value pairs from all rows
-      const keyValuePairs = this.extractKeyValuePairs(values);
+    // If we found distinct sections, it's a mixed format
+    if (sections.length > 1) {
+      // Collect all metrics from all sections
+      const allMetrics: SheetMetric[] = [];
+      for (const section of sections) {
+        allMetrics.push(...section.metrics);
+      }
       
       return {
-        headers: ['Metric Name', 'Value'],
-        rows: keyValuePairs.slice(0, maxRows).map((kv) => [kv.key, kv.value]),
-        totalRows: keyValuePairs.length,
-        format: 'key-value',
-        keyValuePairs,
+        headers: ['Metric Name', 'Value', 'Section'],
+        rows: allMetrics.slice(0, maxRows).map((m) => [m.key, m.value, m.sectionName]),
+        totalRows: allMetrics.length,
+        format: 'mixed',
+        sections,
       };
     }
     
-    // Tabular format: first row is headers
+    // Single section - determine its type
+    if (sections.length === 1) {
+      const section = sections[0];
+      return {
+        headers: section.type === 'tabular' 
+          ? section.metrics.filter((m) => m.metricType === 'summary').map((m) => m.key)
+          : ['Metric Name', 'Value'],
+        rows: section.metrics.slice(0, maxRows).map((m) => [m.key, m.value]),
+        totalRows: section.metrics.length,
+        format: section.type,
+        sections,
+      };
+    }
+    
+    // Fallback: treat as simple tabular
     const headers = values[0] || [];
     const dataRows = values.slice(1);
 
@@ -309,93 +344,189 @@ export class GoogleSheetsService {
   }
 
   /**
-   * Detect if sheet is tabular or key-value format
+   * Detect distinct sections in a sheet (e.g., "FUND OVERVIEW", "PROPERTY PORTFOLIO SUMMARY")
    */
-  private detectSheetFormat(values: unknown[][]): 'tabular' | 'key-value' {
+  private detectSections(values: unknown[][]): SheetSection[] {
+    const sections: SheetSection[] = [];
+    let currentSection: Partial<SheetSection> | null = null;
+    
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i] || [];
+      const firstCell = String(row[0] || '').trim();
+      
+      // Detect section headers (usually all caps, bold text, or specific keywords)
+      if (this.isSectionHeader(firstCell, row)) {
+        // Save previous section if exists
+        if (currentSection && currentSection.name) {
+          currentSection.endRow = i - 1;
+          this.extractSectionMetrics(currentSection as SheetSection, values);
+          sections.push(currentSection as SheetSection);
+        }
+        
+        // Start new section
+        currentSection = {
+          name: firstCell,
+          type: 'key-value', // Will be determined later
+          startRow: i + 1,
+          endRow: values.length - 1,
+          metrics: [],
+        };
+      }
+      
+      // Detect if this row is a table header (many columns with short text labels)
+      if (currentSection && this.isTableHeaderRow(row)) {
+        currentSection.type = 'tabular';
+        currentSection.startRow = i; // Table starts at header row
+      }
+    }
+    
+    // Save last section
+    if (currentSection && currentSection.name) {
+      currentSection.endRow = values.length - 1;
+      this.extractSectionMetrics(currentSection as SheetSection, values);
+      sections.push(currentSection as SheetSection);
+    }
+    
+    // If no sections detected, treat entire sheet as one section
+    if (sections.length === 0) {
+      const singleSection: SheetSection = {
+        name: 'Sheet Data',
+        type: this.detectSimpleFormat(values),
+        startRow: 0,
+        endRow: values.length - 1,
+        metrics: [],
+      };
+      this.extractSectionMetrics(singleSection, values);
+      sections.push(singleSection);
+    }
+    
+    return sections;
+  }
+
+  /**
+   * Check if a row is a section header
+   */
+  private isSectionHeader(firstCell: string, row: unknown[]): boolean {
+    if (!firstCell) return false;
+    
+    // Must have few or no values in other columns
+    const otherCells = row.slice(1).filter((c) => c !== null && c !== undefined && String(c).trim());
+    if (otherCells.length > 1) return false;
+    
+    // Check for common section header patterns
+    const upperFirst = firstCell.toUpperCase();
+    const isAllCaps = firstCell === upperFirst && firstCell.length > 3;
+    
+    const sectionKeywords = [
+      'overview', 'summary', 'portfolio', 'details', 'breakdown',
+      'analysis', 'metrics', 'performance', 'returns', 'holdings',
+      'properties', 'assets', 'investments', 'fund'
+    ];
+    
+    const hasKeyword = sectionKeywords.some((kw) => 
+      firstCell.toLowerCase().includes(kw)
+    );
+    
+    return isAllCaps || hasKeyword;
+  }
+
+  /**
+   * Check if a row looks like a table header row
+   */
+  private isTableHeaderRow(row: unknown[]): boolean {
+    // Table headers typically have 4+ columns with short text
+    const populatedCells = row.filter((c) => c !== null && c !== undefined && String(c).trim());
+    if (populatedCells.length < 4) return false;
+    
+    // Check if cells look like headers (text, not numbers/dates/currency)
+    let headerLikeCells = 0;
+    for (const cell of populatedCells) {
+      const cellStr = String(cell).trim();
+      // Headers are usually text, not starting with $ or containing only numbers
+      if (cellStr && 
+          !cellStr.startsWith('$') && 
+          isNaN(Number(cellStr.replace(/[,$%]/g, ''))) &&
+          !cellStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        headerLikeCells++;
+      }
+    }
+    
+    return headerLikeCells >= 4;
+  }
+
+  /**
+   * Detect simple format for a sheet without section headers
+   */
+  private detectSimpleFormat(values: unknown[][]): 'tabular' | 'key-value' {
     if (values.length < 3) return 'tabular';
     
-    // Check characteristics of key-value format:
-    // 1. Most rows have <= 2 meaningful columns
-    // 2. Column A contains text labels (not numbers)
-    // 3. Many rows have a clear label:value pattern
-    
+    // Check first few rows
     let keyValueScore = 0;
     let tabularScore = 0;
     
-    // Check first row - if it has many columns with short text, likely tabular headers
     const firstRow = values[0] || [];
-    if (firstRow.length > 4) {
-      tabularScore += 2;
-    }
+    if (firstRow.length > 4) tabularScore += 2;
     
-    // Sample rows to determine format
-    const sampleSize = Math.min(30, values.length);
-    for (let i = 1; i < sampleSize; i++) {
+    for (let i = 0; i < Math.min(20, values.length); i++) {
       const row = values[i] || [];
+      const populated = row.filter((c) => c !== null && c !== undefined && String(c).trim()).length;
       
-      // Key-value indicators
-      if (row.length >= 2) {
-        const firstCell = String(row[0] || '').trim();
-        const secondCell = String(row[1] || '').trim();
-        
-        // First cell is a label (text, not just numbers)
-        if (firstCell && isNaN(Number(firstCell.replace(/[$%,]/g, '')))) {
-          // Second cell has a value
-          if (secondCell) {
-            keyValueScore++;
-          }
-        }
-        
-        // Row has many populated columns - likely tabular
-        const populatedCells = row.filter((cell) => cell !== null && cell !== undefined && String(cell).trim()).length;
-        if (populatedCells > 4) {
-          tabularScore++;
-        }
-      }
-      
-      // Empty first cell or section header (no second value) - common in key-value sheets
-      if (row.length < 2 || !row[1]) {
-        keyValueScore += 0.5;
-      }
+      if (populated <= 2) keyValueScore++;
+      if (populated >= 4) tabularScore++;
     }
     
     return keyValueScore > tabularScore ? 'key-value' : 'tabular';
   }
 
   /**
-   * Extract key-value pairs from a sheet
+   * Extract metrics from a section based on its type
    */
-  private extractKeyValuePairs(values: unknown[][]): { key: string; value: string; rowIndex: number }[] {
-    const pairs: { key: string; value: string; rowIndex: number }[] = [];
+  private extractSectionMetrics(section: SheetSection, values: unknown[][]): void {
+    const metrics: SheetMetric[] = [];
     
-    for (let i = 0; i < values.length; i++) {
-      const row = values[i] || [];
-      const key = String(row[0] || '').trim();
-      const value = String(row[1] || '').trim();
+    if (section.type === 'key-value') {
+      // Extract key-value pairs
+      for (let i = section.startRow; i <= section.endRow && i < values.length; i++) {
+        const row = values[i] || [];
+        const key = String(row[0] || '').trim();
+        const value = String(row[1] || '').trim();
+        
+        // Skip empty rows and section headers
+        if (!key || !value) continue;
+        if (this.isSectionHeader(key, row)) continue;
+        
+        metrics.push({
+          key,
+          value,
+          rowIndex: i,
+          sectionName: section.name,
+          metricType: 'summary',
+        });
+      }
+    } else {
+      // Extract tabular data - headers from first row, then columns
+      const headerRow = values[section.startRow] || [];
+      const headers = headerRow.map((h) => String(h || '').trim()).filter(Boolean);
       
-      // Skip empty rows, section headers (no value), and title rows
-      if (!key) continue;
-      
-      // Skip rows that look like section headers (all caps, no value, or contains keywords)
-      const isHeader = !value && (
-        key === key.toUpperCase() ||
-        key.toLowerCase().includes('summary') ||
-        key.toLowerCase().includes('overview') ||
-        key.toLowerCase().includes('portfolio')
-      );
-      
-      // Skip title-like rows (first few rows with no clear value)
-      const isTitleRow = i < 3 && !value;
-      
-      if (isHeader || isTitleRow) continue;
-      
-      // Include rows with actual metric data
-      if (key && value) {
-        pairs.push({ key, value, rowIndex: i });
+      // Add each column header as a mappable metric
+      for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+        const header = headers[colIdx];
+        // Get sample value from first data row
+        const sampleRow = values[section.startRow + 1] || [];
+        const sampleValue = String(sampleRow[colIdx] || '').trim();
+        
+        metrics.push({
+          key: header,
+          value: sampleValue ? `Sample: ${sampleValue}` : 'No data',
+          rowIndex: section.startRow,
+          columnIndex: colIdx,
+          sectionName: section.name,
+          metricType: 'detail',
+        });
       }
     }
     
-    return pairs;
+    section.metrics = metrics;
   }
 
   /**

@@ -27,8 +27,25 @@ export interface SheetPreview {
   headers: string[];
   rows: string[][];
   totalRows: number;
-  format: 'tabular' | 'key-value';
-  keyValuePairs?: { key: string; value: string; rowIndex: number }[];
+  format: 'tabular' | 'key-value' | 'mixed';
+  sections?: SheetSection[];
+}
+
+export interface SheetSection {
+  name: string;
+  type: 'key-value' | 'tabular';
+  startRow: number;
+  endRow: number;
+  metrics: SheetMetric[];
+}
+
+export interface SheetMetric {
+  key: string;
+  value: string;
+  rowIndex: number;
+  columnIndex?: number;
+  sectionName: string;
+  metricType: 'summary' | 'detail';
 }
 
 export interface GoogleSheetsStatus {

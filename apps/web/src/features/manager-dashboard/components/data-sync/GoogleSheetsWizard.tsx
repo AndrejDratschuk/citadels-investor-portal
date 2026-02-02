@@ -45,7 +45,10 @@ interface MappingRow {
   kpiCode: string;
   customKpiName: string;
   include: boolean;
-  rowIndex?: number; // For key-value format
+  rowIndex?: number;
+  columnIndex?: number; // For tabular sections
+  sectionName?: string; // Which section this metric belongs to
+  metricType?: 'summary' | 'detail'; // summary = fund-level, detail = property/asset level
 }
 
 // ============================================
@@ -141,30 +144,38 @@ export function GoogleSheetsWizard({
 
     const preview = previewData.preview;
     
-    // Handle key-value format
-    if (preview.format === 'key-value' && preview.keyValuePairs) {
-      const initialMappings = preview.keyValuePairs.map((kv) => {
-        const normalizedKey = kv.key.toLowerCase().trim();
-        const suggestedKpi = kpiDefinitions.find(
-          (kpi) =>
-            kpi.code.toLowerCase() === normalizedKey ||
-            kpi.name.toLowerCase().includes(normalizedKey) ||
-            normalizedKey.includes(kpi.code.toLowerCase()) ||
-            normalizedKey.includes(kpi.name.toLowerCase())
-        );
+    // Handle sections (mixed or single section format)
+    if (preview.sections && preview.sections.length > 0) {
+      const allMetrics: MappingRow[] = [];
+      
+      for (const section of preview.sections) {
+        for (const metric of section.metrics) {
+          const normalizedKey = metric.key.toLowerCase().trim();
+          const suggestedKpi = kpiDefinitions.find(
+            (kpi) =>
+              kpi.code.toLowerCase() === normalizedKey ||
+              kpi.name.toLowerCase().includes(normalizedKey) ||
+              normalizedKey.includes(kpi.code.toLowerCase()) ||
+              normalizedKey.includes(kpi.name.toLowerCase())
+          );
 
-        return {
-          columnName: kv.key,
-          sampleValue: kv.value,
-          kpiCode: suggestedKpi?.code || '',
-          customKpiName: '',
-          include: false,
-          rowIndex: kv.rowIndex,
-        };
-      });
-      setMappings(initialMappings);
-    } 
-    // Handle tabular format
+          allMetrics.push({
+            columnName: metric.key,
+            sampleValue: metric.value,
+            kpiCode: suggestedKpi?.code || '',
+            customKpiName: '',
+            include: false,
+            rowIndex: metric.rowIndex,
+            sectionName: metric.sectionName,
+            metricType: metric.metricType,
+            columnIndex: metric.columnIndex,
+          });
+        }
+      }
+      
+      setMappings(allMetrics);
+    }
+    // Legacy: handle simple tabular format
     else if (preview.headers) {
       const initialMappings = preview.headers.map((header, index) => {
         const normalizedHeader = header.toLowerCase().trim();
@@ -494,11 +505,11 @@ export function GoogleSheetsWizard({
               ) : (
                 <>
                   <div className="text-sm text-slate-500">
-                    Found {previewData?.preview.totalRows.toLocaleString() || 0} metrics.
-                    {previewData?.preview.format === 'key-value' 
-                      ? ' Select which metrics to sync to your KPIs.'
-                      : ' Map columns to your KPIs below.'
-                    }
+                    Found {previewData?.preview.totalRows.toLocaleString() || 0} metrics
+                    {previewData?.preview.sections && previewData.preview.sections.length > 1 && (
+                      <> in {previewData.preview.sections.length} sections</>
+                    )}
+                    . Select which metrics to sync to your KPIs.
                   </div>
 
                   {/* Search/filter */}
@@ -512,73 +523,127 @@ export function GoogleSheetsWizard({
                     />
                   </div>
 
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {mappings
-                      .filter((m) => !searchQuery || m.columnName.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map((mapping, filteredIndex) => {
-                        const originalIndex = mappings.findIndex((m) => m.columnName === mapping.columnName);
-                        return (
-                          <div
-                            key={mapping.columnName}
-                            className={`p-3 rounded-lg border transition-colors ${
-                              mapping.include ? 'border-primary/50 bg-primary/5' : 'border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <button
-                                onClick={() => handleIncludeChange(originalIndex, !mapping.include)}
-                                className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                    {/* Group mappings by section */}
+                    {(() => {
+                      const sections = new Map<string, MappingRow[]>();
+                      const filtered = mappings.filter(
+                        (m) => !searchQuery || m.columnName.toLowerCase().includes(searchQuery.toLowerCase())
+                      );
+                      
+                      for (const mapping of filtered) {
+                        const sectionName = mapping.sectionName || 'Sheet Data';
+                        if (!sections.has(sectionName)) {
+                          sections.set(sectionName, []);
+                        }
+                        sections.get(sectionName)!.push(mapping);
+                      }
+                      
+                      return Array.from(sections.entries()).map(([sectionName, sectionMappings]) => (
+                        <div key={sectionName} className="space-y-2">
+                          {/* Section header */}
+                          <div className="flex items-center gap-2 sticky top-0 bg-white py-2 border-b">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm text-slate-900">{sectionName}</h4>
+                              <p className="text-xs text-slate-500">
+                                {sectionMappings[0]?.metricType === 'summary' 
+                                  ? 'Fund-level metrics' 
+                                  : 'Property/Asset details'
+                                }
+                                {' • '}{sectionMappings.length} metrics
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const sectionKeys = new Set(sectionMappings.map((m) => m.columnName));
+                                setMappings((prev) =>
+                                  prev.map((m) =>
+                                    sectionKeys.has(m.columnName) ? { ...m, include: true } : m
+                                  )
+                                );
+                              }}
+                              className="text-xs text-primary hover:underline"
+                            >
+                              Select Section
+                            </button>
+                          </div>
+                          
+                          {/* Section metrics */}
+                          {sectionMappings.map((mapping) => {
+                            const originalIndex = mappings.findIndex(
+                              (m) => m.columnName === mapping.columnName && m.sectionName === mapping.sectionName
+                            );
+                            return (
+                              <div
+                                key={`${mapping.sectionName}-${mapping.columnName}`}
+                                className={`p-3 rounded-lg border transition-colors ${
                                   mapping.include
-                                    ? 'border-primary bg-primary'
-                                    : 'border-slate-300 bg-white'
+                                    ? 'border-primary/50 bg-primary/5'
+                                    : 'border-slate-200 hover:border-slate-300'
                                 }`}
                               >
-                                {mapping.include && <Check className="h-3 w-3 text-white" />}
-                              </button>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm text-slate-900">
-                                  {mapping.columnName}
-                                </div>
-                                <div className="text-xs text-slate-500 mt-0.5">
-                                  Value: <span className="font-mono bg-slate-100 px-1 rounded">{mapping.sampleValue || 'N/A'}</span>
-                                </div>
-                                
-                                {mapping.include && (
-                                  <div className="mt-2 flex items-center gap-2">
-                                    <span className="text-xs text-slate-500">Map to:</span>
-                                    <select
-                                      value={mapping.kpiCode || ''}
-                                      onChange={(e) => handleMappingChange(originalIndex, e.target.value)}
-                                      className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm bg-white"
-                                    >
-                                      <option value="">Select KPI...</option>
-                                      <optgroup label="Existing KPIs">
-                                        {kpiDefinitions.map((kpi) => (
-                                          <option key={kpi.code} value={kpi.code}>
-                                            {kpi.name}
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                      <option value="__custom__">+ Custom Metric</option>
-                                    </select>
+                                <div className="flex items-start gap-3">
+                                  <button
+                                    onClick={() => handleIncludeChange(originalIndex, !mapping.include)}
+                                    className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                      mapping.include
+                                        ? 'border-primary bg-primary'
+                                        : 'border-slate-300 bg-white'
+                                    }`}
+                                  >
+                                    {mapping.include && <Check className="h-3 w-3 text-white" />}
+                                  </button>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm text-slate-900">
+                                      {mapping.columnName}
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-0.5">
+                                      {mapping.sampleValue?.startsWith('Sample:') ? (
+                                        <span>{mapping.sampleValue}</span>
+                                      ) : (
+                                        <>Value: <span className="font-mono bg-slate-100 px-1 rounded">{mapping.sampleValue || 'N/A'}</span></>
+                                      )}
+                                    </div>
+
+                                    {mapping.include && (
+                                      <div className="mt-2 flex items-center gap-2">
+                                        <span className="text-xs text-slate-500">Map to:</span>
+                                        <select
+                                          value={mapping.kpiCode || (mapping.customKpiName ? '__custom__' : '')}
+                                          onChange={(e) => handleMappingChange(originalIndex, e.target.value)}
+                                          className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm bg-white"
+                                        >
+                                          <option value="">Select KPI...</option>
+                                          <optgroup label="Existing KPIs">
+                                            {kpiDefinitions.map((kpi) => (
+                                              <option key={kpi.code} value={kpi.code}>
+                                                {kpi.name}
+                                              </option>
+                                            ))}
+                                          </optgroup>
+                                          <option value="__custom__">+ Custom Metric</option>
+                                        </select>
+                                      </div>
+                                    )}
+
+                                    {mapping.include && (mapping.kpiCode === '__custom__' || mapping.customKpiName) && (
+                                      <div className="mt-2">
+                                        <Input
+                                          placeholder="Enter custom metric name..."
+                                          value={mapping.customKpiName}
+                                          onChange={(e) => handleCustomKpiChange(originalIndex, e.target.value)}
+                                          className="text-sm"
+                                        />
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                                
-                                {mapping.include && (mapping.kpiCode === '__custom__' || mapping.customKpiName) && (
-                                  <div className="mt-2">
-                                    <Input
-                                      placeholder="Enter custom metric name..."
-                                      value={mapping.customKpiName}
-                                      onChange={(e) => handleCustomKpiChange(originalIndex, e.target.value)}
-                                      className="text-sm"
-                                    />
-                                  </div>
-                                )}
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
+                      ));
+                    })()}
                   </div>
 
                   <div className="flex items-center justify-between text-sm text-slate-500 pt-2 border-t">

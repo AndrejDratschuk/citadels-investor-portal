@@ -41,8 +41,11 @@ type WizardStep = 'spreadsheet' | 'sheet' | 'mapping' | 'sync';
 
 interface MappingRow {
   columnName: string;
+  sampleValue: string;
   kpiCode: string;
+  customKpiName: string;
   include: boolean;
+  rowIndex?: number; // For key-value format
 }
 
 // ============================================
@@ -134,9 +137,36 @@ export function GoogleSheetsWizard({
 
   // Initialize mappings when preview loads
   useEffect(() => {
-    if (previewData?.preview?.headers) {
-      const initialMappings = previewData.preview.headers.map((header) => {
-        // Auto-suggest KPI based on header name
+    if (!previewData?.preview) return;
+
+    const preview = previewData.preview;
+    
+    // Handle key-value format
+    if (preview.format === 'key-value' && preview.keyValuePairs) {
+      const initialMappings = preview.keyValuePairs.map((kv) => {
+        const normalizedKey = kv.key.toLowerCase().trim();
+        const suggestedKpi = kpiDefinitions.find(
+          (kpi) =>
+            kpi.code.toLowerCase() === normalizedKey ||
+            kpi.name.toLowerCase().includes(normalizedKey) ||
+            normalizedKey.includes(kpi.code.toLowerCase()) ||
+            normalizedKey.includes(kpi.name.toLowerCase())
+        );
+
+        return {
+          columnName: kv.key,
+          sampleValue: kv.value,
+          kpiCode: suggestedKpi?.code || '',
+          customKpiName: '',
+          include: false,
+          rowIndex: kv.rowIndex,
+        };
+      });
+      setMappings(initialMappings);
+    } 
+    // Handle tabular format
+    else if (preview.headers) {
+      const initialMappings = preview.headers.map((header, index) => {
         const normalizedHeader = header.toLowerCase().trim();
         const suggestedKpi = kpiDefinitions.find(
           (kpi) =>
@@ -147,7 +177,9 @@ export function GoogleSheetsWizard({
 
         return {
           columnName: header,
+          sampleValue: preview.rows[0]?.[index] || '',
           kpiCode: suggestedKpi?.code || '',
+          customKpiName: '',
           include: !!suggestedKpi,
         };
       });
@@ -163,11 +195,15 @@ export function GoogleSheetsWizard({
       }
 
       const columnMapping: ColumnMapping[] = mappings
-        .filter((m) => m.include && m.kpiCode)
+        .filter((m) => m.include && (m.kpiCode || m.customKpiName))
         .map((m) => ({
           columnName: m.columnName,
-          kpiCode: m.kpiCode,
-          dataType: 'actual', // Default to actual
+          kpiCode: m.kpiCode || `custom_${m.customKpiName.toLowerCase().replace(/\s+/g, '_')}`,
+          dataType: 'actual' as const,
+          // Pass row index for key-value format
+          ...(m.rowIndex !== undefined && { rowIndex: m.rowIndex }),
+          // Pass custom name if using custom metric
+          ...(m.customKpiName && { customKpiName: m.customKpiName }),
         }));
 
       return googlesheetsApi.saveConnection(
@@ -236,7 +272,21 @@ export function GoogleSheetsWizard({
 
   function handleMappingChange(index: number, kpiCode: string): void {
     setMappings((prev) =>
-      prev.map((m, i) => (i === index ? { ...m, kpiCode, include: !!kpiCode } : m))
+      prev.map((m, i) => {
+        if (i !== index) return m;
+        // If selecting custom, clear kpiCode and keep include true
+        if (kpiCode === '__custom__') {
+          return { ...m, kpiCode: '', customKpiName: m.customKpiName || m.columnName, include: true };
+        }
+        // Otherwise, set kpiCode and clear customKpiName
+        return { ...m, kpiCode, customKpiName: '', include: !!kpiCode };
+      })
+    );
+  }
+
+  function handleCustomKpiChange(index: number, customKpiName: string): void {
+    setMappings((prev) =>
+      prev.map((m, i) => (i === index ? { ...m, customKpiName, kpiCode: '', include: !!customKpiName } : m))
     );
   }
 
@@ -276,7 +326,7 @@ export function GoogleSheetsWizard({
   const canProceed =
     (step === 'spreadsheet' && selectedSpreadsheet) ||
     (step === 'sheet' && selectedSheet) ||
-    (step === 'mapping' && mappings.some((m) => m.include && m.kpiCode)) ||
+    (step === 'mapping' && mappings.some((m) => m.include && (m.kpiCode || m.customKpiName))) ||
     step === 'sync';
 
   const stepIndex = ['spreadsheet', 'sheet', 'mapping', 'sync'].indexOf(step);
@@ -444,56 +494,112 @@ export function GoogleSheetsWizard({
               ) : (
                 <>
                   <div className="text-sm text-slate-500">
-                    Found {previewData?.preview.totalRows.toLocaleString() || 0} data rows. Map
-                    columns to your KPIs below.
+                    Found {previewData?.preview.totalRows.toLocaleString() || 0} metrics.
+                    {previewData?.preview.format === 'key-value' 
+                      ? ' Select which metrics to sync to your KPIs.'
+                      : ' Map columns to your KPIs below.'
+                    }
                   </div>
 
-                  <div className="space-y-3">
-                    {mappings.map((mapping, index) => (
-                      <div
-                        key={mapping.columnName}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${
-                          mapping.include ? 'border-primary/50 bg-primary/5' : 'border-slate-200'
-                        }`}
+                  {/* Search/filter */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Search metrics..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {mappings
+                      .filter((m) => !searchQuery || m.columnName.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map((mapping, filteredIndex) => {
+                        const originalIndex = mappings.findIndex((m) => m.columnName === mapping.columnName);
+                        return (
+                          <div
+                            key={mapping.columnName}
+                            className={`p-3 rounded-lg border transition-colors ${
+                              mapping.include ? 'border-primary/50 bg-primary/5' : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => handleIncludeChange(originalIndex, !mapping.include)}
+                                className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                  mapping.include
+                                    ? 'border-primary bg-primary'
+                                    : 'border-slate-300 bg-white'
+                                }`}
+                              >
+                                {mapping.include && <Check className="h-3 w-3 text-white" />}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm text-slate-900">
+                                  {mapping.columnName}
+                                </div>
+                                <div className="text-xs text-slate-500 mt-0.5">
+                                  Value: <span className="font-mono bg-slate-100 px-1 rounded">{mapping.sampleValue || 'N/A'}</span>
+                                </div>
+                                
+                                {mapping.include && (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <span className="text-xs text-slate-500">Map to:</span>
+                                    <select
+                                      value={mapping.kpiCode || ''}
+                                      onChange={(e) => handleMappingChange(originalIndex, e.target.value)}
+                                      className="flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm bg-white"
+                                    >
+                                      <option value="">Select KPI...</option>
+                                      <optgroup label="Existing KPIs">
+                                        {kpiDefinitions.map((kpi) => (
+                                          <option key={kpi.code} value={kpi.code}>
+                                            {kpi.name}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                      <option value="__custom__">+ Custom Metric</option>
+                                    </select>
+                                  </div>
+                                )}
+                                
+                                {mapping.include && (mapping.kpiCode === '__custom__' || mapping.customKpiName) && (
+                                  <div className="mt-2">
+                                    <Input
+                                      placeholder="Enter custom metric name..."
+                                      value={mapping.customKpiName}
+                                      onChange={(e) => handleCustomKpiChange(originalIndex, e.target.value)}
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm text-slate-500 pt-2 border-t">
+                    <span>
+                      {mappings.filter((m) => m.include && (m.kpiCode || m.customKpiName)).length} metrics selected
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setMappings((prev) => prev.map((m) => ({ ...m, include: true })))}
+                        className="text-primary hover:underline text-xs"
                       >
-                        <button
-                          onClick={() => handleIncludeChange(index, !mapping.include)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                            mapping.include
-                              ? 'border-primary bg-primary'
-                              : 'border-slate-300 bg-white'
-                          }`}
-                        >
-                          {mapping.include && <Check className="h-3 w-3 text-white" />}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-slate-900 truncate">
-                            {mapping.columnName}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            Sample: {previewData?.preview.rows[0]?.[index] || 'N/A'}
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-slate-300" />
-                        <select
-                          value={mapping.kpiCode || ''}
-                          onChange={(e) => handleMappingChange(index, e.target.value)}
-                          disabled={!mapping.include}
-                          className="w-[180px] rounded-md border border-slate-200 px-3 py-1.5 text-sm bg-white disabled:opacity-50 disabled:bg-slate-50"
-                        >
-                          <option value="">Not mapped</option>
-                          {kpiDefinitions.map((kpi) => (
-                            <option key={kpi.code} value={kpi.code}>
-                              {kpi.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="text-sm text-slate-500">
-                    {mappings.filter((m) => m.include && m.kpiCode).length} columns mapped
+                        Select All
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        onClick={() => setMappings((prev) => prev.map((m) => ({ ...m, include: false })))}
+                        className="text-primary hover:underline text-xs"
+                      >
+                        Clear All
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -593,8 +699,8 @@ export function GoogleSheetsWizard({
                       {selectedSheet?.title}
                     </li>
                     <li>
-                      <span className="font-medium text-slate-900">Mapped Columns:</span>{' '}
-                      {mappings.filter((m) => m.include && m.kpiCode).length}
+                      <span className="font-medium text-slate-900">Mapped Metrics:</span>{' '}
+                      {mappings.filter((m) => m.include && (m.kpiCode || m.customKpiName)).length}
                     </li>
                     <li>
                       <span className="font-medium text-slate-900">Sync:</span>{' '}

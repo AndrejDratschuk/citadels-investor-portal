@@ -27,6 +27,8 @@ export interface SheetPreview {
   headers: string[];
   rows: string[][];
   totalRows: number;
+  format: 'tabular' | 'key-value';
+  keyValuePairs?: { key: string; value: string; rowIndex: number }[];
 }
 
 export interface GoogleSheetsStatus {

@@ -43,6 +43,9 @@ export interface SheetPreview {
   headers: string[];
   rows: string[][];
   totalRows: number;
+  // For key-value structured sheets
+  format: 'tabular' | 'key-value';
+  keyValuePairs?: { key: string; value: string; rowIndex: number }[];
 }
 
 export interface GoogleSheetsConnection {
@@ -257,24 +260,43 @@ export class GoogleSheetsService {
 
   /**
    * Preview sheet data (first N rows)
+   * Detects if the sheet is in tabular or key-value format
    */
   async previewSheetData(
     accessToken: string,
     refreshToken: string,
     spreadsheetId: string,
     sheetName: string,
-    maxRows: number = 10
+    maxRows: number = 100
   ): Promise<SheetPreview> {
     const auth = await this.getAuthenticatedClient(accessToken, refreshToken);
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // Get all data to count rows, but only return preview
+    // Get all data
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${sheetName}'`,
     });
 
     const values = response.data.values || [];
+    
+    // Detect format: key-value if most rows have 2 columns with text labels in column A
+    const format = this.detectSheetFormat(values);
+    
+    if (format === 'key-value') {
+      // Extract key-value pairs from all rows
+      const keyValuePairs = this.extractKeyValuePairs(values);
+      
+      return {
+        headers: ['Metric Name', 'Value'],
+        rows: keyValuePairs.slice(0, maxRows).map((kv) => [kv.key, kv.value]),
+        totalRows: keyValuePairs.length,
+        format: 'key-value',
+        keyValuePairs,
+      };
+    }
+    
+    // Tabular format: first row is headers
     const headers = values[0] || [];
     const dataRows = values.slice(1);
 
@@ -282,7 +304,98 @@ export class GoogleSheetsService {
       headers: headers.map(String),
       rows: dataRows.slice(0, maxRows).map((row) => row.map(String)),
       totalRows: dataRows.length,
+      format: 'tabular',
     };
+  }
+
+  /**
+   * Detect if sheet is tabular or key-value format
+   */
+  private detectSheetFormat(values: unknown[][]): 'tabular' | 'key-value' {
+    if (values.length < 3) return 'tabular';
+    
+    // Check characteristics of key-value format:
+    // 1. Most rows have <= 2 meaningful columns
+    // 2. Column A contains text labels (not numbers)
+    // 3. Many rows have a clear label:value pattern
+    
+    let keyValueScore = 0;
+    let tabularScore = 0;
+    
+    // Check first row - if it has many columns with short text, likely tabular headers
+    const firstRow = values[0] || [];
+    if (firstRow.length > 4) {
+      tabularScore += 2;
+    }
+    
+    // Sample rows to determine format
+    const sampleSize = Math.min(30, values.length);
+    for (let i = 1; i < sampleSize; i++) {
+      const row = values[i] || [];
+      
+      // Key-value indicators
+      if (row.length >= 2) {
+        const firstCell = String(row[0] || '').trim();
+        const secondCell = String(row[1] || '').trim();
+        
+        // First cell is a label (text, not just numbers)
+        if (firstCell && isNaN(Number(firstCell.replace(/[$%,]/g, '')))) {
+          // Second cell has a value
+          if (secondCell) {
+            keyValueScore++;
+          }
+        }
+        
+        // Row has many populated columns - likely tabular
+        const populatedCells = row.filter((cell) => cell !== null && cell !== undefined && String(cell).trim()).length;
+        if (populatedCells > 4) {
+          tabularScore++;
+        }
+      }
+      
+      // Empty first cell or section header (no second value) - common in key-value sheets
+      if (row.length < 2 || !row[1]) {
+        keyValueScore += 0.5;
+      }
+    }
+    
+    return keyValueScore > tabularScore ? 'key-value' : 'tabular';
+  }
+
+  /**
+   * Extract key-value pairs from a sheet
+   */
+  private extractKeyValuePairs(values: unknown[][]): { key: string; value: string; rowIndex: number }[] {
+    const pairs: { key: string; value: string; rowIndex: number }[] = [];
+    
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i] || [];
+      const key = String(row[0] || '').trim();
+      const value = String(row[1] || '').trim();
+      
+      // Skip empty rows, section headers (no value), and title rows
+      if (!key) continue;
+      
+      // Skip rows that look like section headers (all caps, no value, or contains keywords)
+      const isHeader = !value && (
+        key === key.toUpperCase() ||
+        key.toLowerCase().includes('summary') ||
+        key.toLowerCase().includes('overview') ||
+        key.toLowerCase().includes('portfolio')
+      );
+      
+      // Skip title-like rows (first few rows with no clear value)
+      const isTitleRow = i < 3 && !value;
+      
+      if (isHeader || isTitleRow) continue;
+      
+      // Include rows with actual metric data
+      if (key && value) {
+        pairs.push({ key, value, rowIndex: i });
+      }
+    }
+    
+    return pairs;
   }
 
   /**

@@ -764,7 +764,99 @@ export class GoogleSheetsService {
       }
     }
 
+    // Also update the deal's kpis JSONB field and direct fields for header cards
+    await this.updateDealFromSync(dealId, columnMapping, kpiValues, now);
+
     return { rowCount: rows.length, kpiCount: insertedCount };
+  }
+
+  /**
+   * Update deal header fields from synced KPI values
+   */
+  private async updateDealFromSync(
+    dealId: string,
+    columnMapping: ColumnMapping[],
+    kpiValues: { kpi_id: string; value: number; columnName: string }[],
+    now: Date
+  ): Promise<void> {
+    // Build a map of kpiCode -> value from our synced data
+    const kpiCodeToValue = new Map<string, number>();
+    for (const mapping of columnMapping) {
+      const matchingValue = kpiValues.find((v) => v.columnName === mapping.columnName);
+      if (matchingValue) {
+        kpiCodeToValue.set(mapping.kpiCode, matchingValue.value);
+      }
+    }
+
+    // Get current deal data
+    const { data: currentDeal, error: dealError } = await supabaseAdmin
+      .from('deals')
+      .select('kpis, acquisition_price, acquisition_date')
+      .eq('id', dealId)
+      .single();
+
+    if (dealError) {
+      console.error('Failed to fetch deal for sync update:', dealError);
+      return;
+    }
+
+    // Build updates object
+    const updates: Record<string, unknown> = {
+      updated_at: now.toISOString(),
+    };
+
+    // Update kpis JSONB field
+    const currentKpis = (currentDeal?.kpis as Record<string, unknown>) || {};
+    const newKpis: Record<string, unknown> = { ...currentKpis };
+
+    // Map common KPI codes to kpis JSONB fields
+    const kpiMapping: Record<string, string> = {
+      noi: 'noi',
+      annualized_noi: 'noi',
+      in_place_noi: 'noi',
+      cap_rate: 'capRate',
+      cap_rate_at_acquisition: 'capRate',
+      occupancy: 'occupancyRate',
+      occupancy_rate: 'occupancyRate',
+    };
+
+    for (const [kpiCode, jsonField] of Object.entries(kpiMapping)) {
+      const value = kpiCodeToValue.get(kpiCode);
+      if (value !== undefined) {
+        // Convert percentage values (stored as whole numbers) to decimals for rates
+        if (jsonField === 'capRate' || jsonField === 'occupancyRate') {
+          newKpis[jsonField] = value > 1 ? value / 100 : value;
+        } else {
+          newKpis[jsonField] = value;
+        }
+      }
+    }
+
+    // Update direct deal fields
+    const acquisitionPrice = kpiCodeToValue.get('acquisition_price');
+    if (acquisitionPrice !== undefined) {
+      updates.acquisition_price = acquisitionPrice;
+    }
+
+    // Only update kpis if we have changes
+    if (Object.keys(newKpis).length > Object.keys(currentKpis).length || 
+        JSON.stringify(newKpis) !== JSON.stringify(currentKpis)) {
+      updates.kpis = newKpis;
+    }
+
+    // Apply updates if there are any beyond just updated_at
+    if (Object.keys(updates).length > 1) {
+      const { error: updateError } = await supabaseAdmin
+        .from('deals')
+        .update(updates)
+        .eq('id', dealId);
+
+      if (updateError) {
+        console.error('Failed to update deal from sync:', updateError);
+      } else {
+        console.log('Updated deal header data from sync:', Object.keys(updates));
+      }
+    }
   }
 
   /**

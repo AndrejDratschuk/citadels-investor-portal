@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dataImportApi } from '@/lib/api/dataImport';
+import { googlesheetsApi } from '@/lib/api/googlesheets';
 import { useAuth } from '@/hooks/useAuth';
 import { DealSelector } from '@/components/common/DealSelector';
 import {
@@ -201,21 +202,10 @@ export function DataConnectionsPage(): JSX.Element {
   const handleSync = async (connectionId: string): Promise<void> => {
     try {
       setSyncingId(connectionId);
+      setError(null);
       
-      // Call the sync API endpoint
-      const response = await fetch(`/api/googlesheets/connections/${connectionId}/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Sync failed');
-      }
+      // Call the sync API using the proper API client
+      await googlesheetsApi.syncNow(connectionId);
       
       // Refresh connections list to show updated status
       await fetchConnections();

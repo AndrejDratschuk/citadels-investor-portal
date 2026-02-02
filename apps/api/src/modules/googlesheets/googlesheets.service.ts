@@ -100,9 +100,20 @@ function calculateNextSyncTime(frequency: SyncFrequency, now: Date): Date | null
 // ============================================
 export class GoogleSheetsService {
   /**
+   * Check if Google Sheets is properly configured
+   */
+  isConfigured(): boolean {
+    return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+  }
+
+  /**
    * Generate OAuth URL for Google Sheets authorization
    */
   getAuthUrl(state: string): string {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      throw new Error('Google Sheets is not configured. Missing GMAIL_CLIENT_ID or GMAIL_CLIENT_SECRET.');
+    }
+
     const oauth2Client = createOAuth2Client();
 
     return oauth2Client.generateAuthUrl({

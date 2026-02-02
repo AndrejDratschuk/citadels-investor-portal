@@ -61,24 +61,43 @@ export class GoogleSheetsController {
    * Start OAuth flow - returns auth URL
    */
   async connect(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
-    const userId = request.user.id;
-    const fundId = request.user.fundId;
+    try {
+      // Check if user is authenticated
+      if (!request.user) {
+        return reply.status(401).send({ success: false, error: 'Not authenticated' });
+      }
 
-    if (!fundId) {
-      return reply.status(403).send({ error: 'No fund associated with user' });
+      const userId = request.user.id;
+      const fundId = request.user.fundId;
+
+      if (!fundId) {
+        return reply.status(403).send({ success: false, error: 'No fund associated with user' });
+      }
+
+      // Check if Google Sheets is configured
+      if (!googleSheetsService.isConfigured()) {
+        return reply.status(500).send({
+          success: false,
+          error: 'Google Sheets is not configured on this server',
+        });
+      }
+
+      // Create state with user and fund info
+      const state = Buffer.from(
+        JSON.stringify({
+          userId,
+          fundId,
+        })
+      ).toString('base64');
+
+      const authUrl = googleSheetsService.getAuthUrl(state);
+
+      return reply.send({ success: true, data: { authUrl } });
+    } catch (err) {
+      console.error('Google Sheets connect error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to start OAuth flow';
+      return reply.status(500).send({ success: false, error: message });
     }
-
-    // Create state with user and fund info
-    const state = Buffer.from(
-      JSON.stringify({
-        userId,
-        fundId,
-      })
-    ).toString('base64');
-
-    const authUrl = googleSheetsService.getAuthUrl(state);
-
-    return reply.send({ authUrl });
   }
 
   /**
@@ -146,7 +165,7 @@ export class GoogleSheetsController {
     const { connection_data } = request.query;
 
     if (!connection_data) {
-      return reply.status(400).send({ error: 'Missing connection data' });
+      return reply.status(400).send({ success: false, error: 'Missing connection data' });
     }
 
     try {
@@ -156,11 +175,11 @@ export class GoogleSheetsController {
 
       const spreadsheets = await googleSheetsService.listSpreadsheets(accessToken, refreshToken);
 
-      return reply.send({ spreadsheets });
+      return reply.send({ success: true, data: { spreadsheets } });
     } catch (err) {
       console.error('Error listing spreadsheets:', err);
       const message = err instanceof Error ? err.message : 'Failed to list spreadsheets';
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ success: false, error: message });
     }
   }
 
@@ -178,7 +197,7 @@ export class GoogleSheetsController {
     const { connection_data } = request.query;
 
     if (!connection_data) {
-      return reply.status(400).send({ error: 'Missing connection data' });
+      return reply.status(400).send({ success: false, error: 'Missing connection data' });
     }
 
     try {
@@ -192,11 +211,11 @@ export class GoogleSheetsController {
         spreadsheetId
       );
 
-      return reply.send({ sheets });
+      return reply.send({ success: true, data: { sheets } });
     } catch (err) {
       console.error('Error getting sheets:', err);
       const message = err instanceof Error ? err.message : 'Failed to get sheets';
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ success: false, error: message });
     }
   }
 
@@ -214,7 +233,7 @@ export class GoogleSheetsController {
     const { connection_data } = request.query;
 
     if (!connection_data) {
-      return reply.status(400).send({ error: 'Missing connection data' });
+      return reply.status(400).send({ success: false, error: 'Missing connection data' });
     }
 
     try {
@@ -229,11 +248,11 @@ export class GoogleSheetsController {
         sheetName
       );
 
-      return reply.send({ preview });
+      return reply.send({ success: true, data: { preview } });
     } catch (err) {
       console.error('Error previewing data:', err);
       const message = err instanceof Error ? err.message : 'Failed to preview data';
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ success: false, error: message });
     }
   }
 
@@ -252,7 +271,7 @@ export class GoogleSheetsController {
       request.body;
 
     if (!connection_data) {
-      return reply.status(400).send({ error: 'Missing connection data' });
+      return reply.status(400).send({ success: false, error: 'Missing connection data' });
     }
 
     try {
@@ -275,11 +294,11 @@ export class GoogleSheetsController {
         now: new Date(),
       });
 
-      return reply.send({ connection });
+      return reply.send({ success: true, data: { connection } });
     } catch (err) {
       console.error('Error saving connection:', err);
       const message = err instanceof Error ? err.message : 'Failed to save connection';
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ success: false, error: message });
     }
   }
 
@@ -301,11 +320,11 @@ export class GoogleSheetsController {
         new Date()
       );
 
-      return reply.send({ connection });
+      return reply.send({ success: true, data: { connection } });
     } catch (err) {
       console.error('Error updating sync settings:', err);
       const message = err instanceof Error ? err.message : 'Failed to update sync settings';
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ success: false, error: message });
     }
   }
 
@@ -322,7 +341,7 @@ export class GoogleSheetsController {
       // Get connection with credentials
       const connection = await googleSheetsService.getConnectionWithCredentials(connectionId);
       if (!connection) {
-        return reply.status(404).send({ error: 'Connection not found' });
+        return reply.status(404).send({ success: false, error: 'Connection not found' });
       }
 
       // Update status to syncing
@@ -344,7 +363,7 @@ export class GoogleSheetsController {
         rowCount: rows.length,
       });
 
-      return reply.send({ success: true, rowCount: rows.length });
+      return reply.send({ success: true, data: { success: true, rowCount: rows.length } });
     } catch (err) {
       console.error('Sync error:', err);
       const message = err instanceof Error ? err.message : 'Sync failed';
@@ -353,7 +372,7 @@ export class GoogleSheetsController {
         syncError: message,
       });
 
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ success: false, error: message });
     }
   }
 
@@ -361,15 +380,25 @@ export class GoogleSheetsController {
    * Get Google Sheets status for current fund
    */
   async getStatus(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
-    const fundId = request.user.fundId;
+    try {
+      if (!request.user) {
+        return reply.status(401).send({ success: false, error: 'Not authenticated' });
+      }
 
-    if (!fundId) {
-      return reply.status(403).send({ error: 'No fund associated with user' });
+      const fundId = request.user.fundId;
+
+      if (!fundId) {
+        return reply.status(403).send({ success: false, error: 'No fund associated with user' });
+      }
+
+      const status = await googleSheetsService.getStatus(fundId);
+
+      return reply.send({ success: true, data: status });
+    } catch (err) {
+      console.error('Google Sheets getStatus error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to get status';
+      return reply.status(500).send({ success: false, error: message });
     }
-
-    const status = await googleSheetsService.getStatus(fundId);
-
-    return reply.send(status);
   }
 
   /**
@@ -383,11 +412,11 @@ export class GoogleSheetsController {
 
     try {
       await googleSheetsService.disconnect(connectionId);
-      return reply.send({ success: true });
+      return reply.send({ success: true, data: { success: true } });
     } catch (err) {
       console.error('Error disconnecting:', err);
       const message = err instanceof Error ? err.message : 'Failed to disconnect';
-      return reply.status(500).send({ error: message });
+      return reply.status(500).send({ success: false, error: message });
     }
   }
 }

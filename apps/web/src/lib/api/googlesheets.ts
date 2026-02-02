@@ -52,7 +52,8 @@ export const googlesheetsApi = {
    * Start OAuth flow - returns auth URL
    */
   async connect(): Promise<{ authUrl: string }> {
-    return api.get<{ authUrl: string }>('/googlesheets/connect');
+    const result = await api.get<{ authUrl: string }>('/googlesheets/connect');
+    return result;
   },
 
   /**

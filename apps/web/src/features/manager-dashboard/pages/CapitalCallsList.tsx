@@ -50,7 +50,31 @@ const statusStyles = {
   closed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Closed' },
 };
 
-export function CapitalCallsList() {
+// Pure function: receives currentTime as parameter for determinism
+function getDaysUntilDeadline(deadline: string, currentTime: number): number {
+  return Math.ceil((new Date(deadline).getTime() - currentTime) / (1000 * 60 * 60 * 24));
+}
+
+// Pure function: replaces nested ternary for progress bar color
+function getProgressBarColor(progress: number): string {
+  if (progress >= 100) return 'bg-green-500';
+  if (progress > 0) return 'bg-blue-500';
+  return 'bg-gray-300';
+}
+
+// Pure function: counts calls completed in a given year
+function countCompletedCallsInYear(
+  calls: CapitalCallDisplay[],
+  year: number
+): number {
+  return calls.filter(
+    (c) =>
+      (c.status === 'funded' || c.status === 'closed') &&
+      new Date(c.deadline).getFullYear() === year
+  ).length;
+}
+
+export function CapitalCallsList(): JSX.Element {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [capitalCalls, setCapitalCalls] = useState<CapitalCallDisplay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,26 +135,18 @@ export function CapitalCallsList() {
     .filter((c) => c.status === 'sent' || c.status === 'partial')
     .reduce((sum, c) => sum + (c.totalAmount - c.receivedAmount), 0);
 
-  // Count completed calls this year
+  // Orchestrator: get current time values once at component level
+  const currentTime = Date.now();
   const currentYear = new Date().getFullYear();
-  const completedThisYear = capitalCalls.filter(
-    (c) =>
-      (c.status === 'funded' || c.status === 'closed') &&
-      new Date(c.deadline).getFullYear() === currentYear
-  ).length;
+
+  // Count completed calls this year using pure function
+  const completedThisYear = countCompletedCallsInYear(capitalCalls, currentYear);
 
   // Count investors needing reminders
   const totalOverdueInvestors = capitalCalls.reduce(
     (sum, c) => sum + c.investorStatus.overdue,
     0
   );
-
-  const getDaysUntilDeadline = (deadline: string) => {
-    const days = Math.ceil(
-      (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    );
-    return days;
-  };
 
   return (
     <div className="space-y-6">
@@ -247,7 +263,7 @@ export function CapitalCallsList() {
       ) : (
         <div className="space-y-4">
           {filteredCalls.map((call) => {
-            const daysUntilDeadline = getDaysUntilDeadline(call.deadline);
+            const daysUntilDeadline = getDaysUntilDeadline(call.deadline, currentTime);
             const isOverdue = daysUntilDeadline < 0 && call.status !== 'funded' && call.status !== 'closed';
             const progress = (call.receivedAmount / call.totalAmount) * 100;
 
@@ -308,11 +324,7 @@ export function CapitalCallsList() {
                           <div
                             className={cn(
                               'h-full rounded-full transition-all',
-                              progress >= 100
-                                ? 'bg-green-500'
-                                : progress > 0
-                                ? 'bg-blue-500'
-                                : 'bg-gray-300'
+                              getProgressBarColor(progress)
                             )}
                             style={{ width: `${Math.min(progress, 100)}%` }}
                           />

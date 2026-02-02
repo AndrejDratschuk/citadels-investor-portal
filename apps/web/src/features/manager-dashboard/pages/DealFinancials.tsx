@@ -8,16 +8,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  DollarSign,
-  Home,
   TrendingUp,
   TrendingDown,
-  BarChart3,
-  CreditCard,
-  Percent,
-  Building2,
-  Wallet,
-  PiggyBank,
   FileText,
   CheckCircle2,
 } from 'lucide-react';
@@ -25,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { outliersApi } from '@/lib/api/kpis';
 import { dealsApi } from '@/lib/api/deals';
+import { getKpiIcon } from '@/lib/kpiConstants';
 import { useDealKpiSummaryWithDimensions } from '../hooks/useDealKpis';
 import {
   KPICardGrid,
@@ -38,49 +31,21 @@ import type { KpiCategoryNavOption } from '../components/kpi';
 import type { KpiCardDataWithDimensions, KpiViewMode } from '@altsui/shared';
 
 // ============================================
-// Icon Mapping for KPIs
-// ============================================
-const KPI_ICONS: Record<string, { icon: typeof DollarSign; color: string; bg: string }> = {
-  // Rent/Revenue
-  gpr: { icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-  egi: { icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-100' },
-  total_revenue: { icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-  revenue_per_unit: { icon: Building2, color: 'text-cyan-600', bg: 'bg-cyan-100' },
-  revenue_per_sqft: { icon: Building2, color: 'text-cyan-600', bg: 'bg-cyan-100' },
-
-  // Occupancy
-  physical_occupancy: { icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
-  economic_occupancy: { icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
-  vacancy_rate: { icon: Home, color: 'text-orange-600', bg: 'bg-orange-100' },
-
-  // Property Performance
-  noi: { icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-100' },
-  cap_rate: { icon: Percent, color: 'text-pink-600', bg: 'bg-pink-100' },
-  cash_on_cash: { icon: PiggyBank, color: 'text-green-600', bg: 'bg-green-100' },
-
-  // Financial
-  ebitda: { icon: BarChart3, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-  roi: { icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-  irr: { icon: Percent, color: 'text-pink-600', bg: 'bg-pink-100' },
-
-  // Debt Service
-  dscr: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
-  ltv: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
-  principal_balance: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
-};
-
-const DEFAULT_ICON = { icon: BarChart3, color: 'text-slate-600', bg: 'bg-slate-100' };
-
-function getKpiIcon(code: string) {
-  return KPI_ICONS[code] || DEFAULT_ICON;
-}
-
-// ============================================
 // Chart Data Builder
 // ============================================
+interface ChartDataPoint {
+  date: string;
+  label: string;
+  actual: number | null;
+  forecast: number | null;
+  budget: number | null;
+}
+
+// Pure function: receives currentMonth as parameter for determinism
 function buildChartData(
-  featured: KpiCardDataWithDimensions[]
-): Array<{ date: string; label: string; actual: number | null; forecast: number | null; budget: number | null }> {
+  featured: KpiCardDataWithDimensions[],
+  currentMonth: number
+): ChartDataPoint[] {
   // Find NOI or first featured KPI for chart display
   const primaryKpi = featured.find(k => k.code === 'noi') || featured[0];
   
@@ -92,7 +57,6 @@ function buildChartData(
   // In production, this would come from the time series API
   const baseValue = primaryKpi.actualValue || 100000;
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const currentMonth = new Date().getMonth();
   
   return months.slice(0, currentMonth + 1).map((label, i) => ({
     date: `2024-${String(i + 1).padStart(2, '0')}`,
@@ -135,8 +99,11 @@ export function DealFinancials(): JSX.Element {
   const isLoading = isDealLoading || isSummaryLoading;
   const isComparisonMode = viewMode.startsWith('vs_');
 
-  // Build chart data from featured KPIs
-  const chartData = summary?.featured ? buildChartData(summary.featured) : [];
+  // Orchestrator: get current month once at component level
+  const currentMonth = new Date().getMonth();
+
+  // Build chart data from featured KPIs (pass currentMonth for determinism)
+  const chartData = summary?.featured ? buildChartData(summary.featured, currentMonth) : [];
 
   // Outliers state
   const hasTopPerformers = (outliers?.topPerformers?.length ?? 0) > 0;

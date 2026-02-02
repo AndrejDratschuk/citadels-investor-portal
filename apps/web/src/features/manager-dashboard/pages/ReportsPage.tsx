@@ -34,7 +34,19 @@ import {
 } from '../components/reports';
 import { reportsApi } from '@/lib/api/reports';
 
-export function ReportsPage() {
+// Pure function: generates demo sparkline data (uses Math.sin, not random)
+// In production, this would come from API
+function generateSparklineData(
+  baseValue: number,
+  volatility: number = 0.1
+): Array<{ value: number }> {
+  const points = 12;
+  return Array.from({ length: points }, (_, i) => ({
+    value: baseValue * (1 + Math.sin(i * 0.8) * volatility + (i / points) * volatility),
+  }));
+}
+
+export function ReportsPage(): JSX.Element {
   const [selectedDealIds, setSelectedDealIds] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -68,12 +80,12 @@ export function ReportsPage() {
     enabled: selectedDealIds.length > 0,
   });
 
-  const handleRefresh = () => {
+  function handleRefresh(): void {
     refetchMetrics();
     refetchRollup();
-  };
+  }
 
-  const handleExport = async (format: ExportFormat) => {
+  async function handleExport(format: ExportFormat): Promise<void> {
     setIsExporting(true);
     try {
       const selectedDeals = dealSummaries?.filter((d) => selectedDealIds.includes(d.id)) || [];
@@ -87,15 +99,7 @@ export function ReportsPage() {
     } finally {
       setIsExporting(false);
     }
-  };
-
-  // Generate mock sparkline data for demo (in production, this would come from API)
-  const generateSparklineData = (baseValue: number, volatility: number = 0.1) => {
-    const points = 12;
-    return Array.from({ length: points }, (_, i) => ({
-      value: baseValue * (1 + (Math.sin(i * 0.8) * volatility) + (i / points) * volatility),
-    }));
-  };
+  }
 
   const portfolioChartData = dealSummaries
     ?.filter((d) => selectedDealIds.includes(d.id) && d.currentValue)

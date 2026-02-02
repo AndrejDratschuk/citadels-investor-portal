@@ -16,30 +16,15 @@ import {
   X,
   Save,
   RefreshCw,
-  DollarSign,
-  Home,
-  TrendingUp,
-  BarChart3,
-  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { kpiDefinitionsApi, kpiPreferencesApi } from '@/lib/api/kpis';
+import { KPI_CATEGORY_CONFIG } from '@/lib/kpiConstants';
 import { cn } from '@/lib/utils';
 import { OutlierConfigSection } from '../components/kpi/OutlierConfigSection';
 import type { KpiCategory, KpiDefinition, KpiPreference } from '@altsui/shared';
-
-// ============================================
-// Category Config
-// ============================================
-const CATEGORY_CONFIG: Record<KpiCategory, { name: string; icon: typeof DollarSign; color: string }> = {
-  rent_revenue: { name: 'Rent/Revenue', icon: DollarSign, color: 'text-emerald-600' },
-  occupancy: { name: 'Occupancy', icon: Home, color: 'text-blue-600' },
-  property_performance: { name: 'Performance', icon: TrendingUp, color: 'text-purple-600' },
-  financial: { name: 'Financial', icon: BarChart3, color: 'text-indigo-600' },
-  debt_service: { name: 'Debt Service', icon: CreditCard, color: 'text-orange-600' },
-};
 
 // ============================================
 // Types
@@ -119,29 +104,30 @@ export function KPISettings(): JSX.Element {
   // Count featured KPIs
   const featuredCount = kpisWithPrefs.filter((k) => k.isFeatured).length;
 
-  // Handle toggle
-  const handleToggle = (kpiId: string, field: 'isFeatured' | 'isEnabled', value: boolean) => {
+  function handleToggle(
+    kpiId: string,
+    field: 'isFeatured' | 'isEnabled',
+    value: boolean
+  ): void {
     setPendingChanges((prev) => {
       const newMap = new Map(prev);
       const existing = newMap.get(kpiId) || {};
       newMap.set(kpiId, { ...existing, [field]: value });
       return newMap;
     });
-  };
+  }
 
-  // Handle save
-  const handleSave = () => {
+  function handleSave(): void {
     const updates = Array.from(pendingChanges.entries()).map(([kpiId, changes]) => ({
       kpiId,
       ...changes,
     }));
     saveMutation.mutate(updates);
-  };
+  }
 
-  // Handle reset
-  const handleReset = () => {
+  function handleReset(): void {
     setPendingChanges(new Map());
-  };
+  }
 
   const hasChanges = pendingChanges.size > 0;
 
@@ -217,7 +203,7 @@ export function KPISettings(): JSX.Element {
           >
             All
           </Button>
-          {Object.entries(CATEGORY_CONFIG).map(([code, config]) => {
+          {Object.entries(KPI_CATEGORY_CONFIG).map(([code, config]) => {
             const Icon = config.icon;
             return (
               <Button
@@ -256,7 +242,7 @@ export function KPISettings(): JSX.Element {
       ) : (
         <div className="space-y-4">
           {Object.entries(groupedKpis).map(([category, kpis]) => {
-            const config = CATEGORY_CONFIG[category as KpiCategory];
+            const config = KPI_CATEGORY_CONFIG[category as KpiCategory];
             const Icon = config.icon;
 
             return (

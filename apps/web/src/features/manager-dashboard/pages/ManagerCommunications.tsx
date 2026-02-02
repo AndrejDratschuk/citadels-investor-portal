@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   MessageSquare,
@@ -8,601 +8,31 @@ import {
   Phone,
   Filter,
   Search,
-  ArrowLeft,
-  Clock,
+  Building2,
   User,
   Tag,
-  Building2,
-  ChevronRight,
-  Calendar,
-  Users,
   Plus,
-  Send,
   X,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  Inbox,
 } from 'lucide-react';
-import { formatDate } from '@altsui/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { investorsApi } from '@/lib/api/investors';
-import { emailApi } from '@/lib/api/email';
 import { communicationsApi } from '@/lib/api/communications';
+import {
+  CommunicationRow,
+  ComposeEmailModal,
+  CommunicationDetail,
+  filterOptions,
+  directionOptions,
+  isSentToInvestor,
+  mockDeals,
+  mockInvestors,
+  type Communication,
+  type FilterType,
+  type DirectionFilter,
+} from '../components/communications';
 
-type CommunicationType = 'email' | 'meeting' | 'phone_call';
-type FilterType = 'all' | CommunicationType;
-type DirectionFilter = 'all' | 'sent' | 'received';
-
-const directionOptions: { id: DirectionFilter; label: string; icon: typeof Send }[] = [
-  { id: 'all', label: 'All', icon: MessageSquare },
-  { id: 'sent', label: 'Sent', icon: Send },
-  { id: 'received', label: 'Received', icon: Inbox },
-];
-
-interface Communication {
-  id: string;
-  type: CommunicationType;
-  title: string;
-  content: string | null;
-  occurredAt: string;
-  emailFrom: string | null;
-  emailTo: string | null;
-  meetingAttendees: string[] | null;
-  meetingDurationMinutes: number | null;
-  callDirection: 'inbound' | 'outbound' | null;
-  callDurationMinutes: number | null;
-  source: string;
-  createdAt: string;
-  tags: string[];
-  investor: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  deal: {
-    id: string;
-    name: string;
-  } | null;
-  managerRead: boolean;
-  managerReadAt: string | null;
-}
-
-// Mock deals for filter
-const mockDeals = [
-  { id: '1', name: 'Downtown Office Tower' },
-  { id: '2', name: 'Eastside Industrial Park' },
-  { id: '3', name: 'Riverside Apartments' },
-  { id: '4', name: 'Tech Campus Development' },
-];
-
-// Mock investors for filter
-const mockInvestors = [
-  { id: '1', name: 'John Smith', email: 'john.smith@email.com' },
-  { id: '2', name: 'Sarah Johnson', email: 'sarah.johnson@email.com' },
-  { id: '3', name: 'Michael Chen', email: 'michael.chen@email.com' },
-  { id: '4', name: 'Emily Davis', email: 'emily.davis@email.com' },
-  { id: '5', name: 'Robert Wilson', email: 'robert.wilson@email.com' },
-];
-
-const filterOptions: { id: FilterType; label: string; icon: typeof Mail }[] = [
-  { id: 'all', label: 'All', icon: MessageSquare },
-  { id: 'email', label: 'Emails', icon: Mail },
-  { id: 'meeting', label: 'Meetings', icon: Video },
-  { id: 'phone_call', label: 'Calls', icon: Phone },
-];
-
-const typeConfig: Record<CommunicationType, {
-  icon: typeof Mail;
-  label: string;
-  bgColor: string;
-  iconColor: string;
-}> = {
-  email: {
-    icon: Mail,
-    label: 'Email',
-    bgColor: 'bg-blue-100',
-    iconColor: 'text-blue-600',
-  },
-  meeting: {
-    icon: Video,
-    label: 'Meeting',
-    bgColor: 'bg-purple-100',
-    iconColor: 'text-purple-600',
-  },
-  phone_call: {
-    icon: Phone,
-    label: 'Phone Call',
-    bgColor: 'bg-green-100',
-    iconColor: 'text-green-600',
-  },
-};
-
-interface CommunicationRowProps {
-  communication: Communication;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function CommunicationRow({ communication, isSelected, onClick }: CommunicationRowProps) {
-  const config = typeConfig[communication.type];
-  const Icon = config.icon;
-  const isUnread = !communication.managerRead;
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full flex items-start gap-3 p-4 text-left hover:bg-muted/50 transition-colors border-b',
-        isSelected && 'bg-primary/5 border-l-2 border-l-primary',
-        isUnread && !isSelected && 'bg-blue-50/50'
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg',
-          config.bgColor
-        )}
-      >
-        <Icon className={cn('h-5 w-5', config.iconColor)} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className={cn(
-            'text-sm truncate',
-            isUnread ? 'font-semibold' : 'font-medium'
-          )}>
-            {communication.title}
-          </p>
-          {isUnread && (
-            <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <User className="h-3 w-3" />
-            <span className="truncate max-w-[100px]">{communication.investor.name}</span>
-          </div>
-          <span>•</span>
-          <span className="whitespace-nowrap">{formatDate(communication.occurredAt)}</span>
-        </div>
-        {communication.deal && (
-          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-            <Building2 className="h-3 w-3" />
-            <span className="truncate">{communication.deal.name}</span>
-          </div>
-        )}
-        {communication.tags.length > 0 && (
-          <div className="flex items-center gap-1 mt-2 flex-wrap">
-            {communication.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs"
-              >
-                {tag}
-              </span>
-            ))}
-            {communication.tags.length > 2 && (
-              <span className="text-xs text-muted-foreground">
-                +{communication.tags.length - 2}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-    </button>
-  );
-}
-
-interface CommunicationDetailProps {
-  communication: Communication;
-  onBack: () => void;
-  onReply: (communication: Communication) => void;
-  onForward: (communication: Communication) => void;
-}
-
-// Compose Email Modal
-interface ComposeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  investors: { id: string; name: string; email: string }[];
-  onSuccess: () => void;
-  replyTo?: Communication | null;
-  forwardFrom?: Communication | null;
-}
-
-function ComposeEmailModal({ isOpen, onClose, investors, onSuccess, replyTo, forwardFrom }: ComposeModalProps) {
-  const [selectedInvestorId, setSelectedInvestorId] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  // Determine mode
-  const isReply = !!replyTo;
-  const isForward = !!forwardFrom;
-  const originalCommunication = replyTo || forwardFrom;
-
-  // Get email connection status
-  const { data: emailStatus } = useQuery({
-    queryKey: ['email', 'status'],
-    queryFn: emailApi.getStatus,
-  });
-
-  // Pre-fill fields when opening in reply/forward mode
-  useEffect(() => {
-    if (isOpen && originalCommunication) {
-      const originalSubject = originalCommunication.title;
-      const originalContent = originalCommunication.content || '';
-      const originalDate = formatDate(originalCommunication.occurredAt);
-      const originalFrom = originalCommunication.emailFrom || originalCommunication.investor.email;
-      
-      if (isReply) {
-        // Reply mode: pre-select investor and set Re: subject
-        setSelectedInvestorId(originalCommunication.investor.id);
-        setSubject(originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`);
-        setBody(`\n\n---\nOn ${originalDate}, ${originalFrom} wrote:\n\n${originalContent}`);
-      } else if (isForward) {
-        // Forward mode: just set Fwd: subject and include original message
-        setSelectedInvestorId('');
-        setSubject(originalSubject.startsWith('Fwd:') ? originalSubject : `Fwd: ${originalSubject}`);
-        setBody(`\n\n---\nForwarded message:\nFrom: ${originalFrom}\nDate: ${originalDate}\nSubject: ${originalSubject}\n\n${originalContent}`);
-      }
-    }
-  }, [isOpen, originalCommunication, isReply, isForward]);
-
-  const selectedInvestor = investors.find((i) => i.id === selectedInvestorId);
-
-  const handleSend = async () => {
-    if (!selectedInvestor || !subject.trim() || !body.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    if (!emailStatus?.connected) {
-      setError('Please connect your email account in Settings first');
-      return;
-    }
-
-    setSending(true);
-    setError(null);
-
-    try {
-      // Send the email
-      const result = await emailApi.send({
-        to: selectedInvestor.email,
-        subject: subject.trim(),
-        body: body.trim(),
-      });
-
-      // Log the communication in the database
-      await communicationsApi.create(selectedInvestorId, {
-        type: 'email',
-        title: subject.trim(),
-        content: body.trim(),
-        occurredAt: new Date().toISOString(),
-        emailFrom: result.from,
-        emailTo: selectedInvestor.email,
-      });
-
-      setSuccess(true);
-      setTimeout(() => {
-        onSuccess();
-        resetForm();
-        onClose();
-      }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send email');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const resetForm = () => {
-    setSelectedInvestorId('');
-    setSubject('');
-    setBody('');
-    setError(null);
-    setSuccess(false);
-  };
-
-  const handleClose = () => {
-    resetForm();
-    onClose();
-  };
-
-  // Get modal title based on mode
-  const modalTitle = isReply ? 'Reply to Email' : isForward ? 'Forward Email' : 'Compose Email';
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
-
-      {/* Modal */}
-      <div className="relative z-10 w-full max-w-2xl bg-card rounded-xl shadow-xl border overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            {modalTitle}
-          </h2>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-lg hover:bg-muted transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Email Status Warning */}
-        {!emailStatus?.connected && (
-          <div className="mx-4 mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-2 text-sm text-amber-800">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>
-              No email connected.{' '}
-              <Link to="/manager/settings" className="underline font-medium">
-                Connect your email
-              </Link>{' '}
-              to send messages.
-            </span>
-          </div>
-        )}
-
-        {emailStatus?.connected && (
-          <div className="mx-4 mt-4 p-3 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2 text-sm text-green-800">
-            <CheckCircle className="h-4 w-4 flex-shrink-0" />
-            <span>
-              Sending from: <strong>{emailStatus.email}</strong>
-            </span>
-          </div>
-        )}
-
-        {/* Form */}
-        <div className="p-4 space-y-4">
-          {/* Recipient */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">To:</label>
-            {isReply && selectedInvestor ? (
-              // In reply mode, show the investor as read-only
-              <div className="w-full rounded-lg border bg-muted px-3 py-2 text-sm">
-                {selectedInvestor.name} ({selectedInvestor.email})
-              </div>
-            ) : (
-              <select
-                value={selectedInvestorId}
-                onChange={(e) => setSelectedInvestorId(e.target.value)}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="">Select an investor...</option>
-                {investors.map((investor) => (
-                  <option key={investor.id} value={investor.id}>
-                    {investor.name} ({investor.email})
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Subject */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Subject:</label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Enter subject..."
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          {/* Body */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Message:</label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Write your message..."
-              rows={8}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              {error}
-            </div>
-          )}
-
-          {/* Success */}
-          {success && (
-            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 flex-shrink-0" />
-              Email sent successfully!
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t bg-muted/30">
-          <Button variant="outline" onClick={handleClose} disabled={sending}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSend}
-            disabled={sending || !selectedInvestorId || !subject.trim() || !body.trim() || !emailStatus?.connected}
-          >
-            {sending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Send Email
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CommunicationDetail({ communication, onBack, onReply, onForward }: CommunicationDetailProps) {
-  const config = typeConfig[communication.type];
-  const Icon = config.icon;
-  const isEmail = communication.type === 'email';
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="border-b p-4">
-        <Button variant="ghost" size="sm" onClick={onBack} className="mb-3 -ml-2 lg:hidden">
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
-        <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg',
-              config.bgColor
-            )}
-          >
-            <Icon className={cn('h-6 w-6', config.iconColor)} />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold">{communication.title}</h2>
-            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
-              <Link
-                to={`/manager/investors/${communication.investor.id}`}
-                className="flex items-center gap-1 hover:underline"
-              >
-                <User className="h-4 w-4" />
-                <span>{communication.investor.name}</span>
-              </Link>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                <span>{formatDate(communication.occurredAt)}</span>
-              </div>
-              <span
-                className={cn(
-                  'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                  config.bgColor,
-                  config.iconColor
-                )}
-              >
-                {config.label}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Metadata */}
-      <div className="border-b p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">To:</span>
-          <span className="text-sm font-medium">{communication.investor.email}</span>
-        </div>
-        {communication.deal && (
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Deal:</span>
-            <Link
-              to={`/manager/deals/${communication.deal.id}`}
-              className="text-sm font-medium hover:underline"
-            >
-              {communication.deal.name}
-            </Link>
-          </div>
-        )}
-        {communication.type === 'meeting' && communication.meetingAttendees && (
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Attendees:</span>
-            <span className="text-sm font-medium">{communication.meetingAttendees.join(', ')}</span>
-          </div>
-        )}
-        {communication.type === 'meeting' && communication.meetingDurationMinutes && (
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Duration:</span>
-            <span className="text-sm font-medium">{communication.meetingDurationMinutes} minutes</span>
-          </div>
-        )}
-        {communication.type === 'phone_call' && (
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">
-              {communication.callDirection === 'inbound' ? 'Inbound' : 'Outbound'} call
-              {communication.callDurationMinutes && ` • ${communication.callDurationMinutes} min`}
-            </span>
-          </div>
-        )}
-        {communication.tags.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Tag className="h-4 w-4 text-muted-foreground" />
-            {communication.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {communication.content ? (
-          <div className="prose prose-sm max-w-none">
-            <p className="whitespace-pre-wrap">{communication.content}</p>
-          </div>
-        ) : (
-          <p className="text-muted-foreground italic">No content available</p>
-        )}
-      </div>
-
-      {/* Actions - only show for emails */}
-      {isEmail && (
-        <div className="border-t p-4 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-            onClick={() => onReply(communication)}
-          >
-            <Mail className="h-4 w-4 mr-2" />
-            Reply
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-            onClick={() => onForward(communication)}
-          >
-            <Send className="h-4 w-4 mr-2" />
-            Forward
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function ManagerCommunications() {
+export function ManagerCommunications(): JSX.Element {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
@@ -613,9 +43,7 @@ export function ManagerCommunications() {
   const [investorFilter, setInvestorFilter] = useState<string | null>(
     searchParams.get('investor') || null
   );
-  const [tagFilter, setTagFilter] = useState<string | null>(
-    searchParams.get('tag') || null
-  );
+  const [tagFilter, setTagFilter] = useState<string | null>(searchParams.get('tag') || null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showComposeModal, setShowComposeModal] = useState(false);
@@ -629,50 +57,35 @@ export function ManagerCommunications() {
   });
 
   // Fetch real communications from API
-  const { data: communicationsList, error: communicationsError, isLoading: communicationsLoading } = useQuery({
+  const { data: communicationsList } = useQuery({
     queryKey: ['manager', 'communications'],
-    queryFn: async () => {
-      console.log('[Manager Communications] Fetching communications...');
-      try {
-        const result = await communicationsApi.getAll();
-        console.log('[Manager Communications] Received:', result?.length || 0, 'communications');
-        return result;
-      } catch (err) {
-        console.error('[Manager Communications] Error fetching:', err);
-        throw err;
-      }
-    },
+    queryFn: communicationsApi.getAll,
   });
 
-  // Log any errors
-  if (communicationsError) {
-    console.error('[Manager Communications] Query error:', communicationsError);
-  }
-  if (communicationsLoading) {
-    console.log('[Manager Communications] Loading...');
-  }
-
-  // Use real data or empty array
-  const communications: Communication[] = (communicationsList || []).map((c: any) => ({
-    id: c.id,
-    type: c.type,
-    title: c.title,
-    content: c.content,
-    occurredAt: c.occurredAt,
-    emailFrom: c.emailFrom,
-    emailTo: c.emailTo,
-    meetingAttendees: c.meetingAttendees,
-    meetingDurationMinutes: c.meetingDurationMinutes,
-    callDirection: c.callDirection,
-    callDurationMinutes: c.callDurationMinutes,
-    source: c.source,
-    createdAt: c.createdAt,
-    tags: c.tags || [],
-    investor: c.investor,
-    deal: c.deal,
-    managerRead: c.managerRead ?? true, // Default to read if field doesn't exist
-    managerReadAt: c.managerReadAt || null,
-  }));
+  // Transform API data to Communication type
+  const communications: Communication[] = (communicationsList || []).map((c: unknown) => {
+    const comm = c as Record<string, unknown>;
+    return {
+      id: comm.id as string,
+      type: comm.type as Communication['type'],
+      title: comm.title as string,
+      content: comm.content as string | null,
+      occurredAt: comm.occurredAt as string,
+      emailFrom: comm.emailFrom as string | null,
+      emailTo: comm.emailTo as string | null,
+      meetingAttendees: comm.meetingAttendees as string[] | null,
+      meetingDurationMinutes: comm.meetingDurationMinutes as number | null,
+      callDirection: comm.callDirection as 'inbound' | 'outbound' | null,
+      callDurationMinutes: comm.callDurationMinutes as number | null,
+      source: comm.source as string,
+      createdAt: comm.createdAt as string,
+      tags: (comm.tags as string[]) || [],
+      investor: comm.investor as Communication['investor'],
+      deal: comm.deal as Communication['deal'],
+      managerRead: (comm.managerRead as boolean) ?? true,
+      managerReadAt: (comm.managerReadAt as string) || null,
+    };
+  });
 
   // Count unread communications
   const unreadCount = communications.filter((c) => !c.managerRead).length;
@@ -687,51 +100,21 @@ export function ManagerCommunications() {
   // Use real investors if available, otherwise fall back to mock
   const displayInvestors = investorsForModal.length > 0 ? investorsForModal : mockInvestors;
 
-  // Helper to determine if a communication is "sent" (to investor) or "received" (from investor)
-  const isSentToInvestor = (comm: Communication): boolean => {
-    if (comm.type === 'email') {
-      // If emailTo matches investor email, it was sent TO the investor
-      return comm.emailTo?.toLowerCase() === comm.investor.email.toLowerCase();
-    }
-    if (comm.type === 'phone_call') {
-      // Outbound calls are "sent" to investor
-      return comm.callDirection === 'outbound';
-    }
-    // Meetings are shown in both
-    return true;
-  };
-
-  const filteredCommunications = communications.filter((c) => {
-    if (typeFilter !== 'all' && c.type !== typeFilter) return false;
-    if (dealFilter && c.deal?.id !== dealFilter) return false;
-    if (investorFilter && c.investor.id !== investorFilter) return false;
-    if (tagFilter && !c.tags.includes(tagFilter)) return false;
-    
-    // Direction filter
-    if (directionFilter !== 'all') {
-      if (c.type === 'email' || c.type === 'phone_call') {
-        const isSent = isSentToInvestor(c);
-        if (directionFilter === 'sent' && !isSent) return false;
-        if (directionFilter === 'received' && isSent) return false;
-      }
-    }
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesTitle = c.title.toLowerCase().includes(query);
-      const matchesContent = c.content?.toLowerCase().includes(query);
-      const matchesInvestor = c.investor.name.toLowerCase().includes(query);
-      const matchesDeal = c.deal?.name.toLowerCase().includes(query);
-      if (!matchesTitle && !matchesContent && !matchesInvestor && !matchesDeal) return false;
-    }
-    return true;
+  // Filter communications
+  const filteredCommunications = filterCommunications(communications, {
+    typeFilter,
+    directionFilter,
+    dealFilter,
+    investorFilter,
+    tagFilter,
+    searchQuery,
   });
 
   // Count by direction
-  const sentCount = communications.filter((c) => 
+  const sentCount = communications.filter((c) =>
     c.type === 'email' || c.type === 'phone_call' ? isSentToInvestor(c) : true
   ).length;
-  const receivedCount = communications.filter((c) => 
+  const receivedCount = communications.filter((c) =>
     c.type === 'email' || c.type === 'phone_call' ? !isSentToInvestor(c) : true
   ).length;
 
@@ -740,25 +123,22 @@ export function ManagerCommunications() {
     : null;
 
   // Handle communication selection and mark as read
-  const handleSelectCommunication = async (communication: Communication) => {
+  async function handleSelectCommunication(communication: Communication): Promise<void> {
     setSelectedId(communication.id);
-    
+
     // Mark as read if unread
     if (!communication.managerRead) {
       try {
         await communicationsApi.markAsRead(communication.id);
-        // Refresh communications list to update the read status
         queryClient.invalidateQueries({ queryKey: ['manager', 'communications'] });
       } catch (error) {
         console.error('Failed to mark communication as read:', error);
       }
     }
-  };
+  }
 
   // Get unique tags from communications
-  const availableTags = Array.from(
-    new Set(communications.flatMap((c) => c.tags))
-  );
+  const availableTags = Array.from(new Set(communications.flatMap((c) => c.tags)));
 
   // Count by type
   const typeCounts = {
@@ -768,7 +148,7 @@ export function ManagerCommunications() {
     phone_call: communications.filter((c) => c.type === 'phone_call').length,
   };
 
-  const clearFilters = () => {
+  function clearFilters(): void {
     setTypeFilter('all');
     setDirectionFilter('all');
     setDealFilter(null);
@@ -776,35 +156,23 @@ export function ManagerCommunications() {
     setTagFilter(null);
     setSearchQuery('');
     setSearchParams({});
-  };
+  }
 
-  const hasActiveFilters = typeFilter !== 'all' || directionFilter !== 'all' || dealFilter || investorFilter || tagFilter || searchQuery;
+  const hasActiveFilters =
+    typeFilter !== 'all' ||
+    directionFilter !== 'all' ||
+    !!dealFilter ||
+    !!investorFilter ||
+    !!tagFilter ||
+    !!searchQuery;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Communications</h1>
-          <p className="mt-1 text-muted-foreground">
-            View and manage all investor communications
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {unreadCount > 0 && (
-            <div className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              <span className="text-sm font-medium text-blue-700">
-                {unreadCount} unread
-              </span>
-            </div>
-          )}
-          <Button onClick={() => setShowComposeModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Communication
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        unreadCount={unreadCount}
+        onCompose={() => setShowComposeModal(true)}
+      />
 
       {/* Compose Email Modal */}
       <ComposeEmailModal
@@ -816,7 +184,6 @@ export function ManagerCommunications() {
         }}
         investors={displayInvestors}
         onSuccess={() => {
-          // Refresh communications list
           queryClient.invalidateQueries({ queryKey: ['manager', 'communications'] });
         }}
         replyTo={replyToCommunication}
@@ -824,182 +191,34 @@ export function ManagerCommunications() {
       />
 
       {/* Direction Tabs (Sent/Received) */}
-      <div className="flex items-center gap-2 border-b pb-3">
-        {directionOptions.map((option) => {
-          const Icon = option.icon;
-          const count = option.id === 'all'
-            ? communications.length
-            : option.id === 'sent'
-            ? sentCount
-            : receivedCount;
-          
-          return (
-            <button
-              key={option.id}
-              onClick={() => setDirectionFilter(option.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-3',
-                directionFilter === option.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {option.label}
-              <span className={cn(
-                'rounded-full px-1.5 py-0.5 text-xs',
-                directionFilter === option.id
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-muted'
-              )}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <DirectionTabs
+        directionFilter={directionFilter}
+        onDirectionChange={setDirectionFilter}
+        totalCount={communications.length}
+        sentCount={sentCount}
+        receivedCount={receivedCount}
+      />
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MessageSquare className="h-4 w-4" />
-            Total
-          </div>
-          <p className="mt-1 text-2xl font-bold">{typeCounts.all}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="h-4 w-4 text-blue-600" />
-            Emails
-          </div>
-          <p className="mt-1 text-2xl font-bold">{typeCounts.email}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Video className="h-4 w-4 text-purple-600" />
-            Meetings
-          </div>
-          <p className="mt-1 text-2xl font-bold">{typeCounts.meeting}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Phone className="h-4 w-4 text-green-600" />
-            Calls
-          </div>
-          <p className="mt-1 text-2xl font-bold">{typeCounts.phone_call}</p>
-        </div>
-      </div>
+      <StatsCards typeCounts={typeCounts} />
 
       {/* Search & Filters */}
-      <div className="space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search communications..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border bg-card pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-
-        {/* Type Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          {filterOptions.map((option) => {
-            const Icon = option.icon;
-            return (
-              <button
-                key={option.id}
-                onClick={() => setTypeFilter(option.id)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
-                  typeFilter === option.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {option.label}
-                <span
-                  className={cn(
-                    'rounded-full px-1.5 py-0.5 text-xs',
-                    typeFilter === option.id
-                      ? 'bg-primary-foreground/20 text-primary-foreground'
-                      : 'bg-background'
-                  )}
-                >
-                  {typeCounts[option.id]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Advanced Filters Row */}
-        <div className="flex flex-wrap gap-3">
-          {/* Deal Filter */}
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={dealFilter || ''}
-              onChange={(e) => setDealFilter(e.target.value || null)}
-              className="rounded-lg border bg-card px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">All Deals</option>
-              {mockDeals.map((deal) => (
-                <option key={deal.id} value={deal.id}>
-                  {deal.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Investor Filter */}
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={investorFilter || ''}
-              onChange={(e) => setInvestorFilter(e.target.value || null)}
-              className="rounded-lg border bg-card px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">All Investors</option>
-              {mockInvestors.map((investor) => (
-                <option key={investor.id} value={investor.id}>
-                  {investor.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Tag Filter */}
-          <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={tagFilter || ''}
-              onChange={(e) => setTagFilter(e.target.value || null)}
-              className="rounded-lg border bg-card px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">All Tags</option>
-              {availableTags.map((tag) => (
-                <option key={tag} value={tag}>
-                  {tag}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Clear Filters */}
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-1" />
-              Clear filters
-            </Button>
-          )}
-        </div>
-      </div>
+      <FiltersSection
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
+        typeCounts={typeCounts}
+        dealFilter={dealFilter}
+        onDealFilterChange={setDealFilter}
+        investorFilter={investorFilter}
+        onInvestorFilterChange={setInvestorFilter}
+        tagFilter={tagFilter}
+        onTagFilterChange={setTagFilter}
+        availableTags={availableTags}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearFilters}
+      />
 
       {/* Communications List & Detail Panel */}
       <div className="grid gap-6 lg:grid-cols-5">
@@ -1011,20 +230,7 @@ export function ManagerCommunications() {
           )}
         >
           {filteredCommunications.length === 0 ? (
-            <div className="p-8 text-center">
-              <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/30" />
-              <h3 className="mt-4 font-semibold">No communications found</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {hasActiveFilters
-                  ? 'Try adjusting your filters'
-                  : 'No communications yet'}
-              </p>
-              {hasActiveFilters && (
-                <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
-                  Clear filters
-                </Button>
-              )}
-            </div>
+            <EmptyState hasActiveFilters={hasActiveFilters} onClearFilters={clearFilters} />
           ) : (
             <div className="max-h-[calc(100vh-420px)] overflow-y-auto">
               {filteredCommunications.map((communication) => (
@@ -1067,3 +273,334 @@ export function ManagerCommunications() {
   );
 }
 
+// ============================================
+// Helper Functions
+// ============================================
+interface FilterParams {
+  typeFilter: FilterType;
+  directionFilter: DirectionFilter;
+  dealFilter: string | null;
+  investorFilter: string | null;
+  tagFilter: string | null;
+  searchQuery: string;
+}
+
+function filterCommunications(
+  communications: Communication[],
+  params: FilterParams
+): Communication[] {
+  return communications.filter((c) => {
+    if (params.typeFilter !== 'all' && c.type !== params.typeFilter) return false;
+    if (params.dealFilter && c.deal?.id !== params.dealFilter) return false;
+    if (params.investorFilter && c.investor.id !== params.investorFilter) return false;
+    if (params.tagFilter && !c.tags.includes(params.tagFilter)) return false;
+
+    // Direction filter
+    if (params.directionFilter !== 'all') {
+      if (c.type === 'email' || c.type === 'phone_call') {
+        const isSent = isSentToInvestor(c);
+        if (params.directionFilter === 'sent' && !isSent) return false;
+        if (params.directionFilter === 'received' && isSent) return false;
+      }
+    }
+
+    if (params.searchQuery) {
+      const query = params.searchQuery.toLowerCase();
+      const matchesTitle = c.title.toLowerCase().includes(query);
+      const matchesContent = c.content?.toLowerCase().includes(query);
+      const matchesInvestor = c.investor.name.toLowerCase().includes(query);
+      const matchesDeal = c.deal?.name.toLowerCase().includes(query);
+      if (!matchesTitle && !matchesContent && !matchesInvestor && !matchesDeal) return false;
+    }
+    return true;
+  });
+}
+
+// ============================================
+// Sub-components
+// ============================================
+interface PageHeaderProps {
+  unreadCount: number;
+  onCompose: () => void;
+}
+
+function PageHeader({ unreadCount, onCompose }: PageHeaderProps): JSX.Element {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 className="text-3xl font-bold">Communications</h1>
+        <p className="mt-1 text-muted-foreground">
+          View and manage all investor communications
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        {unreadCount > 0 && (
+          <div className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            <span className="text-sm font-medium text-blue-700">{unreadCount} unread</span>
+          </div>
+        )}
+        <Button onClick={onCompose}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Communication
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface DirectionTabsProps {
+  directionFilter: DirectionFilter;
+  onDirectionChange: (direction: DirectionFilter) => void;
+  totalCount: number;
+  sentCount: number;
+  receivedCount: number;
+}
+
+function DirectionTabs({
+  directionFilter,
+  onDirectionChange,
+  totalCount,
+  sentCount,
+  receivedCount,
+}: DirectionTabsProps): JSX.Element {
+  return (
+    <div className="flex items-center gap-2 border-b pb-3">
+      {directionOptions.map((option) => {
+        const Icon = option.icon;
+        const count =
+          option.id === 'all' ? totalCount : option.id === 'sent' ? sentCount : receivedCount;
+
+        return (
+          <button
+            key={option.id}
+            onClick={() => onDirectionChange(option.id)}
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-3',
+              directionFilter === option.id
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {option.label}
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-0.5 text-xs',
+                directionFilter === option.id ? 'bg-primary/10 text-primary' : 'bg-muted'
+              )}
+            >
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface StatsCardsProps {
+  typeCounts: Record<FilterType, number>;
+}
+
+function StatsCards({ typeCounts }: StatsCardsProps): JSX.Element {
+  return (
+    <div className="grid gap-4 sm:grid-cols-4">
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <MessageSquare className="h-4 w-4" />
+          Total
+        </div>
+        <p className="mt-1 text-2xl font-bold">{typeCounts.all}</p>
+      </div>
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Mail className="h-4 w-4 text-blue-600" />
+          Emails
+        </div>
+        <p className="mt-1 text-2xl font-bold">{typeCounts.email}</p>
+      </div>
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Video className="h-4 w-4 text-purple-600" />
+          Meetings
+        </div>
+        <p className="mt-1 text-2xl font-bold">{typeCounts.meeting}</p>
+      </div>
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Phone className="h-4 w-4 text-green-600" />
+          Calls
+        </div>
+        <p className="mt-1 text-2xl font-bold">{typeCounts.phone_call}</p>
+      </div>
+    </div>
+  );
+}
+
+interface FiltersSectionProps {
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  typeFilter: FilterType;
+  onTypeFilterChange: (filter: FilterType) => void;
+  typeCounts: Record<FilterType, number>;
+  dealFilter: string | null;
+  onDealFilterChange: (deal: string | null) => void;
+  investorFilter: string | null;
+  onInvestorFilterChange: (investor: string | null) => void;
+  tagFilter: string | null;
+  onTagFilterChange: (tag: string | null) => void;
+  availableTags: string[];
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
+}
+
+function FiltersSection({
+  searchQuery,
+  onSearchChange,
+  typeFilter,
+  onTypeFilterChange,
+  typeCounts,
+  dealFilter,
+  onDealFilterChange,
+  investorFilter,
+  onInvestorFilterChange,
+  tagFilter,
+  onTagFilterChange,
+  availableTags,
+  hasActiveFilters,
+  onClearFilters,
+}: FiltersSectionProps): JSX.Element {
+  return (
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search communications..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full rounded-lg border bg-card pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+
+      {/* Type Filters */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        {filterOptions.map((option) => {
+          const Icon = option.icon;
+          return (
+            <button
+              key={option.id}
+              onClick={() => onTypeFilterChange(option.id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
+                typeFilter === option.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {option.label}
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-0.5 text-xs',
+                  typeFilter === option.id
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-background'
+                )}
+              >
+                {typeCounts[option.id]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Advanced Filters Row */}
+      <div className="flex flex-wrap gap-3">
+        {/* Deal Filter */}
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <select
+            value={dealFilter || ''}
+            onChange={(e) => onDealFilterChange(e.target.value || null)}
+            className="rounded-lg border bg-card px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="">All Deals</option>
+            {mockDeals.map((deal) => (
+              <option key={deal.id} value={deal.id}>
+                {deal.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Investor Filter */}
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <select
+            value={investorFilter || ''}
+            onChange={(e) => onInvestorFilterChange(e.target.value || null)}
+            className="rounded-lg border bg-card px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="">All Investors</option>
+            {mockInvestors.map((investor) => (
+              <option key={investor.id} value={investor.id}>
+                {investor.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tag Filter */}
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-muted-foreground" />
+          <select
+            value={tagFilter || ''}
+            onChange={(e) => onTagFilterChange(e.target.value || null)}
+            className="rounded-lg border bg-card px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="">All Tags</option>
+            {availableTags.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Clear Filters */}
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={onClearFilters}>
+            <X className="h-4 w-4 mr-1" />
+            Clear filters
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface EmptyStateProps {
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
+}
+
+function EmptyState({ hasActiveFilters, onClearFilters }: EmptyStateProps): JSX.Element {
+  return (
+    <div className="p-8 text-center">
+      <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/30" />
+      <h3 className="mt-4 font-semibold">No communications found</h3>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {hasActiveFilters ? 'Try adjusting your filters' : 'No communications yet'}
+      </p>
+      {hasActiveFilters && (
+        <Button variant="outline" size="sm" className="mt-4" onClick={onClearFilters}>
+          Clear filters
+        </Button>
+      )}
+    </div>
+  );
+}

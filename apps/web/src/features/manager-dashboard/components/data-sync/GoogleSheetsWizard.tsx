@@ -709,24 +709,63 @@ export function GoogleSheetsWizard({
                             // Auto-populate row mappings based on selected column
                             if (e.target.value && previewData?.preview) {
                               const newMappings: RowToDealMapping[] = [];
+                              const selectedColumn = e.target.value;
                               
-                              // Check if we have sections (mixed format)
+                              // Check if we have sections (mixed format) - use tabular section data
                               if (previewData.preview.sections?.length) {
                                 const tabularSection = previewData.preview.sections.find((s) => s.type === 'tabular');
                                 if (tabularSection) {
-                                  // Get unique values from that column
-                                  const uniqueIdentifiers = new Set<string>();
-                                  for (const metric of tabularSection.metrics) {
-                                    if (metric.value && !metric.value.startsWith('Sample:')) {
-                                      uniqueIdentifiers.add(metric.value);
+                                  // For tabular sections, metrics are grouped by column
+                                  // Find metrics that match the selected column to get property names
+                                  const identifierMetrics = tabularSection.metrics.filter(
+                                    (m) => m.key === selectedColumn
+                                  );
+                                  
+                                  if (identifierMetrics.length > 0) {
+                                    // Use the values from this column as identifiers
+                                    for (const metric of identifierMetrics) {
+                                      if (metric.value) {
+                                        const matchedDeal = deals.find(
+                                          (d) => d.name.toLowerCase().includes(metric.value.toLowerCase()) ||
+                                                 metric.value.toLowerCase().includes(d.name.toLowerCase())
+                                        );
+                                        newMappings.push({
+                                          rowIdentifier: metric.value,
+                                          dealId: matchedDeal?.id || null,
+                                          dealName: matchedDeal?.name,
+                                        });
+                                      }
+                                    }
+                                  } else {
+                                    // Fallback: get unique property values from all metrics in this section
+                                    const uniqueValues = new Set<string>();
+                                    for (const metric of tabularSection.metrics) {
+                                      if (metric.value && !uniqueValues.has(metric.value)) {
+                                        // Skip numeric-looking values
+                                        if (!/^\$?[\d,]+\.?\d*%?$/.test(metric.value.trim())) {
+                                          uniqueValues.add(metric.value);
+                                        }
+                                      }
+                                    }
+                                    // Take first values as potential property identifiers
+                                    for (const value of Array.from(uniqueValues).slice(0, 20)) {
+                                      const matchedDeal = deals.find(
+                                        (d) => d.name.toLowerCase().includes(value.toLowerCase()) ||
+                                               value.toLowerCase().includes(d.name.toLowerCase())
+                                      );
+                                      newMappings.push({
+                                        rowIdentifier: value,
+                                        dealId: matchedDeal?.id || null,
+                                        dealName: matchedDeal?.name,
+                                      });
                                     }
                                   }
                                 }
                               }
                               
                               // If we have preview rows (standard tabular format), use those
-                              if (previewData.preview.rows.length > 0 && previewData.preview.headers.length > 0) {
-                                const colIndex = previewData.preview.headers.indexOf(e.target.value);
+                              if (newMappings.length === 0 && previewData.preview.rows.length > 0 && previewData.preview.headers.length > 0) {
+                                const colIndex = previewData.preview.headers.indexOf(selectedColumn);
                                 if (colIndex >= 0) {
                                   for (const row of previewData.preview.rows) {
                                     const identifier = row[colIndex];

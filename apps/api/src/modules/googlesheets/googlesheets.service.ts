@@ -970,10 +970,21 @@ export class GoogleSheetsService {
       throw new Error('No existing Google credentials found. Please connect your account first.');
     }
     
-    // Create connection data in the same format as OAuth callback
-    const connectionData = encryptCredentials(credentials.accessToken, credentials.refreshToken);
-    
-    return this.saveConnection(fundId, connectionData, credentials.googleEmail, input);
+    // Call saveConnection with properly formatted input
+    return this.saveConnection({
+      fundId,
+      dealId: input.dealId || null,
+      name: input.name,
+      spreadsheetId: input.spreadsheetId,
+      sheetName: input.sheetName,
+      accessToken: credentials.accessToken,
+      refreshToken: credentials.refreshToken,
+      googleEmail: credentials.googleEmail,
+      columnMapping: input.columnMapping,
+      syncFrequency: input.syncFrequency,
+      syncEnabled: input.syncEnabled,
+      now: new Date(),
+    });
   }
 
   private formatConnection(data: Record<string, unknown>): DataConnection {

@@ -153,7 +153,8 @@ export const googlesheetsApi = {
    */
   async syncNow(connectionId: string): Promise<{ success: boolean; rowCount: number }> {
     return api.post<{ success: boolean; rowCount: number }>(
-      `/googlesheets/connections/${connectionId}/sync`
+      `/googlesheets/connections/${connectionId}/sync`,
+      {} // Empty body required for Fastify with JSON content-type
     );
   },
 

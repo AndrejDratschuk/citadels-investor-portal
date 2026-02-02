@@ -140,9 +140,7 @@ export const documentsApi = {
     formData.append('file', file);
 
     const token = localStorage.getItem('accessToken');
-    const API_URL = import.meta.env.PROD
-      ? 'https://citadel-investor-portal-production.up.railway.app/api'
-      : (import.meta.env.VITE_API_URL || '/api');
+    const { API_URL } = await import('./client');
 
     const response = await fetch(`${API_URL}/documents/upload`, {
       method: 'POST',

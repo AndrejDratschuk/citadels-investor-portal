@@ -12,10 +12,8 @@ import type {
   DataConnection,
 } from '@altsui/shared';
 
-// Use same API_URL pattern as main client
-const API_BASE = import.meta.env.PROD 
-  ? 'https://citadel-investor-portal-production.up.railway.app/api'
-  : (import.meta.env.VITE_API_URL || '/api');
+// Import API_URL from main client to ensure consistency
+import { API_URL as API_BASE } from './client';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('accessToken');

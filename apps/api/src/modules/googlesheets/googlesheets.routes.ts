@@ -58,10 +58,50 @@ export async function googleSheetsRoutes(fastify: FastifyInstance): Promise<void
   );
 
   // ============================================
+  // Routes using existing credentials (no re-auth needed)
+  // ============================================
+
+  // List spreadsheets using existing credentials
+  fastify.get(
+    '/existing/spreadsheets',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      return googleSheetsController.listSpreadsheetsWithCredentials(request as any, reply);
+    }
+  );
+
+  // Get sheets using existing credentials
+  fastify.get(
+    '/existing/spreadsheets/:spreadsheetId/sheets',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      return googleSheetsController.getSheetsWithCredentials(request as any, reply);
+    }
+  );
+
+  // Preview sheet data using existing credentials
+  fastify.get(
+    '/existing/preview/:spreadsheetId/:sheetName',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      return googleSheetsController.previewDataWithCredentials(request as any, reply);
+    }
+  );
+
+  // Save connection using existing credentials
+  fastify.post(
+    '/existing/connections',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      return googleSheetsController.saveConnectionWithCredentials(request as any, reply);
+    }
+  );
+
+  // ============================================
   // Connection Management Routes (requires auth)
   // ============================================
 
-  // Save new connection after wizard
+  // Save new connection after wizard (with connection_data from OAuth)
   fastify.post(
     '/connections',
     { preHandler: [authenticate] },

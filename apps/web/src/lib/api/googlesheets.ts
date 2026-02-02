@@ -51,6 +51,8 @@ export interface SheetMetric {
 export interface GoogleSheetsStatus {
   connected: boolean;
   connections: DataConnection[];
+  hasCredentials: boolean;
+  googleEmail: string | null;
 }
 
 export interface SaveConnectionInput {
@@ -157,5 +159,46 @@ export const googlesheetsApi = {
    */
   async disconnect(connectionId: string): Promise<{ success: boolean }> {
     return api.delete<{ success: boolean }>(`/googlesheets/connections/${connectionId}`);
+  },
+
+  // ============================================
+  // Methods using existing credentials (no re-auth needed)
+  // ============================================
+
+  /**
+   * List spreadsheets using existing credentials
+   */
+  async listSpreadsheetsWithCredentials(): Promise<{ spreadsheets: SpreadsheetInfo[] }> {
+    return api.get<{ spreadsheets: SpreadsheetInfo[] }>('/googlesheets/existing/spreadsheets');
+  },
+
+  /**
+   * Get sheets using existing credentials
+   */
+  async getSheetsWithCredentials(spreadsheetId: string): Promise<{ sheets: SheetInfo[] }> {
+    return api.get<{ sheets: SheetInfo[] }>(
+      `/googlesheets/existing/spreadsheets/${spreadsheetId}/sheets`
+    );
+  },
+
+  /**
+   * Preview sheet data using existing credentials
+   */
+  async previewDataWithCredentials(
+    spreadsheetId: string,
+    sheetName: string
+  ): Promise<{ preview: SheetPreview }> {
+    return api.get<{ preview: SheetPreview }>(
+      `/googlesheets/existing/preview/${spreadsheetId}/${encodeURIComponent(sheetName)}`
+    );
+  },
+
+  /**
+   * Save connection using existing credentials
+   */
+  async saveConnectionWithCredentials(
+    input: SaveConnectionInput
+  ): Promise<{ connection: DataConnection }> {
+    return api.post<{ connection: DataConnection }>('/googlesheets/existing/connections', input);
   },
 };

@@ -409,6 +409,125 @@ export class GoogleSheetsController {
     }
   }
 
+  // ============================================
+  // Endpoints using existing credentials (no re-auth needed)
+  // ============================================
+
+  /**
+   * List spreadsheets using existing credentials
+   */
+  async listSpreadsheetsWithCredentials(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    try {
+      if (!request.user?.fundId) {
+        return reply.status(401).send({ success: false, error: 'Not authenticated' });
+      }
+
+      const spreadsheets = await googleSheetsService.listSpreadsheetsWithExistingCredentials(
+        request.user.fundId
+      );
+
+      return reply.send({ success: true, data: { spreadsheets } });
+    } catch (err) {
+      console.error('Error listing spreadsheets with credentials:', err);
+      const message = err instanceof Error ? err.message : 'Failed to list spreadsheets';
+      return reply.status(500).send({ success: false, error: message });
+    }
+  }
+
+  /**
+   * Get sheets using existing credentials
+   */
+  async getSheetsWithCredentials(
+    request: AuthenticatedRequest & { params: SpreadsheetParams },
+    reply: FastifyReply
+  ): Promise<void> {
+    const { spreadsheetId } = request.params;
+
+    try {
+      if (!request.user?.fundId) {
+        return reply.status(401).send({ success: false, error: 'Not authenticated' });
+      }
+
+      const sheets = await googleSheetsService.getSpreadsheetSheetsWithExistingCredentials(
+        request.user.fundId,
+        spreadsheetId
+      );
+
+      return reply.send({ success: true, data: { sheets } });
+    } catch (err) {
+      console.error('Error getting sheets with credentials:', err);
+      const message = err instanceof Error ? err.message : 'Failed to get sheets';
+      return reply.status(500).send({ success: false, error: message });
+    }
+  }
+
+  /**
+   * Preview sheet data using existing credentials
+   */
+  async previewDataWithCredentials(
+    request: AuthenticatedRequest & { params: SheetPreviewParams },
+    reply: FastifyReply
+  ): Promise<void> {
+    const { spreadsheetId, sheetName } = request.params;
+
+    try {
+      if (!request.user?.fundId) {
+        return reply.status(401).send({ success: false, error: 'Not authenticated' });
+      }
+
+      const preview = await googleSheetsService.previewSheetDataWithExistingCredentials(
+        request.user.fundId,
+        spreadsheetId,
+        sheetName
+      );
+
+      return reply.send({ success: true, data: { preview } });
+    } catch (err) {
+      console.error('Error previewing data with credentials:', err);
+      const message = err instanceof Error ? err.message : 'Failed to preview data';
+      return reply.status(500).send({ success: false, error: message });
+    }
+  }
+
+  /**
+   * Save connection using existing credentials
+   */
+  async saveConnectionWithCredentials(
+    request: AuthenticatedRequest & { body: SaveConnectionBody },
+    reply: FastifyReply
+  ): Promise<void> {
+    const { name, spreadsheetId, sheetName, dealId, columnMapping, syncFrequency, syncEnabled } =
+      request.body;
+
+    try {
+      if (!request.user?.fundId) {
+        return reply.status(401).send({ success: false, error: 'Not authenticated' });
+      }
+
+      const connection = await googleSheetsService.saveConnectionWithExistingCredentials(
+        request.user.fundId,
+        {
+          name,
+          spreadsheetId,
+          sheetName,
+          columnMapping,
+          syncFrequency,
+          syncEnabled,
+          dealId: dealId || null,
+        }
+      );
+
+      return reply.send({ success: true, data: { connection } });
+    } catch (err) {
+      console.error('Error saving connection with credentials:', err);
+      const message = err instanceof Error ? err.message : 'Failed to save connection';
+      return reply.status(500).send({ success: false, error: message });
+    }
+  }
+
   /**
    * Get Google Sheets status for current fund
    */

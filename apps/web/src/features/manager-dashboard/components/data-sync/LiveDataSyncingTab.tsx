@@ -36,6 +36,7 @@ export function LiveDataSyncingTab(): JSX.Element {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [connectionData, setConnectionData] = useState<string | null>(null);
   const [googleEmail, setGoogleEmail] = useState<string | null>(null);
+  const [useExistingCredentials, setUseExistingCredentials] = useState(false);
 
   // State for disconnect confirmation
   const [disconnectConnection, setDisconnectConnection] = useState<DataConnection | null>(null);
@@ -104,6 +105,16 @@ export function LiveDataSyncingTab(): JSX.Element {
 
   // Handle Google Sheets connect
   async function handleGoogleSheetsConnect(): Promise<void> {
+    // Check if we have existing credentials we can reuse
+    if (googleSheetsStatus?.hasCredentials) {
+      // Use existing credentials - open wizard directly
+      setUseExistingCredentials(true);
+      setGoogleEmail(googleSheetsStatus.googleEmail);
+      setWizardOpen(true);
+      return;
+    }
+
+    // No existing credentials - start OAuth flow
     try {
       const { authUrl } = await googlesheetsApi.connect();
       // Redirect to Google OAuth
@@ -131,6 +142,7 @@ export function LiveDataSyncingTab(): JSX.Element {
     setWizardOpen(false);
     setConnectionData(null);
     setGoogleEmail(null);
+    setUseExistingCredentials(false);
   }
 
   // Handle wizard complete
@@ -175,13 +187,14 @@ export function LiveDataSyncingTab(): JSX.Element {
       </div>
 
       {/* Google Sheets Wizard */}
-      {connectionData && (
+      {(connectionData || useExistingCredentials) && (
         <GoogleSheetsWizard
           open={wizardOpen}
           onClose={handleWizardClose}
           onComplete={handleWizardComplete}
-          connectionData={connectionData}
+          connectionData={connectionData || ''}
           googleEmail={googleEmail}
+          useExistingCredentials={useExistingCredentials}
         />
       )}
 

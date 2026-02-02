@@ -36,6 +36,7 @@ interface GoogleSheetsWizardProps {
   onComplete: () => void;
   connectionData: string;
   googleEmail: string | null;
+  useExistingCredentials?: boolean;
 }
 
 type WizardStep = 'spreadsheet' | 'sheet' | 'dealMapping' | 'mapping' | 'sync';
@@ -98,6 +99,7 @@ export function GoogleSheetsWizard({
   onComplete,
   connectionData,
   googleEmail,
+  useExistingCredentials = false,
 }: GoogleSheetsWizardProps): JSX.Element | null {
   // Wizard state
   const [step, setStep] = useState<WizardStep>('spreadsheet');
@@ -135,17 +137,22 @@ export function GoogleSheetsWizard({
     isLoading: spreadsheetsLoading,
     refetch: refetchSpreadsheets,
   } = useQuery({
-    queryKey: ['googlesheets', 'spreadsheets', connectionData],
-    queryFn: () => googlesheetsApi.listSpreadsheets(connectionData),
-    enabled: open && !!connectionData,
+    queryKey: ['googlesheets', 'spreadsheets', useExistingCredentials ? 'existing' : connectionData],
+    queryFn: () =>
+      useExistingCredentials
+        ? googlesheetsApi.listSpreadsheetsWithCredentials()
+        : googlesheetsApi.listSpreadsheets(connectionData),
+    enabled: open && (useExistingCredentials || !!connectionData),
   });
 
   // Fetch sheets for selected spreadsheet
   const { data: sheetsData, isLoading: sheetsLoading } = useQuery({
-    queryKey: ['googlesheets', 'sheets', selectedSpreadsheet?.id, connectionData],
+    queryKey: ['googlesheets', 'sheets', selectedSpreadsheet?.id, useExistingCredentials ? 'existing' : connectionData],
     queryFn: () =>
       selectedSpreadsheet
-        ? googlesheetsApi.getSheets(selectedSpreadsheet.id, connectionData)
+        ? useExistingCredentials
+          ? googlesheetsApi.getSheetsWithCredentials(selectedSpreadsheet.id)
+          : googlesheetsApi.getSheets(selectedSpreadsheet.id, connectionData)
         : Promise.resolve({ sheets: [] }),
     enabled: !!selectedSpreadsheet && step === 'sheet',
   });
@@ -157,11 +164,13 @@ export function GoogleSheetsWizard({
       'preview',
       selectedSpreadsheet?.id,
       selectedSheet?.title,
-      connectionData,
+      useExistingCredentials ? 'existing' : connectionData,
     ],
     queryFn: () =>
       selectedSpreadsheet && selectedSheet
-        ? googlesheetsApi.previewData(selectedSpreadsheet.id, selectedSheet.title, connectionData)
+        ? useExistingCredentials
+          ? googlesheetsApi.previewDataWithCredentials(selectedSpreadsheet.id, selectedSheet.title)
+          : googlesheetsApi.previewData(selectedSpreadsheet.id, selectedSheet.title, connectionData)
         : Promise.resolve({ preview: { headers: [], rows: [], totalRows: 0 } }),
     enabled: !!selectedSpreadsheet && !!selectedSheet && step === 'mapping',
   });
@@ -256,24 +265,27 @@ export function GoogleSheetsWizard({
         dealId = selectedDealId;
       }
 
-      return googlesheetsApi.saveConnection(
-        {
-          name: connectionName || `${selectedSpreadsheet.name} - ${selectedSheet.title}`,
-          spreadsheetId: selectedSpreadsheet.id,
-          sheetName: selectedSheet.title,
-          columnMapping,
-          syncFrequency,
-          syncEnabled,
-          dealId,
-          // Pass multi-deal mapping info
-          ...(dealMappingMode === 'multi-deal' && {
-            dealMappingMode: 'multi-deal',
-            dealIdentifierColumn,
-            rowToDealMappings: rowToDealMappings.filter((m) => m.dealId),
-          }),
-        },
-        connectionData
-      );
+      const saveInput = {
+        name: connectionName || `${selectedSpreadsheet.name} - ${selectedSheet.title}`,
+        spreadsheetId: selectedSpreadsheet.id,
+        sheetName: selectedSheet.title,
+        columnMapping,
+        syncFrequency,
+        syncEnabled,
+        dealId,
+        // Pass multi-deal mapping info
+        ...(dealMappingMode === 'multi-deal' && {
+          dealMappingMode: 'multi-deal',
+          dealIdentifierColumn,
+          rowToDealMappings: rowToDealMappings.filter((m) => m.dealId),
+        }),
+      };
+
+      // Use existing credentials endpoint if available
+      if (useExistingCredentials) {
+        return googlesheetsApi.saveConnectionWithCredentials(saveInput);
+      }
+      return googlesheetsApi.saveConnection(saveInput, connectionData);
     },
     onSuccess: () => {
       onComplete();

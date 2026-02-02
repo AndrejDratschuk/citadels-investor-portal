@@ -812,10 +812,13 @@ export class GoogleSheetsService {
 
   /**
    * Get Google Sheets status for a fund
+   * Returns connection status and whether we can reuse existing credentials
    */
   async getStatus(fundId: string): Promise<{
     connected: boolean;
     connections: DataConnection[];
+    hasCredentials: boolean;
+    googleEmail: string | null;
   }> {
     const { data, error } = await supabaseAdmin
       .from('data_connections')
@@ -824,14 +827,127 @@ export class GoogleSheetsService {
       .eq('provider', 'google_sheets');
 
     if (error) {
-      return { connected: false, connections: [] };
+      return { connected: false, connections: [], hasCredentials: false, googleEmail: null };
     }
 
     const connections = (data || []).map(this.formatConnection);
+    
+    // Check if any connection has valid credentials we can reuse
+    const connectionWithCredentials = data?.find((c) => c.credentials_encrypted);
+    
     return {
       connected: connections.length > 0,
       connections,
+      hasCredentials: !!connectionWithCredentials,
+      googleEmail: connectionWithCredentials?.google_email || null,
     };
+  }
+
+  /**
+   * Get existing credentials for a fund (to reuse for new connections)
+   */
+  async getExistingCredentials(fundId: string): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    googleEmail: string;
+  } | null> {
+    const { data, error } = await supabaseAdmin
+      .from('data_connections')
+      .select('credentials_encrypted, google_email')
+      .eq('fund_id', fundId)
+      .eq('provider', 'google_sheets')
+      .not('credentials_encrypted', 'is', null)
+      .limit(1)
+      .single();
+
+    if (error || !data?.credentials_encrypted) {
+      return null;
+    }
+
+    const { accessToken, refreshToken } = decryptCredentials(data.credentials_encrypted);
+    return {
+      accessToken,
+      refreshToken,
+      googleEmail: data.google_email || '',
+    };
+  }
+
+  /**
+   * List spreadsheets using existing fund credentials
+   */
+  async listSpreadsheetsWithExistingCredentials(fundId: string): Promise<SpreadsheetInfo[]> {
+    const credentials = await this.getExistingCredentials(fundId);
+    if (!credentials) {
+      throw new Error('No existing Google credentials found. Please connect your account first.');
+    }
+    return this.listSpreadsheets(credentials.accessToken, credentials.refreshToken);
+  }
+
+  /**
+   * Get sheets within a spreadsheet using existing fund credentials
+   */
+  async getSpreadsheetSheetsWithExistingCredentials(
+    fundId: string,
+    spreadsheetId: string
+  ): Promise<SheetInfo[]> {
+    const credentials = await this.getExistingCredentials(fundId);
+    if (!credentials) {
+      throw new Error('No existing Google credentials found. Please connect your account first.');
+    }
+    return this.getSpreadsheetSheets(
+      credentials.accessToken,
+      credentials.refreshToken,
+      spreadsheetId
+    );
+  }
+
+  /**
+   * Preview sheet data using existing fund credentials
+   */
+  async previewSheetDataWithExistingCredentials(
+    fundId: string,
+    spreadsheetId: string,
+    sheetName: string
+  ): Promise<SheetPreview> {
+    const credentials = await this.getExistingCredentials(fundId);
+    if (!credentials) {
+      throw new Error('No existing Google credentials found. Please connect your account first.');
+    }
+    return this.previewSheetData(
+      credentials.accessToken,
+      credentials.refreshToken,
+      spreadsheetId,
+      sheetName
+    );
+  }
+
+  /**
+   * Save connection using existing fund credentials
+   */
+  async saveConnectionWithExistingCredentials(
+    fundId: string,
+    input: {
+      name: string;
+      spreadsheetId: string;
+      sheetName: string;
+      columnMapping: ColumnMapping[];
+      syncFrequency: SyncFrequency;
+      syncEnabled: boolean;
+      dealId?: string | null;
+      dealMappingMode?: string;
+      dealIdentifierColumn?: string;
+      rowToDealMappings?: { rowIdentifier: string; dealId: string | null }[];
+    }
+  ): Promise<DataConnection> {
+    const credentials = await this.getExistingCredentials(fundId);
+    if (!credentials) {
+      throw new Error('No existing Google credentials found. Please connect your account first.');
+    }
+    
+    // Create connection data in the same format as OAuth callback
+    const connectionData = encryptCredentials(credentials.accessToken, credentials.refreshToken);
+    
+    return this.saveConnection(fundId, connectionData, credentials.googleEmail, input);
   }
 
   private formatConnection(data: Record<string, unknown>): DataConnection {

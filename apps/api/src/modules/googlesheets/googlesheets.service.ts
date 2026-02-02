@@ -54,6 +54,9 @@ export interface SheetSection {
   startRow: number;
   endRow: number;
   metrics: SheetMetric[];
+  // For tabular sections: actual table data for row-level operations
+  tableHeaders?: string[];
+  tableRows?: string[][];
 }
 
 export interface SheetMetric {
@@ -553,15 +556,38 @@ export class GoogleSheetsService {
         }
       }
       
-      // Get sample values from first few data rows
-      const dataRows = values.slice(headerRowIdx + 1, Math.min(headerRowIdx + 4, section.endRow + 1));
+      // Get ALL data rows (not just sample) - skip header row, stop before TOTAL/SUMMARY rows
+      const allDataRows: string[][] = [];
+      for (let i = headerRowIdx + 1; i <= section.endRow && i < values.length; i++) {
+        const row = values[i] || [];
+        const firstCell = String(row[0] || '').trim().toUpperCase();
+        // Skip total/summary rows
+        if (firstCell.includes('TOTAL') || firstCell.includes('SUMMARY') || firstCell.includes('AVERAGE')) {
+          continue;
+        }
+        // Skip empty rows
+        const hasData = row.some((c) => c !== null && c !== undefined && String(c).trim());
+        if (!hasData) continue;
+        
+        // Extract values for each header column
+        const rowData: string[] = headers.map(({ colIdx }) => String(row[colIdx] || '').trim());
+        allDataRows.push(rowData);
+      }
+      
+      // Store actual table data for row-level operations (like multi-deal mapping)
+      section.tableHeaders = headers.map((h) => h.name);
+      section.tableRows = allDataRows;
+      
+      // Get sample values from first few data rows for metric display
+      const sampleRows = allDataRows.slice(0, 3);
       
       // Add each column header as a mappable metric
-      for (const { name: header, colIdx } of headers) {
+      for (let hIdx = 0; hIdx < headers.length; hIdx++) {
+        const { name: header, colIdx } = headers[hIdx];
         // Find first non-empty sample value from data rows
         let sampleValue = '';
-        for (const row of dataRows) {
-          const val = String(row?.[colIdx] || '').trim();
+        for (const row of sampleRows) {
+          const val = row[hIdx];
           if (val) {
             sampleValue = val;
             break;

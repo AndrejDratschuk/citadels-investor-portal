@@ -37,6 +37,9 @@ export interface SheetSection {
   startRow: number;
   endRow: number;
   metrics: SheetMetric[];
+  // For tabular sections: actual table data for row-level operations
+  tableHeaders?: string[];
+  tableRows?: string[][];
 }
 
 export interface SheetMetric {

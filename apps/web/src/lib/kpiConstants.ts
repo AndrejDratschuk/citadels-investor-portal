@@ -13,6 +13,9 @@ import {
   Wallet,
   PiggyBank,
   RefreshCw,
+  Briefcase,
+  Calendar,
+  Hash,
 } from 'lucide-react';
 import type { KpiCategory } from '@altsui/shared';
 
@@ -71,6 +74,37 @@ export const KPI_ICONS: Record<string, KpiIconConfig> = {
   monthly_debt_service: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
   annual_debt_service: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
   interest_rate: { icon: Percent, color: 'text-orange-600', bg: 'bg-orange-100' },
+  total_debt_outstanding: { icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
+
+  // Fund Overview
+  fund_vintage: { icon: Calendar, color: 'text-slate-600', bg: 'bg-slate-100' },
+  committed_capital: { icon: DollarSign, color: 'text-slate-600', bg: 'bg-slate-100' },
+  capital_called: { icon: DollarSign, color: 'text-slate-600', bg: 'bg-slate-100' },
+  remaining_commitment: { icon: DollarSign, color: 'text-slate-600', bg: 'bg-slate-100' },
+  total_properties: { icon: Building2, color: 'text-slate-600', bg: 'bg-slate-100' },
+  gross_asset_value: { icon: DollarSign, color: 'text-slate-600', bg: 'bg-slate-100' },
+  net_asset_value: { icon: DollarSign, color: 'text-slate-600', bg: 'bg-slate-100' },
+  gross_irr: { icon: TrendingUp, color: 'text-slate-600', bg: 'bg-slate-100' },
+  net_irr: { icon: TrendingUp, color: 'text-slate-600', bg: 'bg-slate-100' },
+  gross_equity_multiple: { icon: TrendingUp, color: 'text-slate-600', bg: 'bg-slate-100' },
+  net_equity_multiple: { icon: TrendingUp, color: 'text-slate-600', bg: 'bg-slate-100' },
+  dpi: { icon: Percent, color: 'text-slate-600', bg: 'bg-slate-100' },
+  rvpi: { icon: Percent, color: 'text-slate-600', bg: 'bg-slate-100' },
+  tvpi: { icon: Percent, color: 'text-slate-600', bg: 'bg-slate-100' },
+
+  // Additional Property/Deal KPIs
+  acquisition_price: { icon: DollarSign, color: 'text-cyan-600', bg: 'bg-cyan-100' },
+  acquisition_date: { icon: Calendar, color: 'text-cyan-600', bg: 'bg-cyan-100' },
+  cap_rate_at_acquisition: { icon: Percent, color: 'text-cyan-600', bg: 'bg-cyan-100' },
+  noi_yield_on_cost: { icon: Percent, color: 'text-purple-600', bg: 'bg-purple-100' },
+  current_gav: { icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+  total_equity_invested: { icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+  gross_square_footage: { icon: Hash, color: 'text-slate-600', bg: 'bg-slate-100' },
+  total_units: { icon: Building2, color: 'text-slate-600', bg: 'bg-slate-100' },
+  total_beds: { icon: Building2, color: 'text-slate-600', bg: 'bg-slate-100' },
+  in_place_noi: { icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-100' },
+  annualized_noi: { icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-100' },
+  occupancy_rate: { icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
 };
 
 export const DEFAULT_KPI_ICON: KpiIconConfig = {
@@ -98,4 +132,5 @@ export const KPI_CATEGORY_CONFIG: Record<KpiCategory, KpiCategoryConfig> = {
   property_performance: { name: 'Performance', icon: TrendingUp, color: 'text-purple-600' },
   financial: { name: 'Financial', icon: BarChart3, color: 'text-indigo-600' },
   debt_service: { name: 'Debt Service', icon: CreditCard, color: 'text-orange-600' },
+  fund_overview: { name: 'Fund Overview', icon: Briefcase, color: 'text-slate-600' },
 };

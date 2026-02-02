@@ -11,7 +11,8 @@ export type KpiCategory =
   | 'occupancy'
   | 'property_performance'
   | 'financial'
-  | 'debt_service';
+  | 'debt_service'
+  | 'fund_overview';
 
 export type KpiFormat = 'currency' | 'percentage' | 'number' | 'ratio';
 
@@ -269,6 +270,13 @@ export const KPI_CATEGORY_INFO: KpiCategoryInfo[] = [
     description: 'Loan and debt metrics',
     icon: 'CreditCard',
     color: 'orange',
+  },
+  {
+    code: 'fund_overview',
+    name: 'Fund Overview',
+    description: 'Fund-level performance metrics',
+    icon: 'Briefcase',
+    color: 'slate',
   },
 ];
 

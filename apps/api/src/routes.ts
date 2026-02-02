@@ -22,6 +22,7 @@ import { reportsRoutes } from './modules/reports/reports.routes';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { notesRoutes, milestonesRoutes } from './modules/deal-notes';
 import { stakeholderRolesRoutes } from './modules/stakeholders';
+import { googleSheetsRoutes, googleSheetsSyncCronRoutes } from './modules/googlesheets';
 
 export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   // Register all module routes
@@ -50,6 +51,8 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(notesRoutes); // Routes have full paths: /deals/:dealId/notes
   await fastify.register(milestonesRoutes); // Routes have full paths: /deals/:dealId/milestones
   await fastify.register(stakeholderRolesRoutes, { prefix: '/stakeholders' });
+  await fastify.register(googleSheetsRoutes, { prefix: '/googlesheets' });
+  await fastify.register(googleSheetsSyncCronRoutes, { prefix: '/cron' });
 
   // Health check
   fastify.get('/health', async () => {

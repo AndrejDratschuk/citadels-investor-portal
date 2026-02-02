@@ -22,10 +22,16 @@ interface DataConnectionRow {
   name: string;
   credentials_encrypted: string | null;
   spreadsheet_id: string | null;
+  sheet_name: string | null;
   column_mapping: ColumnMapping[];
   last_synced_at: string | null;
   sync_status: string;
   sync_error: string | null;
+  sync_frequency: string | null;
+  sync_enabled: boolean | null;
+  last_sync_row_count: number | null;
+  next_sync_at: string | null;
+  google_email: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -272,10 +278,16 @@ export class DataImportRepository {
       provider: row.provider as DataConnectionProvider,
       name: row.name,
       spreadsheetId: row.spreadsheet_id,
+      sheetName: row.sheet_name,
       columnMapping: row.column_mapping || [],
       lastSyncedAt: row.last_synced_at,
       syncStatus: row.sync_status as SyncStatus,
       syncError: row.sync_error,
+      syncFrequency: (row.sync_frequency as 'manual' | '5m' | '15m' | '30m' | '1h' | '6h' | '24h') || 'manual',
+      syncEnabled: row.sync_enabled || false,
+      lastSyncRowCount: row.last_sync_row_count,
+      nextSyncAt: row.next_sync_at,
+      googleEmail: row.google_email,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -290,10 +302,16 @@ export class DataImportRepository {
       provider: row.provider as DataConnectionProvider,
       name: row.name,
       spreadsheetId: row.spreadsheet_id,
+      sheetName: row.sheet_name,
       columnMapping: row.column_mapping || [],
       lastSyncedAt: row.last_synced_at,
       syncStatus: row.sync_status as SyncStatus,
       syncError: row.sync_error,
+      syncFrequency: (row.sync_frequency as 'manual' | '5m' | '15m' | '30m' | '1h' | '6h' | '24h') || 'manual',
+      syncEnabled: row.sync_enabled || false,
+      lastSyncRowCount: row.last_sync_row_count,
+      nextSyncAt: row.next_sync_at,
+      googleEmail: row.google_email,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

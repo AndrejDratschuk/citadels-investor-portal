@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   Database,
@@ -17,8 +18,10 @@ import {
   FileSpreadsheet,
   X,
   Building2,
+  Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { dataImportApi } from '@/lib/api/dataImport';
 import { useAuth } from '@/hooks/useAuth';
 import { DealSelector } from '@/components/common/DealSelector';
@@ -27,6 +30,7 @@ import {
   ColumnMappingStep,
   ImportSuccessModal,
 } from '@/features/onboarding/components/data-import';
+import { LiveDataSyncingTab } from '@/features/manager-dashboard/components/data-sync';
 import type { 
   DataConnection, 
   ParsedFileData,
@@ -137,6 +141,7 @@ function formatDate(dateString: string | null): string {
 
 export function DataConnectionsPage(): JSX.Element {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [connections, setConnections] = useState<DataConnection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +151,15 @@ export function DataConnectionsPage(): JSX.Element {
   const [changingDealConnection, setChangingDealConnection] = useState<DataConnection | null>(null);
   const [newDealId, setNewDealId] = useState<string | null>(null);
   const [isChangingDeal, setIsChangingDeal] = useState(false);
+
+  // Determine default tab based on URL params (for OAuth callback)
+  const hasGoogleSheetsParams =
+    searchParams.has('google_sheets_connected') ||
+    searchParams.has('google_sheets_error') ||
+    searchParams.has('connection_data');
+  const [activeTab, setActiveTab] = useState<string>(
+    hasGoogleSheetsParams ? 'live-sync' : 'connections'
+  );
 
   // Lock body scroll when modal is open
   useBodyScrollLock(addState.step !== 'closed' || changingDealConnection !== null);
@@ -574,12 +588,12 @@ export function DataConnectionsPage(): JSX.Element {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Data Connections</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Data</h1>
           <p className="mt-1 text-slate-600">
-            Manage your data sources for KPI tracking and analytics
+            Manage your data sources and live data syncing
           </p>
         </div>
-        {connections.length > 0 && (
+        {activeTab === 'connections' && connections.length > 0 && (
           <Button onClick={openAddFlow}>
             <Plus className="h-4 w-4 mr-2" />
             Add Data Source
@@ -604,18 +618,54 @@ export function DataConnectionsPage(): JSX.Element {
         </div>
       )}
 
-      {/* Content */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : connections.length === 0 ? (
-          renderEmptyState()
-        ) : (
-          renderConnectionsList()
-        )}
+      {/* Tab Navigation */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setActiveTab('connections')}
+          className={cn(
+            'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+            activeTab === 'connections'
+              ? 'bg-primary text-white'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+          )}
+        >
+          <Database className="h-4 w-4" />
+          Data Connections
+        </button>
+        <button
+          onClick={() => setActiveTab('live-sync')}
+          className={cn(
+            'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+            activeTab === 'live-sync'
+              ? 'bg-primary text-white'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+          )}
+        >
+          <Link2 className="h-4 w-4" />
+          Live Data Syncing
+        </button>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'connections' && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            </div>
+          ) : connections.length === 0 ? (
+            renderEmptyState()
+          ) : (
+            renderConnectionsList()
+          )}
+        </div>
+      )}
+
+      {activeTab === 'live-sync' && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <LiveDataSyncingTab />
+        </div>
+      )}
 
       {/* Add Connection Modal - rendered via portal to escape stacking context */}
       {addState.step !== 'closed' && addState.step !== 'success' && createPortal(renderAddModal(), document.body)}

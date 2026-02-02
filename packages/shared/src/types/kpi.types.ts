@@ -176,6 +176,8 @@ export interface ColumnMapping {
   dataType: KpiDataType;
 }
 
+export type SyncFrequency = '5m' | '15m' | '30m' | '1h' | '6h' | '24h' | 'manual';
+
 export interface DataConnection {
   id: string;
   fundId: string;
@@ -184,10 +186,16 @@ export interface DataConnection {
   provider: DataConnectionProvider;
   name: string;
   spreadsheetId: string | null;
+  sheetName: string | null;
   columnMapping: ColumnMapping[];
   lastSyncedAt: string | null;
   syncStatus: SyncStatus;
   syncError: string | null;
+  syncFrequency: SyncFrequency;
+  syncEnabled: boolean;
+  lastSyncRowCount: number | null;
+  nextSyncAt: string | null;
+  googleEmail: string | null;
   createdAt: string;
   updatedAt: string;
 }

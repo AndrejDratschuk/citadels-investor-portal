@@ -354,37 +354,48 @@ export class GoogleSheetsService {
       const row = values[i] || [];
       const firstCell = String(row[0] || '').trim();
       
-      // Detect section headers (usually all caps, bold text, or specific keywords)
+      // Detect section headers (usually all caps with specific keywords)
       if (this.isSectionHeader(firstCell, row)) {
-        // Save previous section if exists
-        if (currentSection && currentSection.name) {
+        // Save previous section if exists and has content
+        if (currentSection && currentSection.name && currentSection.startRow !== undefined) {
           currentSection.endRow = i - 1;
-          this.extractSectionMetrics(currentSection as SheetSection, values);
-          sections.push(currentSection as SheetSection);
+          // Only save if section has some rows
+          if (currentSection.endRow >= currentSection.startRow) {
+            this.extractSectionMetrics(currentSection as SheetSection, values);
+            if ((currentSection as SheetSection).metrics.length > 0) {
+              sections.push(currentSection as SheetSection);
+            }
+          }
         }
         
         // Start new section
         currentSection = {
           name: firstCell,
-          type: 'key-value', // Will be determined later
+          type: 'key-value', // Default, will be updated if we find a table header
           startRow: i + 1,
           endRow: values.length - 1,
           metrics: [],
         };
+        continue;
       }
       
       // Detect if this row is a table header (many columns with short text labels)
-      if (currentSection && this.isTableHeaderRow(row)) {
+      // Only check if we're in a section and haven't already found a table header
+      if (currentSection && currentSection.type === 'key-value' && this.isTableHeaderRow(row)) {
         currentSection.type = 'tabular';
         currentSection.startRow = i; // Table starts at header row
       }
     }
     
     // Save last section
-    if (currentSection && currentSection.name) {
+    if (currentSection && currentSection.name && currentSection.startRow !== undefined) {
       currentSection.endRow = values.length - 1;
-      this.extractSectionMetrics(currentSection as SheetSection, values);
-      sections.push(currentSection as SheetSection);
+      if (currentSection.endRow >= currentSection.startRow) {
+        this.extractSectionMetrics(currentSection as SheetSection, values);
+        if ((currentSection as SheetSection).metrics.length > 0) {
+          sections.push(currentSection as SheetSection);
+        }
+      }
     }
     
     // If no sections detected, treat entire sheet as one section
@@ -405,53 +416,65 @@ export class GoogleSheetsService {
 
   /**
    * Check if a row is a section header
+   * More strict: requires ALL CAPS and contains specific section keywords
    */
   private isSectionHeader(firstCell: string, row: unknown[]): boolean {
-    if (!firstCell) return false;
+    if (!firstCell || firstCell.length < 5) return false;
     
     // Must have few or no values in other columns
     const otherCells = row.slice(1).filter((c) => c !== null && c !== undefined && String(c).trim());
-    if (otherCells.length > 1) return false;
+    if (otherCells.length > 0) return false;
     
-    // Check for common section header patterns
-    const upperFirst = firstCell.toUpperCase();
-    const isAllCaps = firstCell === upperFirst && firstCell.length > 3;
+    // Must be ALL CAPS
+    const isAllCaps = firstCell === firstCell.toUpperCase();
+    if (!isAllCaps) return false;
     
+    // Must contain section keywords
     const sectionKeywords = [
       'overview', 'summary', 'portfolio', 'details', 'breakdown',
-      'analysis', 'metrics', 'performance', 'returns', 'holdings',
-      'properties', 'assets', 'investments', 'fund'
+      'total', 'analysis', 'metrics', 'performance', 'returns', 
+      'holdings', 'properties', 'assets', 'investments', 'fund'
     ];
     
-    const hasKeyword = sectionKeywords.some((kw) => 
-      firstCell.toLowerCase().includes(kw)
-    );
+    const lowerCell = firstCell.toLowerCase();
+    const hasKeyword = sectionKeywords.some((kw) => lowerCell.includes(kw));
     
-    return isAllCaps || hasKeyword;
+    return hasKeyword;
   }
 
   /**
    * Check if a row looks like a table header row
+   * Headers are typically short text labels, not numbers/dates/currency
    */
   private isTableHeaderRow(row: unknown[]): boolean {
-    // Table headers typically have 4+ columns with short text
+    // Table headers typically have 4+ columns with content
     const populatedCells = row.filter((c) => c !== null && c !== undefined && String(c).trim());
     if (populatedCells.length < 4) return false;
     
-    // Check if cells look like headers (text, not numbers/dates/currency)
+    // Check if cells look like headers
     let headerLikeCells = 0;
+    let dataLikeCells = 0;
+    
     for (const cell of populatedCells) {
       const cellStr = String(cell).trim();
-      // Headers are usually text, not starting with $ or containing only numbers
-      if (cellStr && 
-          !cellStr.startsWith('$') && 
-          isNaN(Number(cellStr.replace(/[,$%]/g, ''))) &&
-          !cellStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      if (!cellStr) continue;
+      
+      // Data indicators: starts with $, is a number, is a date, is a percentage
+      const isNumber = !isNaN(Number(cellStr.replace(/[,$%]/g, '')));
+      const isCurrency = cellStr.startsWith('$') || cellStr.includes('$');
+      const isDate = /^\d{4}-\d{2}-\d{2}$/.test(cellStr) || /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(cellStr);
+      const isPercentage = cellStr.endsWith('%');
+      
+      if (isCurrency || isDate || isPercentage || (isNumber && !cellStr.includes(' '))) {
+        dataLikeCells++;
+      } else if (cellStr.length > 1 && cellStr.length < 50) {
+        // Headers are usually moderate length text
         headerLikeCells++;
       }
     }
     
-    return headerLikeCells >= 4;
+    // It's a header row if most cells look like headers, not data
+    return headerLikeCells >= 4 && headerLikeCells > dataLikeCells;
   }
 
   /**
@@ -489,11 +512,23 @@ export class GoogleSheetsService {
       for (let i = section.startRow; i <= section.endRow && i < values.length; i++) {
         const row = values[i] || [];
         const key = String(row[0] || '').trim();
-        const value = String(row[1] || '').trim();
         
         // Skip empty rows and section headers
-        if (!key || !value) continue;
+        if (!key) continue;
         if (this.isSectionHeader(key, row)) continue;
+        
+        // Find the value - it might be in column B, C, or the first non-empty column after A
+        let value = '';
+        for (let col = 1; col < row.length; col++) {
+          const cellValue = String(row[col] || '').trim();
+          if (cellValue) {
+            value = cellValue;
+            break;
+          }
+        }
+        
+        // Skip rows without a value
+        if (!value) continue;
         
         metrics.push({
           key,
@@ -504,21 +539,39 @@ export class GoogleSheetsService {
         });
       }
     } else {
-      // Extract tabular data - headers from first row, then columns
-      const headerRow = values[section.startRow] || [];
-      const headers = headerRow.map((h) => String(h || '').trim()).filter(Boolean);
+      // Extract tabular data - find the header row first
+      // The header row is at section.startRow (set when we detected it as a table header)
+      const headerRowIdx = section.startRow;
+      const headerRow = values[headerRowIdx] || [];
+      
+      // Get headers - filter out empty cells
+      const headers: { name: string; colIdx: number }[] = [];
+      for (let colIdx = 0; colIdx < headerRow.length; colIdx++) {
+        const header = String(headerRow[colIdx] || '').trim();
+        if (header) {
+          headers.push({ name: header, colIdx });
+        }
+      }
+      
+      // Get sample values from first few data rows
+      const dataRows = values.slice(headerRowIdx + 1, Math.min(headerRowIdx + 4, section.endRow + 1));
       
       // Add each column header as a mappable metric
-      for (let colIdx = 0; colIdx < headers.length; colIdx++) {
-        const header = headers[colIdx];
-        // Get sample value from first data row
-        const sampleRow = values[section.startRow + 1] || [];
-        const sampleValue = String(sampleRow[colIdx] || '').trim();
+      for (const { name: header, colIdx } of headers) {
+        // Find first non-empty sample value from data rows
+        let sampleValue = '';
+        for (const row of dataRows) {
+          const val = String(row?.[colIdx] || '').trim();
+          if (val) {
+            sampleValue = val;
+            break;
+          }
+        }
         
         metrics.push({
           key: header,
           value: sampleValue ? `Sample: ${sampleValue}` : 'No data',
-          rowIndex: section.startRow,
+          rowIndex: headerRowIdx,
           columnIndex: colIdx,
           sectionName: section.name,
           metricType: 'detail',

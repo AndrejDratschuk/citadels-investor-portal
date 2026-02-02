@@ -199,12 +199,25 @@ export function DataConnectionsPage(): JSX.Element {
 
   // Sync connection
   const handleSync = async (connectionId: string): Promise<void> => {
-    // For now, syncing requires a deal ID - we'd need to select one
-    // This is a simplified version
     try {
       setSyncingId(connectionId);
-      // TODO: Add deal selector modal for sync
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Call the sync API endpoint
+      const response = await fetch(`/api/googlesheets/connections/${connectionId}/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Sync failed');
+      }
+      
+      // Refresh connections list to show updated status
       await fetchConnections();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sync connection');

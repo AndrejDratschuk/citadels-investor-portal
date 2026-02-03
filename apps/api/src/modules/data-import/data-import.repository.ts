@@ -155,6 +155,7 @@ export class DataImportRepository {
 
     if (error) {
       console.error('Error creating data connection:', error);
+      console.error('Insert data was:', JSON.stringify(insertData, null, 2));
       throw new Error('Failed to create data connection');
     }
 

@@ -26,7 +26,7 @@ import {
 } from '../types';
 
 // Default Calendly URL - should be configured per fund
-const DEFAULT_CALENDLY_URL = 'https://calendly.com/andrejdrats/test';
+const DEFAULT_CALENDLY_URL = 'https://calendly.com/jaymchale-proton/30min';
 
 // Investor type mapping for pre-selected routes
 const INVESTOR_TYPE_CONFIG: Record<string, { category: 'individual' | 'entity'; type: string }> = {
